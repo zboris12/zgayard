@@ -1,10 +1,10 @@
 # zgayard
-It is a web tool aimed to make your online storage more safety.
-It is a single page application and almost all processing is performed in the web browser.
-The server side is only used to handle authorization of online drives, which can't be processed in the web browser.
+It is a web tool aimed to make your online storage more safety.  
+It is a single page application and almost all processing is performed in the web browser.  
+The server side is only used to handle authorization of online storage, which can't be processed in the web browser.
 
-PS: ZGA is the abbreviation of my father's name.
-And I use this name to hope the merits from this tool will be dedicated to my parents.
+PS: __ZGA__ is the abbreviation of my father's name.  
+And I use this name to hope the merits from this application will be dedicated to my parents.
 
 ## This is still in development
 
@@ -14,7 +14,7 @@ And I use this name to hope the merits from this tool will be dedicated to my pa
 ## Main features
 
 * Manage your online storage. Include:
-  * Create new folder
+  * Create a new folder
   * Upload files
   * Download files
   * Rename files or folders
@@ -34,11 +34,13 @@ And I use this name to hope the merits from this tool will be dedicated to my pa
 * Support to download multiple files and compress them to a zip file
 * More online storage support
 * More language support
+* Support to change settings after first longin
+* Support to change key and password
 
 ## The Dependencies
 
-* crypto-js(https://github.com/brix/crypto-js)
-* videostream(https://github.com/jhiesey/videostream)
+* [crypto-js](https://github.com/brix/crypto-js)
+* [videostream](https://github.com/jhiesey/videostream)
 
 ## License
 
