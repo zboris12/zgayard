@@ -34,7 +34,7 @@ And I use this name to hope the merits from this application will be dedicated t
 * Support to download multiple files and compress them to a zip file
 * More online storage support
 * More language support
-* Support to change settings after first longin
+* Support to change settings after first login
 * Support to change key and password
 
 ## The Dependencies
