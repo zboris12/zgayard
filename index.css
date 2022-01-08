@@ -1,0 +1,153 @@
+#spanError,
+#spanInfo {
+	font-weight: bolder;
+	font-size: larger;
+	display: none;
+	padding-left: 10px;
+}
+#spanInfo {
+	color: #00f;
+	border: solid 2px #00f;
+}
+#spanError {
+	color: #f00;
+	border: solid 2px #f00;
+}
+#spanNotify {
+	position: absolute;
+	z-index: 200;
+	border: solid 1px #000;
+	border-radius: 10px;
+	background-color: #fff7d1;
+	left: 48%;
+	top: 20px;
+	padding-left: 5px;
+	padding-right: 5px;
+	min-width: 100px;
+	text-align: center;
+	display: block;
+}
+
+.left {
+	text-align: left;
+}
+.right {
+	text-align: right;
+}
+.center {
+	text-align: center;
+}
+.pointer {
+	cursor: pointer;
+}
+.fnormal {
+	font-weight: normal;
+}
+
+#divSet,
+#divSkipLogin,
+#divPwd,
+#divSaveKey,
+#tblst,
+#tblQueue,
+#divAction {
+	display: none;
+}
+#divSet #spanSet {
+	display: block;
+}
+
+#divfKey input {
+	display: block;
+}
+
+#divGround {
+	background-color: rgba(128, 128, 128, 0.5);
+	z-index: 100;
+	position: absolute;
+	width: 99%;
+	height: 99%;
+	top: 0;
+	left: 0;
+	display: none;
+}
+#divGround > div {
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+}
+
+#divGround > div > div {
+	display: inline-block;
+	background-color: #fff;
+	border-top-left-radius: 10px;
+	border-top-right-radius: 10px;
+}
+
+#divGroundTitle {
+	display: block;
+	background-color: #313662;
+	color: #fff;
+	text-align: left;
+	padding-left: 5px;
+	border-top-left-radius: 10px;
+	border-top-right-radius: 10px;
+	position: relative;
+}
+#divGroundTitle > label {
+	position: absolute;
+	right: 5px;
+	top: 0px;
+	cursor: pointer;
+}
+
+#tblFileDetail {
+	text-align: center;
+	margin-left: auto;
+	margin-right: auto;
+	min-width: 200px;
+}
+#tblFileDetail .name > span {
+	font-size: x-large;
+}
+#tblFolder {
+	margin-left: auto;
+	margin-right: auto;
+	min-width: 200px;
+	text-align: left;
+}
+#tblFolder td {
+	padding-left: 5px;
+}
+
+.dropbtn {
+	cursor: pointer;
+	margin-left: 8px;
+}
+.dropdown-content {
+	display: none;
+	background-color: #f1f1f1;
+	position: absolute;
+	z-index: 200;
+}
+.dropdown-content span {
+	display: block;
+	cursor: pointer;
+}
+.dropdown-content span:hover {
+	background-color: #ddd;
+}
+
+#divNewName {
+	display: none;
+	position: absolute;
+	z-index: 200;
+}
+#divfKey > span,
+#divNewName > span {
+	cursor: pointer;
+	background-color: #fff;
+	border: solid 1px #000;
+	border-radius: 5px;
+	margin-left: 3px;
+}
