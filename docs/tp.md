@@ -2,7 +2,7 @@
 
 1. ACCEPTANCE OF TERMS  
 zboris12 provides the information on this Web site as provided in these Terms of Service ("TOS").
-zboris12 may update the TOS at any time and without prior notice by posting a new version at https://zboris12.github.io/zgayard/tp.md.
+zboris12 may update the TOS at any time and without prior notice by posting a new version at https://zboris12.github.io/zgayard/tp.html.
 The information on this site and your use of it is subject to the most recent version of the TOS posted.
 
 1. DESCRIPTION OF SERVICE  
