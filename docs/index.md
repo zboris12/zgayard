@@ -1,37 +1,34 @@
-## Welcome to GitHub Pages
+# zgayard
+Create a safety yard in your online storage  
 
-You can use the [editor on GitHub](https://github.com/zboris12/zgayard/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
+This is a web tool aimed to make your online storage more safety.  
+It is a single page application and almost all processing is performed in the web browser.  
+The server side is only used to handle authorization of online storage, which can't be processed in the web browser.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+PS: __ZGA__ is the abbreviation of my father's name.  
+And I use this name to hope the merits from this application will be dedicated to my parents.
 
-### Markdown
+## NOTE: it is still in development
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+* The UI is still very simple and ugly.
+* Only support Microsoft Onedrive now.
 
-```markdown
-Syntax highlighted code block
+## Main features
 
-# Header 1
-## Header 2
-### Header 3
+* Manage your online storage. Include:
+  * Create a new folder
+  * Upload files
+  * Download files
+  * Rename files or folders
+  * Move files or folders
+  * Delete files or folders
+* Encrypt file when upload to online storage. Also encrypt file's name if the setting is chosen.
+* Decrypt file when download from online storage.
+* Support to view image file or video file directly from online storage.
+* Supported online storage:
+  * Microsoft Onedrive
 
-- Bulleted
-- List
+## License
 
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/zboris12/zgayard/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+This application is available under the
+[MIT license](https://opensource.org/licenses/MIT).
