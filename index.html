@@ -1,79 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-<title> zgayard - A safety yard in your online drives </title>
-<link rel="stylesheet" type="text/css" href="index.css" />
-<script src="mimetypes.js" type="text/javascript"></script>
-<script src="index.js" type="text/javascript"></script>
+<meta http-equiv="refresh" content="0;URL=README.html">
+<title> zgayard </title>
 </head>
-<body onload="onbody()">
-	<span id="spanError"></span>
-	<span id="spanInfo"></span>
-	<span id="spanNotify"></span>
-
-	<div id="divSet">
-		<span id="spanSet"></span>
-		<div><label>Language: </label><select id="seLang"></select></div>
-		<div><label id="lblDrive"></label><select id="selDrive"></select></div>
-		<div id="divSkipLogin"><input type="checkbox" id="chkSkipLogin"><label id="lblSkipLogin" for="chkSkipLogin"></label></div>
-		<input type="button" wordid="btnCancel" onclick="cancelSettings()" /><input type="button" wordid="btnOk" onclick="saveSettings()" />
-	</div>
-	<div id="divPwd">
-		<div class="firstep"><span id="spanRootNotice"></span></div>
-		<div class="firstep"><label id="lblRoot"></label><input type="text" id="txtRoot" value="_zgayard_"></div>
-		<div class="firstep"><input type="checkbox" id="chkEncryFname"><label id="lblEncryFname" for="chkEncryFname"></label></div>
-		<div><label id="lblKeyPwd"></label><input type="password" id="pwdKey"></div>
-		<div class="firstep"><label id="lblKeyPwdRe"></label><input type="password" id="pwdKeyRe"></div>
-		<div id="divfKey"><label id="lblKeyFile"></label><input type="file" multiple /><span id="spanMoreKey" onclick="moreKeyf()"></span><span id="spanClearKey" onclick="clearKeyf()"></span></div>
-		<div class="firstep"><span id="spanKeyNotice"></span></div>
-		<div class="firstep"><span id="spanPwdNotice"></span></div>
-		<div id="divSaveKey"><input type="checkbox" id="chkSaveKey"><label id="lblSaveKey" for="chkSaveKey"></label></div>
-		<div class="firstep"><span id="spanConfNotice"></span></div>
-		<input type="button" wordid="btnCancel" onclick="cancelSetPwd()" /><input type="button" wordid="btnOk" onclick="setPassword()" />
-	</div>
-	<table id="tblst" border="1"><thead>
-	<tr><th colspan="3" class="left"></th></tr>
-	<tr><th id="thName">name</th><th id="thSize">size</th><th id="thTms">timestamp</th></tr>
-	</thead><tbody></tbody>
-	</table>
-	<table id="tblQueue" border="1"><thead>
-	<tr><th colspan="3"></th></tr>
-	</thead><tbody></tbody>
-	</table>
-	<div id="divAction">
-	<input type="button" value="Download Files" onclick="download()" />
-	<input type="button" value="Move Files" onclick="showMove()" />
-	<input type="button" value="Delete Files" onclick="deleteItems()" /><br />
-	<a id="download" href="#" download="" style="display: none;" target="_blank">dummy</a>
-	<span>Folder Name</span><input type="text" id="txtName" /><input type="button" value="New Folder" onclick="newFolder()" /><br />
-	<span>Files</span><input type="file" id="upfiles" multiple /><input type="button" value="Upload Files" onclick="upload()" /><br />
-	</div>
-	<div id="divItemenu" class="dropdown-content" onclick="clickMenu()">
-		<span wordid="btnDownload">download</span>
-		<span wordid="btnRename">rename</span>
-		<span wordid="btnMove">move</span>
-		<span wordid="btnDelete">delete</span>
-	</div>
-	<div id="divNewName" ><input type="text" onkeypress="keypressNewname()" /><span wordid="btnOk" onclick="admitRename()"></span></div>
-	<div id="divGround"><div onclick="hideGround()"><div onclick="event.stopPropagation()">
-		<div id="divGroundTitle"><span id="spanGroundTitle"></span><label onclick="hideGround()">&#x274e;</label></div>
-		<table id="tblFileDetail"><tbody>
-		<tr><td rowspan="3" class="pointer" onclick="clickItem(1)">&#x25c0;</td><td class="name">
-			<span></span>
-			<img onload="imageLoaded()" />
-			<video controls autoplay></video>
-		</td><td rowspan="3" class="pointer" onclick="clickItem(2)">&#x25b6;</td></tr>
-		<tr><td></td></tr>
-		<tr><td><input type="button" wordid="btnDownload" onclick="download(1)"></td></tr>
-		</tbody></table>
-		<table id="tblFolder" border="1" onlyfolder="1">
-		<thead><tr><th></th></tr></thead>
-		<tbody></tbody>
-		<tbody><tr><td class="right">
-			<input type="button" wordid="btnOk" onclick="moveToFolder()" />
-		</td></tr></tbody>
-		</table>
-	</div></div></div>
+<body>
 </body>
 </html>

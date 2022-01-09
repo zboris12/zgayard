@@ -51,4 +51,5 @@ g_msgs = {
 	"btnRename": "Rename",
 	"btnMove": "Move...",
 	"btnDelete": "Delete",
+	"lnkTos": "Terms of Service & Privacy Policy",
 };

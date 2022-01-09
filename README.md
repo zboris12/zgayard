@@ -1,15 +1,18 @@
 # zgayard
-It is a web tool aimed to make your online storage more safety.  
+
+Create a safety yard in your online storage. [Let's go!](https://zboris12.github.io/zgayard/src/)  
+
+This is a web tool aimed to make your online storage more safety.  
 It is a single page application and almost all processing is performed in the web browser.  
 The server side is only used to handle authorization of online storage, which can't be processed in the web browser.
 
 PS: __ZGA__ is the abbreviation of my father's name.  
 And I use this name to hope the merits from this application will be dedicated to my parents.
 
-## This is still in development
+## NOTE: it is still in development
 
 * The UI is still very simple and ugly.
-* Only support Microsoft Onedrive.
+* Only support Microsoft Onedrive now.
 
 ## Main features
 
