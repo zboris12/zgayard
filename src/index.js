@@ -1,4 +1,4 @@
-const g_AUTHURL = "/grantauth.php";
+const g_AUTHURL = "https://zgayard.f5.si/grantauth.php";
 const g_LANGUAGES = {
 	"en": "English",
 	"ja": "日本語",
@@ -229,6 +229,7 @@ function fetchLocalStorageAuth(func){
 	formData.append("drive_type", "localstorage");
 	var ajax = new XMLHttpRequest();
 	ajax.open("POST", g_AUTHURL, true);
+	ajax.withCredentials = true;
 	ajax.onload = function(a_evt){
 		var a_x = a_evt.target;
 		if(a_x.readyState == 4){

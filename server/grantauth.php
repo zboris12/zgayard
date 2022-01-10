@@ -11,6 +11,15 @@ function getArrayValue($arr, $keynm, $defval=null){
 function getPostValue($keynm, $defval=null){
 	return getArrayValue($_POST, $keynm, $defval);
 }
+function getBaseUrl($url){
+	$uarr = parse_url($url);
+	$ret = $uarr["scheme"] . "://" . $uarr["host"];
+	$port = getArrayValue($uarr, "port", 0);
+	if($port > 0){
+		$ret = $ret . ":" . $port;
+	}
+	return $ret;
+}
 function getLocalStorageAuth($keyOnly=false){
 	$lskey64 = getArrayValue($_COOKIE, "lskey");
 	$newkey = false;
@@ -26,10 +35,10 @@ function getLocalStorageAuth($keyOnly=false){
 	}else{
 		$secure = true;
 	}
-	if(phpversion() < 7.3){
-		setcookie("lskey", $lskey64, time() + (86400 * COOKIE_MAXAGE), "/; SameSite=Strict", "", $secure, true);
+	if(version_compare(phpversion(), "7.3") < 0){
+		setcookie("lskey", $lskey64, time() + (86400 * COOKIE_MAXAGE), "/; SameSite=None", "", $secure, true);
 	}else{
-		setcookie("lskey", $lskey64, time() + (86400 * COOKIE_MAXAGE), array("path" => "/", "samesite" => "Strict", "domain" => "", "secure" => $secure, "httpOnly" => true));
+		setcookie("lskey", $lskey64, array("expires" => time() + (86400 * COOKIE_MAXAGE), "path" => "/", "samesite" => "None", "domain" => "", "secure" => $secure, "httpOnly" => true));
 	}
 	if($keyOnly){
 		return $lskey;
@@ -115,6 +124,11 @@ function getOnedriveAuth(){
 
 	return $result;
 }
+
+header("Access-Control-Allow-Origin: " . getBaseUrl(ONEDRIVE_REDIRECT_URI));
+header("Access-Control-Allow-Credentials: true");
+header("Content-Type: application/json;charset=UTF-8");
+
 $type = getPostValue("drive_type");
 if(isset($type)){
 	switch($type){
@@ -133,8 +147,6 @@ if(isset($type)){
 }else{
 	$result = array("error" => "no_drive_type", "error_description" => "Drive type is not specified.");
 }
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json;charset=UTF-8");
 if(is_array($result)){
 	echo json_encode($result);
 }else{

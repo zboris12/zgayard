@@ -406,6 +406,7 @@ this.authorize = function(opt){
 	var ret = null;
 	var ajax = new XMLHttpRequest();
 	ajax.open("POST", g_AUTHURL, false); //同期
+	ajax.withCredentials = true;
 	ajax.send(formData);
 	if(ajax.readyState == 4){
 		if(ajax.status == 200){
