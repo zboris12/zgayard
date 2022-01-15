@@ -133,14 +133,43 @@ function getQueryParameters(){
 	return uparams;
 }
 
-function getSizeDisp(s){
-	if(s < 1024){
-		return s + "B";
-	}else if(s < 1048576){ // 1024*1024
-		return Math.round(s/102.4)/10 + "KB";
+function formatNumber(n){
+	var str = n.toString();
+	var i = str.indexOf(".");
+	var arr = str.split("");
+	var ret = new Array();
+	if(i >= 0){
+		ret.push(str.slice(i));
 	}else{
-		return Math.round(s/104857.6)/10 + "MB";
+		i = arr.length;
 	}
+	var j = 0;
+	while(i > 0){
+		if(j++ == 3){
+			ret.unshift(",");
+			j = 1;
+		}
+		ret.unshift(arr[--i]);
+	}
+	return ret.join("");
+}
+function getSizeDisp(s){
+	var unit = null;
+	var num = null;
+	if(s < 1024){
+		unit = "B";
+		num = s;
+	}else if(s < 1048576){ // 1024*1024
+		unit = "KB";
+		num = Math.round(s/102.4)/10;
+	}else if(s < 1073741824){ // 1024*1024*1024
+		unit = "MB";
+		num = Math.round(s/104857.6)/10;
+	}else{
+		unit = "GB";
+		num = Math.round(s/107374182.4)/10;
+	}
+	return formatNumber(num).concat(unit);
 }
 function getTimestampDisp(tms){
 	var dt = new Date(tms);
@@ -154,6 +183,20 @@ function getTimestampDisp(tms){
 	hms.push("0".concat(dt.getSeconds()).slice(-2));
 	return ymd.join("-") + " " + hms.join(":");
 }
+
+function charsReplace(fChars, tChars, str){
+	var ret = new Array();
+	str.split("").forEach(function(a_c){
+		var a_i = fChars.indexOf(a_c);
+		if(a_i < 0){
+			ret.push(a_c);
+		}else{
+			ret.push(tChars[a_i]);
+		}
+	});
+	return ret.join("");
+}
+
 
 // opt: {
 //   "method": "PUT",

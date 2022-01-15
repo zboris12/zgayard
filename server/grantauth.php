@@ -68,60 +68,67 @@ function getOnedriveAuth(){
 		  "client_id" => getPostValue("client_id", ONEDRIVE_CLIENT_ID)
 		, "redirect_uri" => getPostValue("redirect_uri", ONEDRIVE_REDIRECT_URI)
 	);
-	$code = getPostValue("code");
-	$rftoken = getPostValue("refresh_token");
-	if(isset($code) || isset($rftoken)){
-		$base_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-		$header = array("Content-Type: application/x-www-form-urlencoded");
-		$data["scope"] = "files.readwrite";
-		$data["client_secret"] = getPostValue("client_secret", ONEDRIVE_CLIENT_SECRET);
-		if(isset($code)){
-			$data["code"] = $code;
-			$data["grant_type"] = "authorization_code";
-		}else{
-			$data["refresh_token"] = cryptData($rftoken, false);
-			$data["grant_type"] = "refresh_token";
-		}
-
-		$ch = curl_init();
-		if(defined("LOCALHOST")){
-			curl_setopt($ch, CURLOPT_VERBOSE, 1);
-		}
-		curl_setopt($ch, CURLOPT_URL, $base_url);
-		curl_setopt($ch, CURLOPT_POST, TRUE);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-		if(defined("PROXY")){
-			curl_setopt($ch, CURLOPT_PROXY, PROXY);
-		}
-		if(defined("PROXY_PORT")){
-			curl_setopt($ch, CURLOPT_PROXYPORT, PROXY_PORT);
-		}
-		$result = curl_exec($ch);
-		curl_close($ch);
-		if($result){
-			$result = json_decode($result, true);
-			$rftoken = getArrayValue($result, "refresh_token");
-			if(isset($rftoken)){
-				$result["refresh_token"] = cryptData($rftoken);
-			}
-		}else{
-			$result = array("error" => "auth_failed", "error_description" => "Failed to connect $base_url.");
-		}
+	$logout = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" . ONEDRIVE_REDIRECT_URI;
+	$action = getPostValue("action");
+	if(isset($action) && strcasecmp($action, "logout") == 0){
+		$result = array();
 
 	}else{
-		$data["scope"] = "offline_access files.readwrite";
-		$data["state"] = base64_encode(openssl_random_pseudo_bytes(20));
-		if(getPostValue("need_code")){
-			$data["response_type"] = "code";
+		$code = getPostValue("code");
+		$rftoken = getPostValue("refresh_token");
+		if(isset($code) || isset($rftoken)){
+			$base_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+			$header = array("Content-Type: application/x-www-form-urlencoded");
+			$data["scope"] = "files.readwrite";
+			$data["client_secret"] = getPostValue("client_secret", ONEDRIVE_CLIENT_SECRET);
+			if(isset($code)){
+				$data["code"] = $code;
+				$data["grant_type"] = "authorization_code";
+			}else{
+				$data["refresh_token"] = cryptData($rftoken, false);
+				$data["grant_type"] = "refresh_token";
+			}
+
+			$ch = curl_init();
+			if(defined("LOCALHOST")){
+				curl_setopt($ch, CURLOPT_VERBOSE, 1);
+			}
+			curl_setopt($ch, CURLOPT_URL, $base_url);
+			curl_setopt($ch, CURLOPT_POST, TRUE);
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+			if(defined("PROXY")){
+				curl_setopt($ch, CURLOPT_PROXY, PROXY);
+			}
+			if(defined("PROXY_PORT")){
+				curl_setopt($ch, CURLOPT_PROXYPORT, PROXY_PORT);
+			}
+			$result = curl_exec($ch);
+			curl_close($ch);
+			if($result){
+				$result = json_decode($result, true);
+				$rftoken = getArrayValue($result, "refresh_token");
+				if(isset($rftoken)){
+					$result["refresh_token"] = cryptData($rftoken);
+				}
+			}else{
+				$result = array("error" => "auth_failed", "error_description" => "Failed to connect $base_url.");
+			}
+
 		}else{
-			$data["redirect_uri"] = $data["redirect_uri"] . "?drive_type=" . getPostValue("drive_type");
-			$data["response_type"] = "token";
+			$data["scope"] = "offline_access files.readwrite";
+			$data["state"] = base64_encode(openssl_random_pseudo_bytes(20));
+			if(getPostValue("need_code")){
+				$data["response_type"] = "code";
+			}else{
+				$data["response_type"] = "token";
+			}
+			$result = array("url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" . http_build_query($data), "state" => $data["state"]);
 		}
-		$result = array("url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" . http_build_query($data), "state" => $data["state"]);
 	}
 
+	$result["logout"] = $logout;
 	return $result;
 }
 

@@ -15,11 +15,12 @@
 	<div id="divSet">
 		<span id="spanSet"></span>
 		<div><label>Language: </label><select id="seLang"></select></div>
-		<div><label id="lblDrive"></label><select id="selDrive"></select></div>
+		<div><label id="lblDrive"></label><select id="selDrive"></select><input type="button" value="logout" onclick="logout()" /></div>
 		<div id="divSkipLogin"><input type="checkbox" id="chkSkipLogin"><label id="lblSkipLogin" for="chkSkipLogin"></label></div>
 		<input type="button" wordid="btnCancel" onclick="cancelSettings()" /><input type="button" wordid="btnOk" onclick="saveSettings()" />
 	</div>
 	<div id="divPwd">
+		<div class="firstep"><span id="spanConfNotice"></span></div>
 		<div class="firstep"><span id="spanRootNotice"></span></div>
 		<div class="firstep"><label id="lblRoot"></label><input type="text" id="txtRoot" value="_zgayard_"></div>
 		<div class="firstep"><input type="checkbox" id="chkEncryFname"><label id="lblEncryFname" for="chkEncryFname"></label></div>
@@ -29,12 +30,14 @@
 		<div class="firstep"><span id="spanKeyNotice"></span></div>
 		<div class="firstep"><span id="spanPwdNotice"></span></div>
 		<div id="divSaveKey"><input type="checkbox" id="chkSaveKey"><label id="lblSaveKey" for="chkSaveKey"></label></div>
-		<div class="firstep"><span id="spanConfNotice"></span></div>
 		<input type="button" wordid="btnCancel" onclick="cancelSetPwd()" /><input type="button" wordid="btnOk" onclick="setPassword()" />
+	</div>
+	<div id="divHeader" class="right">
+		<span id="spanQuota"></span><input type="button" value="Settings" onclick="showSettings(event)" disabled />
 	</div>
 	<table id="tblst" border="1"><thead>
 	<tr><th colspan="3" class="left"></th></tr>
-	<tr><th id="thName">name</th><th id="thSize">size</th><th id="thTms">timestamp</th></tr>
+	<tr><th><input type="checkbox" id="chkAll" onclick="selectAll()"><span id="spanName">name</span></th><th id="thSize">size</th><th id="thTms">timestamp</th></tr>
 	</thead><tbody></tbody>
 	</table>
 	<table id="tblQueue" border="1"><thead>
@@ -48,6 +51,7 @@
 	<a id="download" href="#" download="" style="display: none;" target="_blank">dummy</a>
 	<span>Folder Name</span><input type="text" id="txtName" /><input type="button" value="New Folder" onclick="newFolder()" /><br />
 	<span>Files</span><input type="file" id="upfiles" multiple /><input type="button" value="Upload Files" onclick="upload()" /><br />
+	<span>Folder</span><input type="file" id="upfolder" webkitdirectory /><input type="button" value="Upload Folder" onclick="upload(1)" /><br />
 	</div>
 	<div id="divItemenu" class="dropdown-content" onclick="clickMenu()">
 		<span wordid="btnDownload">download</span>

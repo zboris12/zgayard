@@ -70,6 +70,23 @@ function showNotify(msg){
 		}, 3000);
 	}
 }
+function encryptFname(fnm){
+	if(g_conf["encfname"]){
+		return zbEncryptString(fnm, g_keycfg);
+	}else{
+		return fnm;
+	}
+}
+function decryptFname(fnm){
+	if(g_conf["encfname"]){
+		try{
+			return zbDecryptString(fnm, g_keycfg);
+		}catch(ex){
+			console.error(ex);
+		}
+	}
+	return fnm;
+}
 function loadjsend(evt, func){
 	loadjs.count--;
 	if(evt.type == "error"){
@@ -127,6 +144,9 @@ function onbody2(err){
 		document.getElementById("spanMoreKey").style.display = "none";
 		document.getElementById("spanClearKey").style.display = "none";
 	}
+	document.getElementById("tblFileDetail").getElementsByTagName("video")[0].addEventListener("ended", function(){
+		clickItem(2, true);
+	});
 
 	if(window.indexedDB){
 		var request = window.indexedDB.open(g_LSNM);
@@ -215,12 +235,31 @@ function saveKeyData(keyWords){
 		fetchLocalStorageAuth(function(a_lskdat){
 			if(a_lskdat && a_lskdat["lsauth"]){
 				var a_dat = zbDataCrypto(true, keyWords, a_lskdat["lsauth"]);
-				g_storage["key_words"] = a_dat.toString(CryptoJS.enc.Base64);
+				g_storage["key_words"] = a_dat.toString(CryptoJS.enc.Base64url);
 			}
 			saveToDb();
 		});
 	}else{
 		saveToDb();
+	}
+}
+function logout(){
+	if(g_storage && g_storage["refresh_token"]){
+		delete g_storage["refresh_token"];
+		delete g_storage["skipLogin"];
+		window.indexedDB.open(g_LSNM).onsuccess = function(a_evt){
+			var a_db = a_evt.target.result;
+			var a_trans = a_db.transaction("settings", "readwrite");
+			a_trans.oncomplete = function(b_evt){
+				a_db.close();
+				g_drive.logout();
+			};
+			var a_store = a_trans.objectStore("settings");
+				a_store.delete("refresh_token");
+				a_store.delete("skipLogin");
+		};
+	}else{
+		g_drive.logout();
 	}
 }
 // Get authorization of local storage
@@ -270,7 +309,16 @@ function onbody3(){
 	}
 	changeLanguage(lang);
 }
-function showSettings(){
+function showSettings(evt){
+	var sel = document.getElementById("selDrive");
+	var btn = nextElement(sel, "input");
+	if(evt){
+		sel.disabled = true;
+		btn.style.display = "";
+	}else{
+		sel.disabled = false;
+		btn.style.display = "none";
+	}
 	document.getElementById("divSet").style.display = "block";
 }
 function changeLanguage(lang){
@@ -367,7 +415,7 @@ function applyLanguage(msgs, lang){
 		if(uparams && uparams["drive_type"]){
 			loadDrive(uparams["drive_type"]);
 		}else{
-			document.getElementById("divSet").style.display = "block";
+			showSettings();
 		}
 	}
 }
@@ -528,7 +576,7 @@ function setPassword(){
 	}
 }
 function checkPassword(keyWords, firstep){
-	var hmac = CryptoJS.HmacMD5(keyWords, g_HASHKEY).toString(CryptoJS.enc.Base64).slice(0, 8);
+	var hmac = CryptoJS.HmacMD5(keyWords, g_HASHKEY).toString(CryptoJS.enc.Base64url).slice(0, 8);
 	if(firstep){
 		saveKeyData(keyWords);
 		g_conf = {
@@ -558,11 +606,11 @@ function cryptoRKeys(encFlg, rkeys, keyWords){
 	if(encFlg){
 		dat1 = rkeys;
 	}else{
-		dat1 = CryptoJS.enc.Base64.parse(rkeys);
+		dat1 = CryptoJS.enc.Base64url.parse(rkeys);
 	}
 	var dat = zbDataCrypto(encFlg, dat1, cfg);
 	if(encFlg){
-		return dat.toString(CryptoJS.enc.Base64);
+		return dat.toString(CryptoJS.enc.Base64url);
 	}else{
 		showInputPassword();
 		return dat;
@@ -592,7 +640,7 @@ function downloadConfile(fid){
 		if(g_storage && g_storage["key_words"]){
 			fetchLocalStorageAuth(function(b_lskdat){
 				if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
-					var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64.parse(g_storage["key_words"]), b_lskdat["lsauth"]);
+					var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64url.parse(g_storage["key_words"]), b_lskdat["lsauth"]);
 					checkPassword(b_keywords);
 				}else{
 					showInputPassword();
@@ -609,7 +657,7 @@ function downloadConfile(fid){
 			if(g_storage && g_storage["key_words"]){
 				fetchLocalStorageAuth(function(b_lskdat){
 					if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
-						var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64.parse(g_storage["key_words"]), b_lskdat["lsauth"]);
+						var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64url.parse(g_storage["key_words"]), b_lskdat["lsauth"]);
 						checkPassword(b_keywords);
 					}else{
 						showInputPassword();
@@ -624,38 +672,82 @@ function downloadConfile(fid){
 }
 function checkRootFolder(){
 	document.getElementById("divPwd").style.display = "none";
-	var fldr = g_conf["root"];
-	// Get root folder.
-	g_drive.getItem({
-		"auth": g_accessToken,
-		"doneFunc": function(a_err, a_dat){
-			if(a_err){
-				if(a_err["status"] == 404){
-					// Create root folder
-					g_drive.newFolder({
-						"auth": g_accessToken,
-						"folder": fldr,
-						"doneFunc": function(b_err, b_dat){
-							if(b_err){
-								showError(JSON.stringify(b_err));
-							}else{
-								g_paths.push(b_dat);
-								listFolder();
-							}
-						},
-					});
+	getDriveInfo(function(){
+		var fldr = g_conf["root"];
+		// Get root folder.
+		g_drive.getItem({
+			"auth": g_accessToken,
+			"doneFunc": function(a_err, a_dat){
+				if(a_err){
+					if(a_err["status"] == 404){
+						// Create root folder
+						g_drive.newFolder({
+							"auth": g_accessToken,
+							"folder": fldr,
+							"doneFunc": function(b_err, b_dat){
+								if(b_err){
+									showError(JSON.stringify(b_err));
+								}else{
+									g_paths.push(b_dat);
+									listFolder();
+								}
+							},
+						});
+					}else{
+						showError(JSON.stringify(a_err));
+					}
 				}else{
-					showError(JSON.stringify(a_err));
+					g_paths.push(a_dat);
+					listFolder();
 				}
-			}else{
-				g_paths.push(a_dat);
-				listFolder();
-			}
-		},
-		"upath": fldr,
+			},
+			"upath": fldr,
+		});
 	});
 }
 
+function addQuotaUsed(sz, trashFlg){
+	var ele = document.getElementById("spanQuota");
+	if(typeof sz == "string"){
+		sz = parseInt(sz);
+	}
+	var total = parseInt(ele.getAttribute("total"));
+	var trash = parseInt(ele.getAttribute("trash"));
+	var used = 0;
+	if(ele.hasAttribute("used")){
+		used = parseInt(ele.getAttribute("used"));
+	}
+	if(trashFlg){
+		trash += sz;
+		ele.setAttribute("trash", trash);
+		used -= sz;
+		ele.setAttribute("used", used);
+		return;
+	}else{
+		used += sz;
+		ele.setAttribute("used", used);
+	}
+	var free = total - used - trash;
+	ele.innerText = g_msgs["quotaInfo"].replace("{0}", getSizeDisp(free));
+}
+function getDriveInfo(func){
+	g_drive.getDrive({
+		"auth": g_accessToken,
+		"doneFunc": function(a_err, a_dat){
+			if(a_err){
+				showError(a_err);
+			}else{
+				var a_ele = document.getElementById("spanQuota");
+				a_ele.setAttribute("total", a_dat["total"]);
+				a_ele.setAttribute("trash", a_dat["trash"]);
+				addQuotaUsed(a_dat["used"]);
+				if(func){
+					func();
+				}
+			}
+		},
+	});
+}
 function listFolder(reload, onlyfolder, fld){
 	if(!g_accessToken){
 		return;
@@ -715,8 +807,16 @@ function listFolder(reload, onlyfolder, fld){
 				}
 			});
 			if(!onlyfolder){
+				document.getElementById("divHeader").style.display = "block";
 				tbl.style.display = "block";
 				document.getElementById("divAction").style.display = "block";
+				var a_chk = document.getElementById("chkAll");
+				a_chk.checked = false;
+				if(a_arr.length > 0){
+					a_chk.style.display = "";
+				}else{
+					a_chk.style.display = "none";
+				}
 			}
 			showInfo();
 		},
@@ -727,18 +827,11 @@ function addItem(tby, itm, fonly){
 	var b_tr = document.createElement("tr");
 	var b_td = document.createElement("td");
 	var b_link = document.createElement("a");
-	var b_fnm = itm["name"];
+	var b_fnm = decryptFname(itm["name"]);
 	if(!fonly){
 		var b_chk = document.createElement("input");
 		var b_span = document.createElement("span");
 		var b_btn = document.createElement("span");
-	}
-	if(g_conf["encfname"]){
-		try{
-			b_fnm = zbDecryptString(decodeURIComponent(b_fnm), g_keycfg);
-		}catch(ex){
-			console.error(ex);
-		}
 	}
 	if(!fonly){
 		b_chk.type = "checkbox";
@@ -781,7 +874,7 @@ function addItem(tby, itm, fonly){
 }
 
 // direction: 1 previous, 2 next, self if omitted.
-function clickItem(direction){
+function clickItem(direction, noLoop){
 	event.preventDefault();
 	var ele = null;
 	var tbdy = null;
@@ -794,13 +887,19 @@ function clickItem(direction){
 		if(direction == 1){
 			if(rowidx > 0){
 				rowidx--;
+			}else if(noLoop){
+				return;
 			}else{
 				rowidx = rows.length - 1;
 			}
 		}else{
 			rowidx++;
 			if(rowidx >= rows.length){
-				rowidx = 0;
+				if(noLoop){
+					return;
+				}else{
+					rowidx = 0;
+				}
 			}
 		}
 		ele = rows[rowidx].getElementsByTagName("a")[0];
@@ -859,21 +958,20 @@ function clickPath(){
 				th.removeChild(th.lastElementChild);
 				th.removeChild(th.lastElementChild);
 			}
-			listFolder(true, true, {
-				"name": ele.innerText,
-				"id" : ele.getAttribute("uid"),
-			});
 		}
+		listFolder(true, true, {
+			"name": ele.innerText,
+			"id" : ele.getAttribute("uid"),
+		});
 	}else{
 		var idx = parseInt(ele.getAttribute("idx"));
-		if(idx >= g_paths.length - 1){
-			return;
+		if(idx < g_paths.length - 1){
+			var darr = g_paths.splice(idx + 1);
+			darr.forEach(function(a_ele){
+				th.removeChild(th.lastElementChild);
+				th.removeChild(th.lastElementChild);
+			});
 		}
-		var darr = g_paths.splice(idx + 1);
-		darr.forEach(function(a_ele){
-			th.removeChild(th.lastElementChild);
-			th.removeChild(th.lastElementChild);
-		});
 		listFolder(true);
 	}
 }
@@ -896,6 +994,17 @@ function getSfx(fnm){
 	}
 	return sfx.toLowerCase();
 }
+
+function selectAll(){
+	var chkd = getElement().checked;
+	var eles = getTableBody("#tblst")["tbody"].getElementsByTagName("input");
+	for(var i=0; i<eles.length; i++){
+		if(eles[i].type == "checkbox"){
+			eles[i].checked = chkd;
+		}
+	}
+}
+
 // typ: 1 show dropdown, 2 show file detail, 3 show folder selector
 function showGround(typ){
 	var div = document.getElementById("divGround");
@@ -1014,10 +1123,7 @@ function admitRename(){
 	var rowidx = div.getAttribute("rowidx");
 	var lnk = rows[rowidx].getElementsByTagName("a")[0];
 	if(txt.value != lnk.innerText){
-		var fnm = txt.value;
-		if(g_conf["encfname"]){
-			fnm = encodeURIComponent(zbEncryptString(fnm, g_keycfg));
-		}
+		var fnm = encryptFname(txt.value);
 		var opt = {
 			"auth": g_accessToken,
 			"doneFunc": function(a_err){
@@ -1131,9 +1237,7 @@ function newFolder(){
 	if(!g_accessToken){
 		return;
 	}
-	if(g_conf["encfname"]){
-		fldnm = encodeURIComponent(zbEncryptString(fldnm, g_keycfg));
-	}
+	fldnm = encryptFname(fldnm);
 	var opt = {
 		"auth": g_accessToken,
 		"doneFunc": function(a_err, a_dat){
@@ -1151,9 +1255,15 @@ function newFolder(){
 	}
 	g_drive.newFolder(opt);
 }
-function upload(){
+function upload(foderFlg){
 	showInfo();
-	var files = document.getElementById("upfiles").files;
+	var files = null;
+	foderFlg = (foderFlg === 1);
+	if(foderFlg){
+		files = document.getElementById("upfolder").files;
+	}else{
+		files = document.getElementById("upfiles").files;
+	}
 	if(files.length <= 0){
 		showError("noFiles");
 		return;
@@ -1165,12 +1275,23 @@ function upload(){
 	tbl.getElementsByTagName("th")[0].innerText = g_msgs["updQueue"];
 	tbl.style.display = "block";
 
+	var targets = new Array();
 	for(var i = 0; i < files.length; i++){
 		var tr = document.createElement("tr");
 		var td = document.createElement("td");
 		var span = document.createElement("span");
 		var btn = document.createElement("input");
-		td.innerText = files[i].name;
+		var fpath =  null;
+		if(files[i].webkitRelativePath){
+			fpath = files[i].webkitRelativePath;
+		}else{
+			fpath = files[i].name;
+		}
+		targets.push({
+			"fpath": fpath,
+			"file": files[i],
+		});
+		td.innerText = fpath;
 		tr.appendChild(td);
 		td = document.createElement("td");
 		span.innerText = g_msgs["waiting"];
@@ -1186,62 +1307,87 @@ function upload(){
 		tbdy.appendChild(tr);
 	}
 
-	uploadFile(files, 0, tbdy);
-}
-function uploadFile(files, idx, tbdy){
-	var fldid = g_paths[g_paths.length - 1]["id"];
-	var fnm = files[idx].name;
-	var span = tbdy.rows[idx].getElementsByTagName("span")[0];
-	var btn = tbdy.rows[idx].getElementsByTagName("input")[0];
-	span.innerText = "-";
-	btn.style.display = "";
-	if(g_conf["encfname"]){
-		fnm = encodeURIComponent(zbEncryptString(fnm, g_keycfg));
-	}
-	var reader = new ZBlobReader({
-		"blob": files[idx],
-		"bufSize": 1600000,
-	});
-	var writer = g_drive.createWriter({
-		"auth": g_accessToken,
-		"fnm": fnm,
-		"fldrId": fldid,
-	});
-	var cypt = new ZbCrypto({
-		"keycfg": g_keycfg,
-		"reader": reader,
-		"writer": writer,
-	});
-	cypt.onstep = function(){
-		span.innerText = cypt.calSpeed();
-		if(btn.getAttribute("canceled")){
-			return false;
-		}else{
-			return true;
+	var basePath = null;
+	var baseId = null;
+
+	var uploadFile = function(a_idx){
+		var a_farr = targets[a_idx]["fpath"].split("/");
+		for(var a_i=0; a_i < a_farr.length; a_i++){
+			a_farr[a_i] = encryptFname(a_farr[a_i]);
 		}
-	};
-	cypt.onfinal = function(a_err, a_canceled){
-		btn.style.display = "none";
-		if(a_err){
-			span.innerText = a_err.message || a_err.restxt;
-		}else if(a_canceled){
-			for(var i=idx; i<files.length; i++){
-				tbdy.rows[i].getElementsByTagName("span")[0].innerText = g_msgs["updCanceled"];
-			}
-			if(idx > 0){
-				listFolder(true);
-			}
+
+		var a_span = tbdy.rows[a_idx].getElementsByTagName("span")[0];
+		var a_btn = tbdy.rows[a_idx].getElementsByTagName("input")[0];
+		a_span.innerText = "-";
+		a_btn.style.display = "";
+		var a_reader = new ZBlobReader({
+			"blob": targets[a_idx]["file"],
+			"bufSize": 1600000,
+		});
+		var a_wopt = {
+			"auth": g_accessToken,
+		};
+		if(a_farr.length == 1){
+			a_wopt["fnm"] = a_farr[0];
+			a_wopt["fldrId"] = baseId;
 		}else{
-			span.innerText = g_msgs["upDone"];
-			idx++;
-			if(idx < files.length){
-				uploadFile(files, idx, tbdy);
+			a_wopt["fnm"] = a_farr.join("/");
+			a_wopt["fldr"] = basePath;
+		}
+		var a_writer = g_drive.createWriter(a_wopt);
+		var a_cypt = new ZbCrypto({
+			"keycfg": g_keycfg,
+			"reader": a_reader,
+			"writer": a_writer,
+		});
+		a_cypt.onstep = function(){
+			a_span.innerText = a_cypt.calSpeed() + " " + Math.round(a_reader.getPos() * 100 / a_reader.getSize()) + "%";
+			if(a_btn.getAttribute("canceled")){
+				return false;
 			}else{
-				listFolder(true);
+				return true;
 			}
-		}
+		};
+		a_cypt.onfinal = function(b_err, b_canceled){
+			a_btn.style.display = "none";
+			if(b_err){
+				a_span.innerText = b_err.message || b_err.restxt;
+			}else if(b_canceled){
+				for(var b_i=a_idx; b_i<targets.length; b_i++){
+					tbdy.rows[b_i].getElementsByTagName("span")[0].innerText = g_msgs["updCanceled"];
+				}
+				if(a_idx > 0){
+					listFolder(true);
+				}
+			}else{
+				a_span.innerText = g_msgs["upDone"];
+				addQuotaUsed(a_writer.getTotalSize());
+				a_idx++;
+				if(a_idx < targets.length){
+					uploadFile(a_idx);
+				}else{
+					listFolder(true);
+				}
+			}
+		};
+		a_cypt.start();
 	};
-	cypt.start();
+
+	if(foderFlg){
+		// Get current folder's path
+		g_drive.getItem({
+			"uid": g_paths[g_paths.length - 1]["id"],
+			"auth": g_accessToken,
+			"doneFunc": function(a_err, a_dat){
+				basePath = a_dat["parent"].concat("/").concat(a_dat["name"]);
+				baseId = a_dat["id"];
+				uploadFile(0);
+			},
+		});
+	}else{
+		baseId = g_paths[g_paths.length - 1]["id"];
+		uploadFile(0);
+	}
 }
 function cancel(){
 	var ele = getElement();

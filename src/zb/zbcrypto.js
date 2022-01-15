@@ -45,10 +45,10 @@ function zbDataCrypto(_encFlg, _dat, _cfg){
 function zbEncryptString(_str, _cfg){
 	var datIn = CryptoJS.enc.Utf8.parse(_str);
 	var datOut = zbDataCrypto(true, datIn, _cfg);
-	return datOut.toString(CryptoJS.enc.Base64);
+	return datOut.toString(CryptoJS.enc.Base64url);
 }
 function zbDecryptString(_str, _cfg){
-	var datIn = CryptoJS.enc.Base64.parse(_str);
+	var datIn = CryptoJS.enc.Base64url.parse(_str);
 	var datOut = zbDataCrypto(false, datIn, _cfg);
 	return datOut.toString(CryptoJS.enc.Utf8);
 }
@@ -81,6 +81,7 @@ wordArrayToBytes.WORD_SIZE = 4;
 //   "downEle": HTMLLinkElement,   // optional
 // }
 function ZBlobWriter(opt){
+	this.fsize = 0;
 	this.arrbuf = null;
 	this.downEle = null;
 	if(opt && opt.downEle){
@@ -89,6 +90,7 @@ function ZBlobWriter(opt){
 
 	// --- Public methods Start --- //
 	this.prepare = function(fsize, cb){
+		this.fsize = fsize;
 		if(this.downEle && this.downEle.href != "#"){
 			window.URL.revokeObjectURL(this.downEle.href);
 		}
@@ -157,6 +159,9 @@ function ZBlobWriter(opt){
 		}else{
 			throw new Error("Element for download is not specified.");
 		}
+	};
+	this.getTotalSize = function(){
+		return this.fsize;
 	};
 	// --- Public methods End --- //
 }

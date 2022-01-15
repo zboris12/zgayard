@@ -14,7 +14,7 @@ function ZbOneDrive(){
 // }
 this.sendAjax = function(opt){
 	var method = "POST";
-	var url = "https://graph.microsoft.com/v1.0".concat(opt.upath);
+	var url = "https://graph.microsoft.com/v1.0".concat(encodeURI(opt.upath));
 	var ajax = new XMLHttpRequest();
 
  	if(opt && opt.method){
@@ -69,6 +69,14 @@ this.login = function(reuseToken){
 	}
 	if(uparams && uparams["token_type"] && uparams["access_token"]){
 		this.setAccessToken(uparams["token_type"], uparams["access_token"]);
+		if(g_storage && uparams && uparams["state"]){
+			if(uparams["state"] == sessionStorage.getItem("login_state")){
+				sessionStorage.removeItem("login_state");
+			}else{
+				showError("Unauthorized access to this url.");
+				return false;
+			}
+		}
 		return true;
 	}else if(uparams && uparams["code"]){
 		opt["code"] = uparams["code"];
@@ -92,13 +100,14 @@ this.login = function(reuseToken){
 				g_storage["refresh_token"] = ret["refresh_token"];
 				g_saveStorage = true;
 			}
+			if(g_storage && ret["logout"]){
+				sessionStorage.setItem("logout_url", ret["logout"]);
+			}
 			return true;
 		}else if(ret && ret["error"]){
 			showError("["+ret["error"]+"] "+ret["error_description"]);
-			return false;
 		}else{
 			showError("Unknown error occured when doing authorization.");
-			return false;
 		}
 	}else{
 		if(canSkipLogin){
@@ -106,19 +115,88 @@ this.login = function(reuseToken){
 		}
 		var ret = this.authorize(opt);
 		if(ret && ret["url"]){
-			if(g_storage && ret["state"]){
-				sessionStorage.setItem("login_state", ret["state"]);
+			if(g_storage){
+				if(ret["state"]){
+					sessionStorage.setItem("login_state", ret["state"]);
+				}
+				if(ret["logout"]){
+					sessionStorage.setItem("logout_url", ret["logout"]);
+				}
 			}
 			window.location.href = ret["url"];
 		}else if(ret && ret["error"]){
 			showError("["+ret["error"]+"] "+ret["error_description"]);
-			return false;
 		}else{
 			showError("Unknown error occured when doing authorization.");
-			return false;
 		}
 	}
 	return false;
+};
+
+this.logout = function(){
+	g_accessToken = null;
+	if(g_storage){
+		sessionStorage.removeItem("access_token");
+		if(sessionStorage.getItem("logout_url")){
+			window.location.href = sessionStorage.getItem("logout_url");
+			return;
+		}
+	}
+
+	var formData = new FormData();
+	formData.append("drive_type", "onedrive");
+	formData.append("action", "logout");
+
+	var ret = null;
+	var ajax = new XMLHttpRequest();
+	ajax.open("POST", g_AUTHURL, true);
+	ajax.withCredentials = true;
+	ajax.onload = function(a_evt){
+		var a_x = a_evt.target;
+		if (a_x.readyState == 4){
+			if(a_x.status == 200){
+				var ret = JSON.parse(a_x.responseText);
+				if(ret && ret["logout"]){
+					window.location.href = ret["logout"];
+				}
+			}
+		}
+	};
+	ajax.send(formData);
+};
+
+// opt: {
+//   (optional)"utype": "Bearer",
+//   (optional)"utoken": "xxxxxxxx",
+//   (optional)"auth": "xxxxxxxx",    //If "auth" is specified then "utype" and "utoken" will be ignored.
+//   (optional)"doneFunc": function(error, data){},
+// }
+this.getDrive = function(opt){
+	var opt2 = {
+		"method": "GET",
+		"upath": "/me/drive",
+		"doneFunc": function(a_res){
+			var a_dat = null;
+			var a_err = false;
+			if(a_res["status"] == 200){
+				var a_dat2 = JSON.parse(a_res["restext"]);
+				var a_quota = a_dat2["quota"];
+				a_dat = new Object();
+				a_dat["trash"] = a_quota["deleted"];
+				a_dat["total"] = a_quota["total"];
+				a_dat["used"] = a_quota["used"];
+			}else{
+				a_err = a_res;
+			}
+			if(opt && opt["doneFunc"]){
+				opt["doneFunc"](a_err, a_dat);
+			}else if(a_err){
+				showError(JSON.stringify(a_err));
+			}
+		}.bind(this),
+	};
+	this.copyAuth(opt, opt2);
+	this.sendAjax(opt2);
 };
 
 // opt: {
@@ -127,7 +205,7 @@ this.login = function(reuseToken){
 //   (optional)"utype": "Bearer",
 //   (optional)"utoken": "xxxxxxxx",
 //   (optional)"auth": "xxxxxxxx",    //If "auth" is specified then "utype" and "utoken" will be ignored.
-//   (optional)"doneFunc": function(error, children){},
+//   (optional)"doneFunc": function(error, data){},
 // }
 this.getItem = function(opt){
 	var opt2 = {
@@ -154,11 +232,7 @@ this.getItem = function(opt){
 	}else{
 		throw new Error("No path nor id is specified.");
 	}
-	["utype", "utoken", "auth"].forEach(function(a_ele){
-		if(opt[a_ele]){
-			opt2[a_ele] = opt[a_ele];
-		}
-	});
+	this.copyAuth(opt, opt2);
 	this.sendAjax(opt2);
 };
 
@@ -200,11 +274,7 @@ this.listFolder = function(opt){
 		}else if(opt["uid"]){
 			opt2["upath"] = "/me/drive/items/"+opt["uid"]+"/children";
 		}
-		["utype", "utoken", "auth"].forEach(function(a_ele){
-			if(opt[a_ele]){
-				opt2[a_ele] = opt[a_ele];
-			}
-		});
+		this.copyAuth(opt, opt2);
 	}
 	this.sendAjax(opt2);
 };
@@ -350,6 +420,7 @@ this.makeReturnItem = function(ele){
 		"name": ele["name"],
 		"size": ele["size"],
 		"lastModifiedDateTime": ele["lastModifiedDateTime"],
+		"parent": ele["parentReference"]["path"],
 	};
 	if(ele["folder"]){
 		itm["type"] = "1";
@@ -410,7 +481,7 @@ this.authorize = function(opt){
 	ajax.send(formData);
 	if(ajax.readyState == 4){
 		if(ajax.status == 200){
-			ret =JSON.parse(ajax.responseText);
+			ret = JSON.parse(ajax.responseText);
 		}else{
 			throw new Error(ajax.responseText+" ("+ajax.status+")");
 		}
@@ -468,6 +539,14 @@ this.updateProp = function(opt){
 	this.sendAjax(opt2);
 };
 
+this.copyAuth = function(opt, opt2){
+	["utype", "utoken", "auth"].forEach(function(a_ele){
+		if(opt[a_ele]){
+			opt2[a_ele] = opt[a_ele];
+		}
+	});
+};
+
 // --- Private methods End --- //
 
 }
@@ -496,7 +575,7 @@ function OneDriveWriter(_opt){
 		this.upSize = fsize;
 
 		var uopt = {
-			"upath": "/me/drive/root:/",
+			"upath": "/me",
 			"method": "POST",
 			"auth": this.opt.auth,
 			"headers": {
@@ -516,19 +595,32 @@ function OneDriveWriter(_opt){
 				}
 			}.bind(this),
 		};
+
 		if(this.opt.fldrId){
-			uopt["upath"] = "/me/drive/items/"+encodeURIComponent(this.opt.fldrId)+":/";
+			uopt["upath"] = "/me/drive/items/"+this.opt.fldrId+":/";
  		}else if(this.opt.fldr){
-			uopt["upath"] += encodeURIComponent(this.opt.fldr) + "/";
+ 			if(!this.opt.fldr.startsWith("/drive/root:")){
+				uopt["upath"] += "/drive/root:/";
+ 			}
+			uopt["upath"] += this.opt.fldr.concat("/");
+		}else{
+			uopt["upath"] += "/drive/root:/";
 		}
-		uopt["upath"] += encodeURIComponent(this.opt.fnm);
+		uopt["upath"] += this.opt.fnm;
 		uopt["upath"] += ":/createUploadSession";
+
+		var item = {
+			"@microsoft.graph.conflictBehavior": "replace",
+		};
+		var i = this.opt.fnm.lastIndexOf("/");
+		if(i >= 0){
+			item["name"] = this.opt.fnm.slice(i + 1);
+		}else{
+			item["name"] = this.opt.fnm;
+		}
+//		item["fileSize"] = this.upSize; // "fileSize" is not supported on onedrive business / sharepoint
 		uopt["data"] = JSON.stringify({
-			"item": {
-				"@microsoft.graph.conflictBehavior": "replace",
-				"fileSize": this.upSize,
-				"name": this.opt.fnm,
-			}
+			"item": item,
 		});
 
 		this.drive.sendAjax(uopt);
@@ -537,27 +629,41 @@ function OneDriveWriter(_opt){
 	//buf: byte array
 	this.write = function(buf, cb){
 		var bufblob = new Blob([new Uint8Array(buf)], { "type" : "application/octet-binary" });
-		var ajax = new XMLHttpRequest();
 		var range = "bytes " + this.pos + "-";
 		this.pos += bufblob.size;
 		range += (this.pos - 1) + "/" + this.upSize;
 
-		ajax.open("PUT", this.upUrl, true); //非同期
-//		ajax.setRequestHeader("Content-Length", bufblob.size);
-		ajax.setRequestHeader("Content-Range", range);
-		ajax.onload = function(a_evt){
-			var a_x = a_evt.target;
-			if (a_x.readyState == 4){
-				if(a_x.status >= 200 && a_x.status <= 299){
-					if(cb){
-						cb(a_x.responseText);
+		var retryCnt = 0;
+		var ajaxPut = function(){
+			var ajax = new XMLHttpRequest();
+			ajax.open("PUT", this.upUrl, true); //非同期
+//			ajax.setRequestHeader("Content-Length", bufblob.size);
+			ajax.setRequestHeader("Content-Range", range);
+			ajax.onload = function(a_evt){
+				var a_x = a_evt.target;
+				if (a_x.readyState == 4){
+					if(a_x.status >= 200 && a_x.status <= 299){
+						if(cb){
+							cb(a_x.responseText);
+						}
+					}else{
+						alert(a_x.responseText+" ("+a_x.status+")");
 					}
-				}else{
-					alert(a_x.responseText+" ("+a_x.status+")");
 				}
-			}
+			}.bind(this);
+			ajax.onerror = function(a_evt){
+				console.error(a_evt);
+				if(retryCnt < 1){
+					retryCnt++;
+					// retry for occasionally CORS failed
+					setTimeout(function(){
+						ajaxPut();
+					}, 500);
+				}
+			};
+			ajax.send(bufblob);
 		}.bind(this);
-		ajax.send(bufblob);
+		ajaxPut();
 	};
 	// cb: function(a_err, a_result){} // a_result: {"status": 999, "restxt": "xxxxx"}
 	this.cancel = function(cb){
@@ -580,6 +686,10 @@ function OneDriveWriter(_opt){
 			}
 		}.bind(this);
 		ajax.send();
+	};
+
+	this.getTotalSize = function(){
+		return this.upSize;
 	};
 	// --- Public methods End --- //
 }

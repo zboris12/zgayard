@@ -44,10 +44,16 @@
 	font-weight: normal;
 }
 
+#spanConfNotice,
+#spanPwdNotice {
+	font-weight: bold;
+}
+
 #divSet,
 #divSkipLogin,
 #divPwd,
 #divSaveKey,
+#divHeader,
 #tblst,
 #tblQueue,
 #divAction {
@@ -59,6 +65,16 @@
 
 #divfKey input {
 	display: block;
+}
+
+#spanQuota {
+	position: absolute;
+	left: 13px;
+}
+
+#chkAll {
+	position: absolute;
+	left: 13px;
 }
 
 #divGround {
