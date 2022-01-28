@@ -808,7 +808,7 @@ function downloadConfile(fid){
 function appendRootItem(_conf, _selected, _sel){
 	/** @type {Element|undefined} */
 	var sel = _sel;
-	if(!sel){
+	if(!_sel){
 		sel = document.getElementById("selRoot");
 	}
 	/** @type {Element} */
