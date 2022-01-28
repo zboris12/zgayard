@@ -19,8 +19,9 @@ window.addEventListener("load", function(){
 
 	/** @type {number} */
 	var i = 0;
-	/** @type {?Element} */
-	var ele = null;
+	/** @type {Element} */
+	var ele = document.getElementById("spanAddRoot");
+	ele.addEventListener("click", showAddRoot);
 	/** @type {!NodeList<!Element>} */
 	var eles = document.getElementById("divSet").getElementsByTagName("input");
 	for(i=0; i<eles.length; i++){
@@ -30,7 +31,7 @@ window.addEventListener("load", function(){
 			ele.addEventListener("click", logout);
 			break;
 		case "btnCancel":
-			ele.addEventListener("click", cancelSettings);
+			ele.addEventListener("click", hideSettings);
 			break;
 		case "btnOk":
 			ele.addEventListener("click", saveSettings);
@@ -46,7 +47,7 @@ window.addEventListener("load", function(){
 		ele = eles[i];
 		switch(ele.getAttribute("wordid")){
 		case "btnCancel":
-			ele.addEventListener("click", cancelSetPwd);
+			ele.addEventListener("click", hideSetPwd);
 			break;
 		case "btnOk":
 			ele.addEventListener("click", setPassword);

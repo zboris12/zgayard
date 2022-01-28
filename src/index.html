@@ -19,22 +19,26 @@
 		<div><label id="lblDrive"></label><select id="selDrive"></select><input type="button" wordid="btnLogout" /></div>
 		<div id="divSkipLogin"><input type="checkbox" id="chkSkipLogin"><label id="lblSkipLogin" for="chkSkipLogin"></label></div>
 		<input type="button" wordid="btnCancel" /><input type="button" wordid="btnOk" />
+		<hr />
 	</div>
 	<div id="divPwd">
 		<div class="firstep"><span id="spanConfNotice"></span></div>
-		<div class="firstep"><span id="spanRootNotice"></span></div>
-		<div class="firstep"><label id="lblRoot"></label><input type="text" id="txtRoot" value="_zgayard_"></div>
-		<div class="firstep"><input type="checkbox" id="chkEncryFname"><label id="lblEncryFname" for="chkEncryFname"></label></div>
+		<div class="addroot"><span id="spanRootNotice"></span></div>
+		<div class="addroot"><label id="lblRoot"></label><input type="text" id="txtRoot" value=""></div>
+		<div class="chgroot"><label id="lblRoot"></label><select id="selRoot"></select><span id="spanAddRoot" class="pointer">&#x2795;</span></div>
+		<div class="addroot"><input type="checkbox" id="chkEncryFname"><label id="lblEncryFname" for="chkEncryFname"></label></div>
 		<div><label id="lblKeyPwd"></label><input type="password" id="pwdKey"></div>
-		<div class="firstep"><label id="lblKeyPwdRe"></label><input type="password" id="pwdKeyRe"></div>
+		<div class="addroot"><label id="lblKeyPwdRe"></label><input type="password" id="pwdKeyRe"></div>
 		<div id="divfKey"><label id="lblKeyFile"></label><input type="file" multiple /><span id="spanMoreKey"></span><span id="spanClearKey"></span></div>
-		<div class="firstep"><span id="spanKeyNotice"></span></div>
-		<div class="firstep"><span id="spanPwdNotice"></span></div>
+		<div class="addroot"><span id="spanKeyNotice"></span></div>
+		<div class="addroot"><span id="spanPwdNotice"></span></div>
 		<div id="divSaveKey"><input type="checkbox" id="chkSaveKey"><label id="lblSaveKey" for="chkSaveKey"></label></div>
 		<input type="button" wordid="btnCancel" /><input type="button" wordid="btnOk" />
+		<hr />
 	</div>
 	<div id="divHeader" class="right">
-		<span id="spanQuota"></span><input type="button" wordid="btnSet" disabled />
+		<span id="spanQuota"></span><input type="button" wordid="btnSet" />
+		<hr />
 	</div>
 	<table id="tblst" border="1"><thead>
 	<tr><th colspan="3" class="left"></th></tr>

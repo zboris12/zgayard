@@ -5,6 +5,7 @@
 		"js/zbidxdb.js",
 		"js/zbonedrive.js",
 		"js/const.js",
+		"js/settings.js",
 		"js/main.js",
 		"js/event.js",
 	];

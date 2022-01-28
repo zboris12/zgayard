@@ -27,19 +27,19 @@ And I use this name to hope the merits from this application will be dedicated t
   * Delete files or folders
 * Encrypt file when upload to online storage. Also encrypt file's name if the setting is chosen.
 * Decrypt file when download from online storage.
+* Support multiple root directories with different password and key files.
+* Support to upload folder.
 * Support to view image file or video file directly from online storage.
+* Automatically play the next video file after the current video is ended.
 * Supported online storage:
   * Microsoft Onedrive
 
 ## TODO
 
 * Make the UI cool and responsive.
-* Automatically play the next video file after the current video is ended
-* Support to upload folder
 * Support to download multiple files and compress them to a zip file
 * More online storage support
 * More language support
-* Support to change settings after first login
 * Support to change key and password
 
 ## The Dependencies

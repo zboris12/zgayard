@@ -868,7 +868,7 @@ function OneDriveReader(_opt, _drv){
 	 *
 	 * buffer size per read
 	 */
-	this.bufSize = 1600;
+	this.bufSize = 16000;
 	if(_opt._bufSize){
 		this.bufSize = _opt._bufSize;
 	}
