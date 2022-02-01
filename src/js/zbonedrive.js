@@ -768,6 +768,8 @@ function OneDriveWriter(_opt, _drv){
 //			ajax.setRequestHeader("Content-Length", bufblob.size);
 			ajax.setRequestHeader("Content-Range", range);
 			ajax.onload = function(a_evt){
+				buf = null;
+				bufblob = null;
 				/** @type {XMLHttpRequest} */
 				var a_x = a_evt.target;
 				if (a_x.readyState == 4){
@@ -787,6 +789,9 @@ function OneDriveWriter(_opt, _drv){
 					setTimeout(function(){
 						ajaxPut();
 					}, 500);
+				}else{
+					buf = null;
+					bufblob = null;
 				}
 			};
 			ajax.send(bufblob);
@@ -968,6 +973,12 @@ function OneDriveReader(_opt, _drv){
 		}
 		this._read(size);
 	};
+	/**
+	 * @public
+	 */
+	this.dispose = function(){
+		// Do nothing
+	};
 
 	/**
 	 * @private
@@ -1042,6 +1053,7 @@ function OneDriveReader(_opt, _drv){
 						if(this.onread){
 							this.onread(/** @type {ArrayBuffer} */(a_x.response), this);
 						}
+						a_x.response = null;
 					}else{
 						throw new Error(a_x.responseText+" ("+a_x.status+")");
 					}

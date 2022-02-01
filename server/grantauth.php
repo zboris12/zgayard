@@ -63,12 +63,13 @@ function cryptData($data, $encrypt=true){
 	return $dataOut;
 }
 function getOnedriveAuth(){
+	global $redirectUri;
 	//https://docs.microsoft.com/ja-jp/azure/active-directory/develop/v2-oauth2-auth-code-flow
 	$data = array(
 		  "client_id" => getPostValue("client_id", ONEDRIVE_CLIENT_ID)
-		, "redirect_uri" => getPostValue("redirect_uri", ONEDRIVE_REDIRECT_URI)
+		, "redirect_uri" => getPostValue("redirect_uri", $redirectUri)
 	);
-	$logout = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" . ONEDRIVE_REDIRECT_URI;
+	$logout = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" . $redirectUri;
 	$action = getPostValue("action");
 	if(isset($action) && strcasecmp($action, "logout") == 0){
 		$result = array();
@@ -118,13 +119,13 @@ function getOnedriveAuth(){
 
 		}else{
 			$data["scope"] = "offline_access files.readwrite";
-			$data["state"] = base64_encode(openssl_random_pseudo_bytes(20));
 			if(getPostValue("need_code")){
 				$data["response_type"] = "code";
 			}else{
 				$data["response_type"] = "token";
 			}
-			$result = array("url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" . http_build_query($data), "state" => $data["state"]);
+			$state = base64_encode(openssl_random_pseudo_bytes(20));
+			$result = array("url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" . http_build_query($data), "state" => $state);
 		}
 	}
 
@@ -132,7 +133,14 @@ function getOnedriveAuth(){
 	return $result;
 }
 
-header("Access-Control-Allow-Origin: " . getBaseUrl(ONEDRIVE_REDIRECT_URI));
+$redirectUri = ONEDRIVE_REDIRECT_URI;
+$ourl = getallheaders()["Origin"];
+if($ourl == "http://localhost:10801"){
+	$redirectUri = $ourl . "/";
+}else{
+	$ourl = getBaseUrl(ONEDRIVE_REDIRECT_URI);
+}
+header("Access-Control-Allow-Origin: " . $ourl);
 header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json;charset=UTF-8");
 

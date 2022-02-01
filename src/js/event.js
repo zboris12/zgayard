@@ -13,9 +13,6 @@ window.addEventListener("load", function(){
 		document.getElementById("spanMoreKey").style.display = "none";
 		document.getElementById("spanClearKey").style.display = "none";
 	}
-	document.getElementById("tblFileDetail").getElementsByTagName("video")[0].addEventListener("ended", function(){
-		clickItem(2, true);
-	});
 
 	/** @type {number} */
 	var i = 0;
@@ -94,6 +91,18 @@ window.addEventListener("load", function(){
 		}
 	}
 
+	ele = document.getElementById("divHistory");
+	ele.getElementsByTagName("a")[0].addEventListener("click", clickRecent);
+	eles = ele.getElementsByTagName("input");
+	for(i=0; i<eles.length; i++){
+		ele = eles[i];
+		switch(ele.getAttribute("wordid")){
+		case "btnPHNext":
+			ele.addEventListener("click", clickRecentNext);
+			break;
+		}
+	}
+
 	document.getElementById("divItemenu").addEventListener("click", clickMenu);
 
 	ele = document.getElementById("divNewName");
@@ -119,6 +128,11 @@ window.addEventListener("load", function(){
 		clickItem(2);
 	});
 	ele.getElementsByTagName("img")[0].addEventListener("load", imageLoaded);
+	ele = ele.getElementsByTagName("video")[0];
+	ele.addEventListener("canplay", restoreTime);
+	ele.addEventListener("ended", function(){
+		clickItem(2, true);
+	});
 	eles = rows[2].getElementsByTagName("input");
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];

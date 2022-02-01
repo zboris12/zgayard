@@ -41,22 +41,27 @@
 		<hr />
 	</div>
 	<table id="tblst" border="1"><thead>
-	<tr><th colspan="3" class="left"></th></tr>
-	<tr><th><input type="checkbox" id="chkAll"><span id="spanName">name</span></th><th id="thSize">size</th><th id="thTms">timestamp</th></tr>
-	</thead><tbody></tbody>
+		<tr><th colspan="3" class="left"></th></tr>
+		<tr><th><input type="checkbox" id="chkAll"><span id="spanName">name</span></th><th id="thSize">size</th><th id="thTms">timestamp</th></tr>
+		</thead><tbody></tbody>
 	</table>
 	<table id="tblQueue" border="1"><thead>
-	<tr><th colspan="3"></th></tr>
-	</thead><tbody></tbody>
+		<tr><th colspan="3"></th></tr>
+		</thead><tbody></tbody>
 	</table>
 	<div id="divAction">
-	<input type="button" wordid="btnDownfs" />
-	<input type="button" wordid="btnMovefs" />
-	<input type="button" wordid="btnDelfs" /><br />
-	<a id="download" href="#" download="" style="display: none;" target="_blank">dummy</a>
-	<span>Folder Name</span><input type="text" id="txtName" /><input type="button" wordid="btnNewFldr" /><br />
-	<span>Files</span><input type="file" id="upfiles" multiple /><input type="button" wordid="btnUpfs" /><br />
-	<span>Folder</span><input type="file" id="upfolder" webkitdirectory /><input type="button" wordid="btnUpfld" /><br />
+		<input type="button" wordid="btnDownfs" />
+		<input type="button" wordid="btnMovefs" />
+		<input type="button" wordid="btnDelfs" /><br />
+		<a id="download" href="#" download="" style="display: none;" target="_blank">dummy</a>
+		<span>Folder Name</span><input type="text" id="txtName" /><input type="button" wordid="btnNewFldr" /><br />
+		<span>Files</span><input type="file" id="upfiles" multiple /><input type="button" wordid="btnUpfs" /><br />
+		<span>Folder</span><input type="file" id="upfolder" webkitdirectory /><input type="button" wordid="btnUpfld" /><br />
+		<hr />
+	</div>
+	<div id="divHistory">
+		<label id="lblHistory"></label><a href="#"></a><input type="button" wordid="btnPHNext" />
+		<hr />
 	</div>
 	<div id="divItemenu" class="dropdown-content">
 		<span wordid="btnDownload">download</span>
@@ -68,22 +73,22 @@
 	<div id="divGround"><div><div>
 		<div id="divGroundTitle"><span id="spanGroundTitle"></span><label>&#x274e;</label></div>
 		<table id="tblFileDetail"><tbody>
-		<tr><td rowspan="3" class="pointer">&#x25c0;</td><td class="name">
-			<span></span>
-			<img />
-			<video controls autoplay></video>
-		</td><td rowspan="3" class="pointer">&#x25b6;</td></tr>
-		<tr><td></td></tr>
-		<tr><td><input type="button" wordid="btnDownload"></td></tr>
+			<tr><td rowspan="3" class="pointer">&#x25c0;</td><td class="name">
+				<span></span>
+				<img />
+				<video controls autoplay></video>
+			</td><td rowspan="3" class="pointer">&#x25b6;</td></tr>
+			<tr><td></td></tr>
+			<tr><td><input type="button" wordid="btnDownload"></td></tr>
 		</tbody></table>
 		<table id="tblFolder" border="1" onlyfolder="1">
-		<thead><tr><th></th></tr></thead>
-		<tbody></tbody>
-		<tbody><tr><td class="right">
-			<input type="button" wordid="btnOk" />
-		</td></tr></tbody>
+			<thead><tr><th></th></tr></thead>
+			<tbody></tbody>
+			<tbody><tr><td class="right">
+				<input type="button" wordid="btnOk" />
+			</td></tr></tbody>
 		</table>
 	</div></div></div>
-	<div id="divTos"><a href="../tp.html" target="_blank" id="lnkTos">Terms of Service & Privacy Policy</a></div>
+	<div id="divTos"><img src="logo.png" /><a href="../tp.html" target="_blank" id="lnkTos">Terms of Service & Privacy Policy</a></div>
 </body>
 </html>

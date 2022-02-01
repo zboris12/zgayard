@@ -77,6 +77,10 @@ function ZBReader(){
 	 * @param {number=} size
 	 */
 	this.read = function(size){};
+	/**
+	 * @public
+	 */
+	this.dispose = function(){};
 }
 
 /**

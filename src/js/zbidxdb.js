@@ -323,7 +323,7 @@ this.saveAllData = function(){
 	if(!this.needSave || !this.datas){
 		return;
 	}
-	this.processData(function(a_store){
+	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
 		/** @type {IDBRequest} */
 		var a_req = a_store.clear();
 		/**
@@ -334,7 +334,7 @@ this.saveAllData = function(){
 				a_store.put({"key": b_k, "value": this.datas[b_k]});
 			}
 		}.bind(this);
-	}.bind(this));
+	}).bind(this));
 	this.needSave = false;
 };
 /**
@@ -393,21 +393,21 @@ this.saveDriveData = function(key, data, func){
 	}
 
 	if(func){
-		/** @type {?function()} */
-		var _func = null;
+		/** @type {function()|undefined} */
+		var _func = undefined;
 		if(func instanceof Function){
 			_func = func;
 		}
-		this.processData(function(a_store){
+		this.processData(/** @type function(IDBObjectStore) */(function(a_store){
 			a_store.put({"key": drvnm, "value": this.datas[drvnm]});
-		}.bind(this), _func);
+		}).bind(this), _func);
 	}else{
 		this.needSave = true;
 	}
 };
 /**
  * @public
- * @param {?function()=} func function(){}
+ * @param {function()=} func function(){}
  */
 this.clearLogInfo = function(func){
 	this.clearSession(true);
@@ -421,29 +421,67 @@ this.clearLogInfo = function(func){
 	var drvnm = /** @type {string} */ (this.getValue("drive"));
 	delete this.datas[drvnm]["refresh_token"];
 	delete this.datas["drive"];
-	this.processData(function(a_store){
+	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
 		a_store.put({"key": drvnm, "value": this.datas[drvnm]});
 		a_store.delete("drive");
-	}.bind(this), func);
+	}).bind(this), func);
+};
+/**
+ * @public
+ * @param {string} fid
+ * @param {string} ctime
+ * @param {function()=} func function(){}
+ */
+this.saveRecent = function(fid, ctime, func){
+	/** @type {Object<string, string>} */
+	var val = {
+		"drive": /** @type {string} */ (this.getValue("drive")),
+		"root": this.getDriveData("root"),
+		"fid": fid,
+		"time": ctime,
+	};
+	this.saveData("recent", val, func);
+};
+/**
+ * @public
+ * @return {Object<string, string>}
+ */
+this.getRecent = function(){
+	var val = /** @type {Object<string, string>} */(this.getValue("recent"));
+	if(val && val["drive"] == this.getValue("drive") && val["root"] == this.getDriveData("root")){
+		return val;
+	}else{
+		return null;
+	}
 };
 
 // --- Private methods Start --- //
 /**
  * @private
- * @param {?function(!string)} datafunc function(a_store){}
- * @param {?function()=} endfunc function(){}
+ * @param {function(!IDBObjectStore)} datafunc function(a_store){}
+ * @param {function()=} endfunc function(){}
  */
 this.processData = function(datafunc, endfunc){
+	/** @type {IDBOpenDBRequest} */
 	var request = window.indexedDB.open(this.LSNM);
+	/**
+	 * @param {Event} a_evt
+	 */
 	request.onsuccess = function(a_evt){
+		/** @type {IDBDatabase} */
 		var a_db = a_evt.target.result;
+		/** @type {IDBTransaction} */
 		var a_trans = a_db.transaction("settings", "readwrite");
+		/**
+		 * @param {Event} b_evt
+		 */
 		a_trans.oncomplete = function(b_evt){
 			a_db.close();
 			if(endfunc){
 				endfunc();
 			}
 		};
+		/** @type {!IDBObjectStore} */
 		var a_store = a_trans.objectStore("settings");
 		if(datafunc){
 			datafunc(a_store);
@@ -461,6 +499,20 @@ this.getValue = function(key){
 	}else{
 		return null;
 	}
+};
+/**
+ * @private
+ * @param {string} key
+ * @param {string|Object<string, string>} value
+ * @param {function()=} func function(){}
+ */
+this.saveData = function(key, value, func){
+	if(this.datas){
+		this.datas[key] = value;
+	}
+	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
+		a_store.put({"key": key, "value": value});
+	}).bind(this), func);
 };
 // --- Private methods End --- //
 }

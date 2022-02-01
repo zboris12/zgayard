@@ -4,6 +4,7 @@
 	font-size: larger;
 	display: none;
 	padding-left: 10px;
+	margin-bottom: 3px;
 }
 #spanInfo {
 	color: #00f;
@@ -44,6 +45,10 @@
 	font-weight: normal;
 }
 
+a, input {
+	margin-right: 5px;
+}
+
 #spanConfNotice,
 #spanPwdNotice {
 	font-weight: bold;
@@ -56,7 +61,8 @@
 #divHeader,
 #tblst,
 #tblQueue,
-#divAction {
+#divAction,
+#divHistory {
 	display: none;
 }
 #divSet #spanSet {
@@ -138,7 +144,6 @@
 
 .dropbtn {
 	cursor: pointer;
-	margin-left: 8px;
 }
 .dropdown-content {
 	display: none;
@@ -165,10 +170,16 @@
 	background-color: #fff;
 	border: solid 1px #000;
 	border-radius: 5px;
-	margin-left: 3px;
 }
 
 #divTos {
 	text-align: center;
 	font-size: small;
+}
+#divTos > img {
+	width: 20px;
+	margin-right: 5px;
+}
+#divTos > a {
+	vertical-align: top;
 }

@@ -171,6 +171,7 @@ function ZBlobWriter(opt){
 			}
 			this.arrbuf.push(buf);
 		}
+		buf = null;
 		if(cb){
 			cb();
 		}
@@ -355,6 +356,13 @@ function ZBlobReader(_opt){
 			this.pos += this.bufSize;
 		}
 		this.reader.readAsArrayBuffer(this.blob.slice(pos1, this.pos));
+	};
+	/**
+	 * @public
+	 */
+	this.dispose = function(){
+		this.reader = null;
+		this.blob = null;
 	};
 	// --- Implement interface methods End --- //
 }
@@ -606,21 +614,13 @@ function ZbCrypto(_info, _opts){
 					if(this.writer){
 						this.writer.write(ret, function(){
 							if(this.reader.isEnd()){
-								if(this.onfinal){
-									this.onfinal();
-								}
+								this.dofinal();
 							}else if(this.onstep){
 								if(this.onstep()){
 									this.reader.read();
 								}else{
 									this.writer.cancel(/** @type {function(?,?=)} */(function(a_err, a_result){
-										if(this.onfinal){
-											if(a_err){
-												this.onfinal(a_err);
-											}else{
-												this.onfinal(false, a_result);
-											}
-										}
+										this.dofinal(a_err, a_result);
 									}).bind(this));
 								}
 							}else{
@@ -631,6 +631,7 @@ function ZbCrypto(_info, _opts){
 				}else{
 					this.reader.read();
 				}
+				ret = null;
 			}else if(this.streamMode){
 				if(this.streamMode == 2){
 					this.streamMode = 3;
@@ -644,8 +645,27 @@ function ZbCrypto(_info, _opts){
 		}catch(err){
 			if(this.streamMode){
 				throw err;
-			}else if(this.onfinal){
+			}else{
+				this.dofinal(err);
+			}
+		}
+	};
+
+	/**
+	 * @private
+	 * @param {?=} err
+	 * @param {?=} result
+	 */
+	this.dofinal = function(err, result){
+		if(this.reader){
+			this.reader.dispose();
+			this.reader = null;
+		}
+		if(this.onfinal){
+			if(err){
 				this.onfinal(err);
+			}else{
+				this.onfinal(false, result);
 			}
 		}
 	};

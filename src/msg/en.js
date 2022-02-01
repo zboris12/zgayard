@@ -57,6 +57,8 @@ window["msgs"] = {
 	"btnNewFldr": "New Folder",
 	"btnUpfs": "Upload Files",
 	"btnUpfld": "Upload Folder",
+	"lblHistory": "Recent played video: ",
+	"btnPHNext": "Play the next video.",
 	"btnDownload": "Download",
 	"btnRename": "Rename",
 	"btnMove": "Move...",
