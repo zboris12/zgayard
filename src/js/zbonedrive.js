@@ -19,6 +19,14 @@ this.storage = _storage;
 
 /**
  * @public
+ * @return {string}
+ */
+this.getId = function(){
+	return ZbOneDrive.id;
+};
+
+/**
+ * @public
  * @param {DriveAjaxOption} opt
  *
  * https://docs.microsoft.com/zh-cn/onedrive/developer/rest-api/api/driveitem_createuploadsession
@@ -83,14 +91,32 @@ this.sendAjax = function(opt){
 };
 /**
  * @public
+ * @param {string} token
+ */
+this.presetToken = function(token){
+	this.accessToken = token;
+};
+/**
+ * @public
+ * @return {string}
+ */
+this.getToken = function(){
+	if(this.accessToken){
+		return this.accessToken;
+	}else{
+		return "";
+	}
+};
+/**
+ * @public
  * @param {boolean=} reuseToken
- * @return {boolean}
+ * @return {?string} Error message
  */
 this.login = function(reuseToken){
 	if(reuseToken){
 		this.accessToken = this.storage.getSessionData("access_token");
 		if(this.accessToken){
-			return true;
+			return null;
 		}
 	}
 
@@ -106,11 +132,10 @@ this.login = function(reuseToken){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				showError("Unauthorized access to this url.");
-				return false;
+				return "Unauthorized access to this url.";
 			}
 		}
-		return true;
+		return null;
 	}else if(uparams && uparams["code"]){
 		opt.code = uparams["code"];
 	}else if(canSkipLogin){
@@ -122,8 +147,7 @@ this.login = function(reuseToken){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				showError("Unauthorized access to this url.");
-				return false;
+				return "Unauthorized access to this url.";
 			}
 		}
 		var ret = this.authorize(opt);
@@ -135,11 +159,11 @@ this.login = function(reuseToken){
 			if(ret["logout"]){
 				this.storage.setSessionData("logout_url", ret["logout"]);
 			}
-			return true;
+			return null;
 		}else if(ret && ret["error"]){
-			showError("["+ret["error"]+"] "+ret["error_description"]);
+			return "["+ret["error"]+"] "+ret["error_description"];
 		}else{
-			showError("Unknown error occured when doing authorization.");
+			return "Unknown error occured when doing authorization.";
 		}
 	}else{
 		if(canSkipLogin){
@@ -157,12 +181,12 @@ this.login = function(reuseToken){
 			}
 			window.location.href = ret["url"].concat("&state=".concat(encodeURIComponent(ret["state"])));
 		}else if(ret && ret["error"]){
-			showError("["+ret["error"]+"] "+ret["error_description"]);
+			return "["+ret["error"]+"] "+ret["error_description"];
 		}else{
-			showError("Unknown error occured when doing authorization.");
+			return "Unknown error occured when doing authorization.";
 		}
 	}
-	return false;
+	return null;
 };
 /**
  * @public
@@ -234,7 +258,7 @@ this.getDrive = function(opt){
 			if(opt && opt._doneFunc){
 				/** @type {function((boolean|DriveJsonRet), ?DriveInfo)} */(opt._doneFunc)(a_err, a_dat);
 			}else if(a_err){
-				showError(JSON.stringify(a_err));
+				console.error(JSON.stringify(a_err));
 			}
 		}.bind(this),
 	};
@@ -708,7 +732,8 @@ function OneDriveWriter(_opt, _drv){
 						cb(a_res);
 					}
 				}else{
-					showError(JSON.stringify(a_res));
+					console.error(a_res);
+					alert(JSON.stringify(a_res));
 				}
 			}.bind(this),
 		};

@@ -1,5 +1,4 @@
 //function showError(msg){}
-
 /**
  * @typedef
  * {{
@@ -23,6 +22,7 @@ var AjaxOption;
  * {{
  *    _fpath: string,
  *    _file: File,
+ *    _idx: number,
  * }}
  */
 var UploadTarget;
@@ -253,8 +253,18 @@ var DriveReaderOption;
 function ZBDrive(_storage, _authUrl, _relayUrl){
 	/**
 	 * @public
+	 * @param {string} token
+	 */
+	this.presetToken = function(token){};
+	/**
+	 * @public
+	 * @return {string}
+	 */
+	this.getToken = function(){};
+	/**
+	 * @public
 	 * @param {boolean=} reuseToken
-	 * @return {boolean}
+	 * @return {?string}
 	 */
 	this.login = function(reuseToken){};
 	/**
@@ -266,6 +276,11 @@ function ZBDrive(_storage, _authUrl, _relayUrl){
 	 * @param {DriveGetDriveOption} opt
 	 */
 	this.getDrive = function(opt){};
+	/**
+	 * @public
+	 * @return {string}
+	 */
+	this.getId = function(){};
 	/**
 	 * @public
 	 * @param {DriveGetItemOption} opt

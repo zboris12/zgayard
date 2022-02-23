@@ -387,9 +387,17 @@ this.saveDriveData = function(key, data, func){
 	}
 	var drvnm = /** @type {string} */ (this.getValue("drive"));
 	if(data){
+		if(!this.datas[drvnm]){
+			this.datas[drvnm] = new Object();
+		}
 		this.datas[drvnm][key] = data;
-	}else{
+	}else if(this.datas[drvnm]){
 		delete this.datas[drvnm][key];
+	}else{
+		if(func && func instanceof Function){
+			func();
+		}
+		return;
 	}
 
 	if(func){

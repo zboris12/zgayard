@@ -354,6 +354,12 @@ function applyLanguage(msgs){
 				ele.innerText = word;
 			}
 		}
+		if(ele.hasAttribute("tid")){
+			word = msgs[ele.getAttribute("tid")];
+			if(word){
+				ele.title = word;
+			}
+		}
 	}
 
 	/**
@@ -386,10 +392,13 @@ function loadDrive(drvnm){
 		showError("unkDrive");
 		return;
 	}
-	if(g_drive.login(true)){
-		g_storage.saveAllData();
-	}else{
+	/** @type {?string} */
+	var msg = g_drive.login(true);
+	if(msg){
+		showError(msg);
 		return;
+	}else{
+		g_storage.saveAllData();
 	}
 
 	// Get configuration file.
@@ -495,6 +504,95 @@ function showAddRoot(addroot, firstep){
 		}
 	}
 	clearKeyf("#lblKeyFile");
+}
+/**
+ * @param {Event} evt
+ */
+function deleteRoot(evt){
+	if(!confirm(window["msgs"]["delConfirm"])){
+		return;
+	}
+	showInfo("deleting");
+
+	/** @type {Element} */
+	var sel = document.getElementById("selRoot");
+	/** @type {string} */
+	var root = sel.value;
+	/** @type {number} */
+	var rootidx = -1;
+	g_conf.forEach(/** function(Object<string,(boolean|string)>, number) */(function(a_ele, a_idx){
+		if(a_ele["root"] == root){
+			rootidx = a_idx;
+		}
+	}));
+
+	/** @type {function()} */
+	var reload = function(){
+		if(rootidx == g_rootidx){
+			window.location.reload();
+		}else{
+			/** @type {!NodeList<!Element>} */
+			var a_eles = sel.getElementsByTagName("option");
+			/** @type {number} */
+			var a_i = 0;
+			for(a_i=0; a_i<a_eles.length; a_i++){
+				/** @type {Element} */
+				var a_opt = a_eles[a_i];
+				if(a_opt.value == root){
+					sel.removeChild(a_opt);
+					break;
+				}
+			}
+			showInfo();
+			showNotify("delrootDone");
+		}
+	};
+
+	if(rootidx >= 0){
+		/** @type {function()} */
+		var editconf = function(){
+			g_conf.splice(rootidx, 1);
+			uploadConfile(g_conf, reload);
+		};
+		/** @type {function(string)} */
+		var delroot = function(a_fid){
+			/** @type {DriveUpdateOption} */
+			var a_opt = {
+				/** @type {function((boolean|DriveJsonRet))} */
+				_doneFunc: function(b_err){
+					if(b_err){
+						showError(b_err._restext);
+					}else{
+						editconf();
+					}
+				},
+				/** @type {string} */
+				_fid: a_fid,
+			};
+			g_drive.delete(a_opt);
+		};
+
+		/** @type {DriveGetItemOption} */
+		var opt = {
+			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
+			_doneFunc: function(a_err, a_dat){
+				if(a_err){
+					if(a_err._status == 404){
+						editconf();
+					}else{
+						console.error(a_err);
+					}
+				}else{
+					delroot(a_dat._id);
+				}
+			},
+			_upath: /** @type {string} */(g_conf[rootidx]["root"]),
+		};
+		g_drive.getItem(opt);
+
+	}else{
+		reload();
+	}
 }
 /**
  * @param {boolean=} addroot
@@ -704,8 +802,9 @@ function cryptoRKeys(encFlg, rkeys, keyWords){
 }
 /**
  * @param {Array<Object<string, (string|boolean)>>} conf
+ * @param {(function())=} func
  */
-function uploadConfile(conf){
+function uploadConfile(conf, func){
 	/** @type {WordArray} */
 	var words = CryptoJS.enc.Utf8.parse(JSON.stringify(conf));
 	/** @type {Blob} */
@@ -718,7 +817,7 @@ function uploadConfile(conf){
 	var writer = g_drive.createWriter({
 		_fnm: g_CONFILE,
 	});
-	zbPipe(reader, writer, null, checkRootFolder);
+	zbPipe(reader, writer, undefined, func || checkRootFolder);
 }
 /**
  * @param {string} fid
@@ -730,7 +829,7 @@ function downloadConfile(fid){
 	});
 	/** @type {ZBWriter} */
 	var writer = new ZBlobWriter();
-	zbPipe(reader, writer, null, function(){
+	zbPipe(reader, writer, undefined, function(){
 		/** @type {WordArray} */
 		var a_words = new CryptoJS.lib.WordArray.init(writer.getBuffer());
 		var a_conf = JSON.parse(a_words.toString(CryptoJS.enc.Utf8));
@@ -807,10 +906,7 @@ function downloadConfile(fid){
  */
 function appendRootItem(_conf, _selected, _sel){
 	/** @type {Element|undefined} */
-	var sel = _sel;
-	if(!_sel){
-		sel = document.getElementById("selRoot");
-	}
+	var sel = _sel || document.getElementById("selRoot");
 	/** @type {Element} */
 	var opt = document.createElement("option");
 	opt.value = _conf["root"];

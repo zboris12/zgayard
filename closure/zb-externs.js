@@ -42,3 +42,59 @@ function VDStreamWrapper(){
 	 */
 	this.createReadStream = function(opts){}
 }
+
+/**
+ * @typedef
+ * {{
+ *    _type: WorkerInfoType,
+ *    _palcnt: (number|undefined),
+ *    _rowIdx: (number|undefined),
+ *    _cominf: (WorkerCommonInfo|undefined),
+ *    _downinf: (WorkerDownloadInfo|undefined),
+ *    _upinf: (WorkerUploadInfo|undefined),
+ * }}
+ */
+var WorkerInfo;
+/**
+ * @typedef
+ * {{
+ *    _token: string,
+ *    _iv: string,
+ *    _key: string,
+ *    _drvnm: string,
+ *    _encfname: boolean,
+ * }}
+ */
+var WorkerCommonInfo;
+/**
+ * @typedef
+ * {{
+ *    _fpath: string,
+ *    _file: File,
+ *    _baseId: string,
+ *    _basePath: string,
+ * }}
+ */
+var WorkerUploadInfo;
+/**
+ * @typedef
+ * {{
+ *    _targetId: string,
+ * }}
+ */
+var WorkerDownloadInfo;
+/**
+ * @typedef
+ * {{
+ *    _type: StepInfoType,
+ *    _wtype: WorkerInfoType,
+ *    _rowIdx: (number|undefined),
+ *    _speed: (string|undefined),
+ *    _pos: (number|undefined),
+ *    _size: number,
+ *    _blob: (!Blob|undefined),
+ *    _err: (string|undefined),
+ *    _finished: (boolean|undefined),
+ * }}
+ */
+var WorkerStepInfo;

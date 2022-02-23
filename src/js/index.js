@@ -5,8 +5,10 @@
 		"js/zbidxdb.js",
 		"js/zbonedrive.js",
 		"js/const.js",
+		"js/worker-const.js",
 		"js/settings.js",
 		"js/main.js",
+		"js/main-assign.js",
 		"js/event.js",
 	];
 

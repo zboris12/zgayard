@@ -91,6 +91,9 @@ window.addEventListener("load", function(){
 		}
 	}
 
+	ele = document.getElementById("tblQueue").getElementsByTagName("th")[0];
+	ele.getElementsByTagName("label")[0].addEventListener("click", hideQueueRows);
+
 	ele = document.getElementById("divHistory");
 	ele.getElementsByTagName("a")[0].addEventListener("click", clickRecent);
 	eles = ele.getElementsByTagName("input");

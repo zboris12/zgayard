@@ -13,7 +13,11 @@ function zbCreateCfg(_pwd, _salt){
 	}else{
 		salt = CryptoJS.MD5(_pwd);
 	}
-	return CryptoJS.kdf.OpenSSL.execute(_pwd, 256/32, 128/32, salt);
+	/** @type {CipherParams} */
+	var ret = CryptoJS.kdf.OpenSSL.execute(_pwd, 256/32, 128/32, salt);
+	ret["iv"].clamp();
+	ret["key"].clamp();
+	return ret;
 }
 /**
  * Create the crypt config
@@ -218,25 +222,24 @@ function ZBlobWriter(opt){
 	};
 	/**
 	 * @public
-	 * @param {string} fnm
+	 * @return {!Blob}
 	 */
-	this.download = function(fnm){
+	this.getBufferBlob = function(){
 		/** @type {Uint8Array|Array<number>} */
 		var buf = this.getBuffer();
 		if(!(buf instanceof Uint8Array)){
 			buf = new Uint8Array(buf);
 		}
+		return new Blob([buf], { "type" : "application/octet-binary" });
+	};
+	/**
+	 * @public
+	 * @param {string} fnm
+	 */
+	this.download = function(fnm){
 		/** @type {!Blob} */
-		var blob = new Blob([buf], { "type" : "application/octet-binary" });
-		if(window.navigator.msSaveBlob){
-			window.navigator.msSaveBlob(blob, fnm);
-		}else if(this.downEle){
-			this.downEle.download = fnm;
-			this.downEle.href = window.URL.createObjectURL(blob);
-			this.downEle.click();
-		}else{
-			throw new Error("Element for download is not specified.");
-		}
+		var blob = this.getBufferBlob();
+		downloadBlob(blob, fnm, this.downEle);
 	};
 	/**
 	 * @public
@@ -724,7 +727,7 @@ function ZbStreamWrapper(_info, _opts){
 /**
  * @param {ZBReader} _reader
  * @param {ZBWriter} _writer
- * @param {(?function():boolean)=} _stepFunc
+ * @param {(function():boolean)=} _stepFunc
  * @param {(function())=} _finalFunc
  */
 function zbPipe(_reader, _writer, _stepFunc, _finalFunc){

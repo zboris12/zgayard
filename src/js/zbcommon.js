@@ -157,6 +157,22 @@ function previousElement(ele, attr, childFlg){
 	return tgt;
 }
 /**
+ * @param {!Blob} blob
+ * @param {string} fnm
+ * @param {Element=} lnk
+ */
+function downloadBlob(blob, fnm, lnk){
+	if(window.navigator.msSaveBlob){
+		window.navigator.msSaveBlob(blob, fnm);
+	}else if(lnk){
+		lnk.download = fnm;
+		lnk.href = window.URL.createObjectURL(blob);
+		lnk.click();
+	}else{
+		throw new Error("Element for download is not specified.");
+	}
+}
+/**
  * Analyze url parameters.
  *
  * @param {string|null} str Query string.

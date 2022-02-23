@@ -83,6 +83,16 @@ a, input {
 	left: 13px;
 }
 
+#tblQueue th {
+	position: relative;
+}
+
+#tblQueue th > label {
+	position: absolute;
+	cursor: pointer;
+	right: 5px;
+	top: -2px;
+}
 #divGround {
 	background-color: rgba(128, 128, 128, 0.5);
 	z-index: 100;
