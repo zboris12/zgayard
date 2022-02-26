@@ -11,6 +11,7 @@ var g_worker = null;
  */
 function cancel(){
 	var ele = /** @type {Element} */(getElement());
+	ele.disabled = true;
 	if(g_worker){
 		/** @type {Element} */
 		var tr = findParent(ele, "TR");
@@ -97,16 +98,6 @@ function setSpanMessage(ele, idx, msg){
 }
 
 /**
- * @param {Element} ele
- * @param {number} idx
- * @param {number} sz size
- * @param {string=} spd speed
- * @param {number=} pos position
- */
-function showStepInfo(ele, idx, sz, spd, pos){
-	setSpanMessage(ele, idx, spd + " " + Math.round(pos * 100 / sz) + "%");
-}
-/**
  * @param {Element} ele table body or button
  * @param {number} idx row index if idx < 0 then ele is button, else ele is table body
  */
@@ -125,6 +116,61 @@ function hideCancelButton(ele, idx){
 	}
 	btn.style.display = "none";
 }
+/**
+ * @param {Element} tbdy
+ * @param {WorkerStepInfo} spinf
+ * @return {boolean} single progress is finished or not.
+ */
+function handleProgress(tbdy, spinf){
+	/** @type {boolean} */
+	var ret = false;
+	var rowIdx = /** @type {number} */(spinf._rowIdx);
+	switch(spinf._type){
+	case StepInfoType.BEGIN:
+		/** @type {Element} */
+		var span = tbdy.rows[rowIdx].getElementsByTagName("span")[0];
+		/** @type {Element} */
+		var btn = tbdy.rows[rowIdx].getElementsByTagName("input")[0];
+		span.innerText = "0%";
+		btn.style.display = "";
+		break;
+	case StepInfoType.INPROGRESS:
+		setSpanMessage(tbdy, rowIdx, spinf._speed + " " + Math.round(spinf._pos * 100 / spinf._size) + "%");
+		break;
+	case StepInfoType.DONE:
+		if(spinf._finished && g_worker){
+			terminateWorker();
+		}
+		hideCancelButton(tbdy, rowIdx);
+		if(spinf._err){
+			setSpanMessage(tbdy, rowIdx, spinf._err);
+		}else if(spinf._wtype == WorkerInfoType.DOWNLOAD){
+			setSpanMessage(tbdy, rowIdx, window["msgs"]["downDone"]);
+			if(spinf._blob){
+				 /** @type {string} */
+				var fnm = tbdy.rows[rowIdx].cells[0].innerText;
+				downloadBlob(spinf._blob, fnm, document.getElementById("download"));
+			}
+		}else{
+			setSpanMessage(tbdy, rowIdx, window["msgs"]["upDone"]);
+		}
+		ret = true;
+		break;
+	case StepInfoType.CANCELED:
+		if(spinf._finished && g_worker){
+			terminateWorker();
+		}
+		hideCancelButton(tbdy, rowIdx);
+		if(spinf._wtype == WorkerInfoType.DOWNLOAD){
+			setSpanMessage(tbdy, rowIdx, window["msgs"]["downCanceled"]);
+		}else{
+			setSpanMessage(tbdy, rowIdx, window["msgs"]["updCanceled"]);
+		}
+		ret = true;
+		break;
+	}
+	return ret;
+}
 
 function terminateWorker(){
 	/** @type {?Worker} */
@@ -134,6 +180,12 @@ function terminateWorker(){
 	if(a_worker.hasUpd){
 		listFolder(true);
 	}
+}
+/**
+ * @return {boolean}
+ */
+function isEncfname(){
+	return g_conf[g_rootidx]["encfname"]?true:false;
 }
 /**
  * @param {WorkerInfo} wkinf
@@ -154,54 +206,12 @@ function addWorkerQueue(wkinf){
 			_iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
 			_key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
 			_drvnm: g_drive.getId(),
-			_encfname: g_conf[g_rootidx]["encfname"]?true:false,
+			_encfname: isEncfname(),
 		};
 
 		g_worker.addEventListener("message", function(a_evt){
 			var a_spinf = /** @type {WorkerStepInfo} */(a_evt.data);
-			var a_rowIdx = /** @type {number} */(a_spinf._rowIdx);
-			switch(a_spinf._type){
-			case StepInfoType.BEGIN:
-				/** @type {Element} */
-				var a_span = tbdy.rows[a_rowIdx].getElementsByTagName("span")[0];
-				/** @type {Element} */
-				var a_btn = tbdy.rows[a_rowIdx].getElementsByTagName("input")[0];
-				a_span.innerText = "-";
-				a_btn.style.display = "";
-				break;
-			case StepInfoType.INPROGRESS:
-				showStepInfo(tbdy, a_rowIdx, a_spinf._size, a_spinf._speed, a_spinf._pos);
-				break;
-			case StepInfoType.DONE:
-				if(a_spinf._finished){
-					terminateWorker();
-				}
-				hideCancelButton(tbdy, a_rowIdx);
-				if(a_spinf._err){
-					setSpanMessage(tbdy, a_rowIdx, a_spinf._err);
-				}else if(a_spinf._wtype == WorkerInfoType.DOWNLOAD){
-					setSpanMessage(tbdy, a_rowIdx, window["msgs"]["downDone"]);
-					if(a_spinf._blob){
-						 /** @type {string} */
-						var a_fnm = tbdy.rows[a_rowIdx].cells[0].innerText;
-						downloadBlob(a_spinf._blob, a_fnm, document.getElementById("download"));
-					}
-				}else{
-					setSpanMessage(tbdy, a_rowIdx, window["msgs"]["upDone"]);
-				}
-				break;
-			case StepInfoType.CANCELED:
-				if(a_spinf._finished){
-					terminateWorker();
-				}
-				hideCancelButton(tbdy, a_rowIdx);
-				if(a_spinf._wtype == WorkerInfoType.DOWNLOAD){
-					setSpanMessage(tbdy, a_rowIdx, window["msgs"]["downCanceled"]);
-				}else{
-					setSpanMessage(tbdy, a_rowIdx, window["msgs"]["updCanceled"]);
-				}
-				break;
-			}
+			handleProgress(tbdy, a_spinf);
 		});
 	}
 	wkinf._cominf = g_worker.cominf;
@@ -209,6 +219,38 @@ function addWorkerQueue(wkinf){
 		g_worker.hasUpd = true;
 	}
 	g_worker.postMessage(wkinf);
+}
+
+/**
+ * @param {Element} tbdy
+ * @param {number} idx
+ * @param {function()} func
+ */
+function doDownUp(tbdy, idx, func){
+	/** @type {WorkerStepInfo} */
+	var spinf = {
+		_type: StepInfoType.BEGIN,
+		_wtype: WorkerInfoType.DOWNLOAD,
+		_size: 0,
+		_rowIdx: idx,
+	};
+	handleProgress(tbdy, spinf);
+	/** @type {Element} */
+	var btn = tbdy.rows[idx].getElementsByTagName("input")[0];
+	/** @type {ZbTransfer} */
+	var tfr = new ZbTransfer(g_keycfg, /** @type {function():boolean} */(function(){
+		if(btn.getAttribute("canceled")){
+			return true;
+		}else{
+			return false;
+		}
+	}), /** @type {function(WorkerStepInfo)} */(function(b_spinf){
+		b_spinf._rowIdx = idx;
+		if(handleProgress(tbdy, b_spinf)){
+			func();
+		}
+	}));
+	return tfr;
 }
 
 /**
@@ -252,7 +294,9 @@ function download(typ){
 //	tbdy.innerHTML = "";
 	tbl.style.display = "block";
 	/** @type {number} */
-	var idx = tbdy.rows.length;
+	var strow = tbdy.rows.length;
+	/** @type {number} */
+	var idx = strow;
 
 	files.forEach(function(/** @type {DriveItem} */ a_ele){
 		addQueueRow(tbdy, idx, a_ele._name);
@@ -267,67 +311,21 @@ function download(typ){
 		}
 		idx++;
 	});
+
 	if(!USE_WORKER){
-		downloadFile(files, 0, tbdy);
+		/** @type {function(number)} */
+		var downloadFile = function(a_idx){
+			/** @type {ZbTransfer} */
+			var a_tfr = doDownUp(tbdy, strow + a_idx, function(){
+				a_idx++;
+				if(a_idx < files.length){
+					downloadFile(a_idx);
+				}
+			});
+			a_tfr.downloadFile(g_drive, files[a_idx]._id);
+		};
+		downloadFile(0);
 	}
-}
-/**
- * @param {Array<DriveItem>} files
- * @param {number} idx
- * @param {Element} tbdy
- */
-function downloadFile(files, idx, tbdy){
-	/** @type {string} */
-	var fnm = files[idx]._name;
-	/** @type {Element} */
-	var span = tbdy.rows[idx].getElementsByTagName("span")[0];
-	/** @type {Element} */
-	var btn = tbdy.rows[idx].getElementsByTagName("input")[0];
-	span.innerText = "-";
-	btn.style.display = "";
-	/** @type {ZBReader} */
-	var reader = g_drive.createReader({
-		_id: files[idx]._id,
-		_bufSize: 1600000,
-	});
-	/** @type {ZBlobWriter} */
-	var writer = new ZBlobWriter(/** @type {ZBWriterOption} */({
-		_downEle: document.getElementById("download"),
-	}));
-	/** @type {ZbCrypto} */
-	var cypt = new ZbCrypto({
-		_decrypt: true,
-		_keycfg: g_keycfg,
-		_reader: reader,
-		_writer: writer,
-	});
-	/** @type {function():boolean} */
-	cypt.onstep = function(){
-		showStepInfo(span, -1, reader.getSize(), cypt.calSpeed(), reader.getPos());
-		if(btn.getAttribute("canceled")){
-			return false;
-		}else{
-			return true;
-		}
-	};
-	cypt.onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_canceled){
-		hideCancelButton(btn, -1);
-		if(a_err){
-			span.innerText = a_err.message || a_err.restxt;
-		}else if(a_canceled){
-			for(var i=idx; i<files.length; i++){
-				tbdy.rows[i].getElementsByTagName("span")[0].innerText = window["msgs"]["downCanceled"];
-			}
-		}else{
-			span.innerText = window["msgs"]["downDone"];
-			writer.download(fnm);
-			idx++;
-			if(idx < files.length){
-				downloadFile(files, idx, tbdy);
-			}
-		}
-	});
-	cypt.start();
 }
 
 /**
@@ -357,7 +355,9 @@ function upload(foderFlg){
 //	tbdy.innerHTML = "";
 	tbl.style.display = "block";
 	/** @type {number} */
-	var idx = tbdy.rows.length;
+	var strow = tbdy.rows.length;
+	/** @type {number} */
+	var idx = strow;
 
 	/** @type {Array<UploadTarget>} */
 	var targets = new Array();
@@ -383,76 +383,21 @@ function upload(foderFlg){
 	var basePath = "";
 	/** @type {string} */
 	var baseId = "";
+	/** @type {boolean} */
+	var encfname = isEncfname();
 
 	/** @type {function(number)} */
 	var uploadFile = function(a_idx){
-		/** @type {Array<string>} */
-		var a_farr = targets[a_idx]._fpath.split("/");
-		for(var a_i=0; a_i < a_farr.length; a_i++){
-			a_farr[a_i] = encryptFname(a_farr[a_i]);
-		}
-
-		/** @type {Element} */
-		var a_span = tbdy.rows[a_idx].getElementsByTagName("span")[0];
-		/** @type {Element} */
-		var a_btn = tbdy.rows[a_idx].getElementsByTagName("input")[0];
-		a_span.innerText = "-";
-		a_btn.style.display = "";
-		/** @type {ZBlobReader} */
-		var a_reader = new ZBlobReader({
-			_blob: targets[a_idx]._file,
-			_bufSize: 1600000,
-		});
-		/** @type {DriveWriterOption} */
-		var a_wopt = {
-			_fnm: a_farr[0],
-			_fldrId: baseId,
-		};
-		if(a_farr.length > 1){
-			a_wopt._fnm = a_farr.join("/");
-			a_wopt._fldr = basePath;
-		}
-		/** @type {ZBWriter} */
-		var a_writer = g_drive.createWriter(a_wopt);
-		/** @type {ZbCrypto} */
-		var a_cypt = new ZbCrypto({
-			_keycfg: g_keycfg,
-			_reader: a_reader,
-			_writer: a_writer,
-		});
-		/** @type {function():boolean} */
-		a_cypt.onstep = function(){
-			showStepInfo(a_span, -1, a_reader.getSize(), a_cypt.calSpeed(), a_reader.getPos());
-			if(a_btn.getAttribute("canceled")){
-				return false;
+		/** @type {ZbTransfer} */
+		var a_tfr = doDownUp(tbdy, strow + a_idx, function(){
+			a_idx++;
+			if(a_idx < files.length){
+				uploadFile(a_idx);
 			}else{
-				return true;
-			}
-		};
-
-		a_cypt.onfinal = /** @type {function(*=, boolean=)} */(function(b_err, b_canceled){
-			hideCancelButton(a_btn, -1);
-			if(b_err){
-				a_span.innerText = b_err.message || b_err.restxt;
-			}else if(b_canceled){
-				for(var b_i=a_idx; b_i<targets.length; b_i++){
-					tbdy.rows[b_i].getElementsByTagName("span")[0].innerText = window["msgs"]["updCanceled"];
-				}
-				if(a_idx > 0){
-					listFolder(true);
-				}
-			}else{
-				a_span.innerText = window["msgs"]["upDone"];
-				addQuotaUsed(a_writer.getTotalSize());
-				a_idx++;
-				if(a_idx < targets.length){
-					uploadFile(a_idx);
-				}else{
-					listFolder(true);
-				}
+				listFolder(true);
 			}
 		});
-		a_cypt.start();
+		a_tfr.uploadFile(g_drive, encfname, targets[a_idx]._fpath, targets[a_idx]._file, baseId, basePath);
 	};
 
 	/** @type {function()} */

@@ -8,6 +8,7 @@
 		"js/worker-const.js",
 		"js/settings.js",
 		"js/main.js",
+		"js/downup.js",
 		"js/main-assign.js",
 		"js/event.js",
 	];

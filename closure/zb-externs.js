@@ -94,6 +94,7 @@ var WorkerDownloadInfo;
  *    _size: number,
  *    _blob: (!Blob|undefined),
  *    _err: (string|undefined),
+ *    _token: (string|undefined),
  *    _finished: (boolean|undefined),
  * }}
  */

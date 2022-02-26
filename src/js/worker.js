@@ -11,11 +11,16 @@ self.parallel = 1;
 self.actlist = [];
 /** @type {Array<Worker>} */
 self.wklist = [];
+/** @type {string} */
+self.token = "";
 
 function startWorker(){
 	while(self.wklist.length < self.parallel && self.actlist.length > 0){
 		/** @type {WorkerInfo} */
 		var wi = self.actlist.shift();
+		if(self.token){
+			wi._cominf._token = self.token;
+		}
 		/** @type {Worker} */
 		var wk = new Worker("worker-sub.js");
 		wk.inf = wi;
@@ -32,6 +37,9 @@ function handleStepInfo(evt){
 	var wkinf = /** @type {WorkerInfo} */(evt.target.inf);
 	var spinf = /** @type {WorkerStepInfo} */(evt.data);
 	spinf._rowIdx = wkinf._rowIdx;
+	if(spinf._token){
+		self.token = spinf._token;
+	}
 	if(spinf._type == StepInfoType.DONE || spinf._type == StepInfoType.CANCELED){
 		/** @type {number} */
 		var idx = findWorker(wkinf);

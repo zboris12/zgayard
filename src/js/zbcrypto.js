@@ -447,7 +447,7 @@ function ZbCrypto(_info, _opts){
 	/** @private @type {number} */
 	this.basepos = 0;
 	/** @private @type {string} */
-	this.speed = "-";
+	this.speed = "0B/s";
 
 	if(_info._decrypt){
 		this.encrypt = false;
