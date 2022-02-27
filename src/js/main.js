@@ -651,7 +651,7 @@ function clickMenu(){
 		var rect = lnk.getBoundingClientRect();
 		txt.value = lnk.innerText;
 		div1.style.left = rect.left + "px";
-		div1.style.top = (rect.top - 2) + "px";
+		div1.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + rect.top - 2) + "px";
 		txt.style.width = rect.width + "px";
 		txt.style.height = rect.height + "px";
 		div1.style.display = "block";

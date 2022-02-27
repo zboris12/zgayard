@@ -69,6 +69,7 @@ function showNotify(msg){
 			clearTimeout(g_hdlNotify);
 			g_hdlNotify = 0;
 		}
+		ele.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + 20) + "px";
 		ele.style.display = "";
 		g_hdlNotify = setTimeout(function(){
 			ele.style.display = "none";

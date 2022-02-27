@@ -115,6 +115,9 @@ function hideCancelButton(ele, idx){
 		}
 	}
 	btn.style.display = "none";
+	if(window.gc){
+		window.gc();
+	}
 }
 /**
  * @param {Element} tbdy
