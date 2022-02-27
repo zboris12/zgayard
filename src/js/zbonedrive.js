@@ -159,7 +159,6 @@ this.login = function(reuseToken){
 			if(ret["logout"]){
 				this.storage.setSessionData("logout_url", ret["logout"]);
 			}
-			return null;
 		}else if(ret && ret["error"]){
 			return "["+ret["error"]+"] "+ret["error_description"];
 		}else{
@@ -180,6 +179,7 @@ this.login = function(reuseToken){
 				this.storage.setSessionData("logout_url", ret["logout"]);
 			}
 			window.location.href = ret["url"].concat("&state=".concat(encodeURIComponent(ret["state"])));
+			return "Need signin.";
 		}else if(ret && ret["error"]){
 			return "["+ret["error"]+"] "+ret["error_description"];
 		}else{
