@@ -590,7 +590,7 @@ ZbDrive.prototype.setAccessToken = function(type, token){
  */
 ZbDrive.prototype.authorize = function(opt){
 	if(!opt){
-		throw new Error("Options are not specifed when auth onedrive.");
+		throw new Error("Options are not specified when auth onedrive.");
 	}
 
 	/** @type {FormData} */
@@ -613,7 +613,7 @@ ZbDrive.prototype.authorize = function(opt){
 		if(opt.needCode){
 			formData.append("need_code", opt.needCode);
 		}
-//		throw new Error("Code or refresh token must be specifed when auth onedrive.");
+//		throw new Error("Code or refresh token must be specified when auth onedrive.");
 	}
 
 	var ret = null;

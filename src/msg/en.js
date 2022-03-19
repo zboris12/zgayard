@@ -50,7 +50,7 @@ window["msgs"] = {
 	"spanPwdNotice": "Don't forget your password and key file, or you will be unable to decrypt your files forever.",
 	"lblSaveKey": "Save my key's information.",
 	"spanConfNotice": "A configuration file named of '{0}' will be saved in your drive's root directory.\nDo NOT delete it or you will be unable to decrypt your files forever.",
-	"quotaInfo": "Free Space: {0}",
+	"quotaInfo": "Free Space of {0}: {1}",
 	"spanName": "Name",
 	"thSize": "Size",
 	"thTms": "Timestamp",

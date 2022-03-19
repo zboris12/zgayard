@@ -159,7 +159,7 @@ function getGoogledriveAuth(){
 		, "client_secret" => GOOGDRIVE_CLIENT_SECRET
 		, "login_url" => "https://accounts.google.com/o/oauth2/v2/auth"
 		, "login_scope" => "https://www.googleapis.com/auth/drive.file"
-		, "login_extdat" => array("access_type" => "offline")
+		, "login_extdat" => array("access_type" => "offline") //, "prompt" => "consent")
 		, "token_url" => "https://www.googleapis.com/oauth2/v4/token"
 		, "token_scope" => "https://www.googleapis.com/auth/drive.file"
 		, "logout_url" => "https://accounts.google.com/Logout"

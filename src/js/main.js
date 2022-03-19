@@ -103,7 +103,7 @@ function addQuotaUsed(sz, trashFlg){
 	}
 	/** @type {number} */
 	var free = total - used - trash;
-	ele.innerText = window["msgs"]["quotaInfo"].replace("{0}", getSizeDisp(free));
+	ele.innerText = window["msgs"]["quotaInfo"].replace("{0}", g_DRIVES[g_drive.getId()].getName()).replace("{1}", getSizeDisp(free));
 }
 /**
  * @param {function()} func
