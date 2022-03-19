@@ -220,6 +220,31 @@ function getQueryParameters(){
 	return uparams;
 }
 /**
+ * Create a query string with ?.
+ *
+ * @param {Object<string, string>} query
+ * @param {boolean=} noEncode
+ * @return {string}
+ */
+function makeQueryString(query, noEncode){
+	/** @type {Array<string>} */
+	var qarr = [];
+	/** @type {string} */
+	var k;
+	for(k in query){
+		if(noEncode){
+			qarr.push(k.concat("=").concat(query[k]));
+		}else{
+			qarr.push(encodeURIComponent(k).concat("=").concat(encodeURIComponent(query[k])));
+		}
+	}
+	if(qarr.length > 0){
+		return "?".concat(qarr.join("&"));
+	}else{
+		return "";
+	}
+}
+/**
  * Format a number.
  *
  * @param {number} n Target number.
@@ -261,7 +286,10 @@ function getSizeDisp(s){
 	var unit;
 	/** @type {number} */
 	var num;
-	if(s < 1024){
+	if(!s){
+		unit = "B";
+		num = 0;
+	}else if(s < 1024){
 		unit = "B";
 		num = s;
 	}else if(s < 1048576){ // 1024*1024
@@ -283,19 +311,23 @@ function getSizeDisp(s){
  * @return {string} Formatted string
  */
 function getTimestampDisp(tms){
-	/** @type {Date} */
-	var dt = new Date(tms);
-	/** @type {Array<number>} */
-	var ymd = new Array();
-	/** @type {Array<string>} */
-	var hms = new Array();
-	ymd.push(dt.getFullYear());
-	ymd.push(dt.getMonth()+1);
-	ymd.push(dt.getDate());
-	hms.push("0".concat(dt.getHours()).slice(-2));
-	hms.push("0".concat(dt.getMinutes()).slice(-2));
-	hms.push("0".concat(dt.getSeconds()).slice(-2));
-	return ymd.join("-") + " " + hms.join(":");
+	if(tms){
+		/** @type {Date} */
+		var dt = new Date(tms);
+		/** @type {Array<number>} */
+		var ymd = new Array();
+		/** @type {Array<string>} */
+		var hms = new Array();
+		ymd.push(dt.getFullYear());
+		ymd.push(dt.getMonth()+1);
+		ymd.push(dt.getDate());
+		hms.push("0".concat(dt.getHours()).slice(-2));
+		hms.push("0".concat(dt.getMinutes()).slice(-2));
+		hms.push("0".concat(dt.getSeconds()).slice(-2));
+		return ymd.join("-") + " " + hms.join(":");
+	}else{
+		return "";
+	}
 }
 /**
  * Repalce one character to another character in the string.
@@ -355,7 +387,7 @@ function openAjax(url, opt){
 					opt._doneFunc(x.status, x.responseText);
 				}
 			}else{
-				alert(x.responseText+" ("+x.status+")");
+				throw new Error(x.responseText+" ("+x.status+")");
 			}
 		}
 	};
@@ -385,4 +417,42 @@ function analyzeRangePos(crng){
 	}else{
 		return parseInt(crng.slice(i, j), 10);
 	}
+}
+/**
+ * Get utf8 bytes count of a string.
+ *
+ * @param {string} str
+ * @return {number} The bytes count
+ */
+function getStringLength(str){
+	/**
+	 * The characters that will be URL encoded.
+	 * @const {string}
+	 */
+	const ESCAPECHAR = ";,/?:@&=+$ ";
+	// URLエンコードされたUTF-8文字列表現の桁数とバイト数の対応テーブル
+	// encodeURI("あ") → "%E3%81%82" (9桁) → 3バイト
+	/**
+	 * Correspondence table of bytes count and the bytes count of
+	 *  UTF-8 string under URL encoded.
+	 * For example: encodeURI("あ") → "%E3%81%82" (9 bytes) → 3 bytes
+	 * @const {Array<number>}
+	 */
+	const ESCAPEDLEN_TABLE = [ 0, 1, 1, 1, 2, 3, 2, 3, 4, 3 ];
+	/** @type {number} */
+	var sz = 0;
+	/** @type {number} */
+	var i = 0;
+	if(str){
+		for(i=0; i<str.length; i++){
+			/** @type {string} */
+			var c = str.charAt(i);
+			if(ESCAPECHAR.indexOf(c) >= 0){
+				sz++;
+			}else{
+				sz += ESCAPEDLEN_TABLE[encodeURI(c).length];
+			}
+		}
+	}
+	return sz;
 }

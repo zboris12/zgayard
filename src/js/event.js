@@ -2,23 +2,20 @@ window.addEventListener("load", function(){
 	window.addEventListener("scroll", function(){
 		document.getElementById("divGround").style.top = (document.documentElement.scrollTop || document.body.scrollTop) + "px";
 	});
-	document.getElementById("spanNotify").style.display = "none";
+	/** @type {Element} */
+	var ele = document.getElementById("spanNotify");
+	ele.style.display = "none";
 	/**
 	 * "input file multiple" is not supported in Android, so we need to add "input file" manually.
 	 *
 	 * @type {RegExp}
 	 */
 	var reg = new RegExp("android", "i");
-	if(!reg.test(navigator.userAgent)){
-		document.getElementById("spanMoreKey").style.display = "none";
-		document.getElementById("spanClearKey").style.display = "none";
-	}
+	/** @type {boolean} */
+	var isAndroid = reg.test(navigator.userAgent);
 
 	/** @type {number} */
 	var i = 0;
-	/** @type {Element} */
-	var ele = document.getElementById("spanAddRoot");
-	ele.addEventListener("click", showAddRoot);
 	/** @type {!NodeList<!Element>} */
 	var eles = document.getElementById("divSet").getElementsByTagName("input");
 	for(i=0; i<eles.length; i++){
@@ -36,9 +33,32 @@ window.addEventListener("load", function(){
 		}
 	}
 
-	document.getElementById("spanMoreKey").addEventListener("click", moreKeyf);
-	document.getElementById("spanClearKey").addEventListener("click", clearKeyf);
-
+	eles = document.getElementById("divPwd").getElementsByTagName("span");
+	for(i=0; i<eles.length; i++){
+		ele = eles[i];
+		switch(ele.getAttribute("tid")){
+		case "spanAddRoot":
+			ele.addEventListener("click", showAddRoot);
+			break;
+		case "spanDeleteRoot":
+			ele.addEventListener("click", deleteRoot);
+			break;
+		case "spanMoreKey":
+			if(isAndroid){
+				ele.addEventListener("click", moreKeyf);
+			}else{
+				ele.style.display = "none";
+			}
+			break;
+		case "spanClearKey":
+			if(isAndroid){
+				ele.addEventListener("click", clearKeyf);
+			}else{
+				ele.style.display = "none";
+			}
+			break;
+		}
+	}
 	eles = document.getElementById("divPwd").getElementsByTagName("input");
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
@@ -48,6 +68,9 @@ window.addEventListener("load", function(){
 			break;
 		case "btnOk":
 			ele.addEventListener("click", setPassword);
+			break;
+		case "btnDropDb":
+			ele.addEventListener("click", dropLoacalDb);
 			break;
 		}
 	}

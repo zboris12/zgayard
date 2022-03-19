@@ -21,6 +21,7 @@ function getBaseUrl($url){
 	return $ret;
 }
 function getLocalStorageAuth($keyOnly=false){
+	global $localhost;
 	$lskey64 = getArrayValue($_COOKIE, "lskey");
 	$newkey = false;
 	if(isset($lskey64)){
@@ -30,7 +31,7 @@ function getLocalStorageAuth($keyOnly=false){
 		$lskey64 = base64_encode($lskey);
 		$newkey = true;
 	}
-	if(defined("LOCALHOST")){
+	if($localhost){
 		$secure = false;
 	}else{
 		$secure = true;
@@ -62,26 +63,25 @@ function cryptData($data, $encrypt=true){
 	}
 	return $dataOut;
 }
-function getOnedriveAuth(){
+
+function getDriveAuth($infs){
+	global $localhost;
 	global $redirectUri;
-	//https://docs.microsoft.com/ja-jp/azure/active-directory/develop/v2-oauth2-auth-code-flow
 	$data = array(
-		  "client_id" => getPostValue("client_id", ONEDRIVE_CLIENT_ID)
+		  "client_id" => getPostValue("client_id", $infs["client_id"])
 		, "redirect_uri" => getPostValue("redirect_uri", $redirectUri)
 	);
-	$logout = "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" . $redirectUri;
 	$action = getPostValue("action");
 	if(isset($action) && strcasecmp($action, "logout") == 0){
 		$result = array();
-
 	}else{
 		$code = getPostValue("code");
 		$rftoken = getPostValue("refresh_token");
 		if(isset($code) || isset($rftoken)){
-			$base_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+			$base_url = $infs["token_url"];
 			$header = array("Content-Type: application/x-www-form-urlencoded");
-			$data["scope"] = "files.readwrite";
-			$data["client_secret"] = getPostValue("client_secret", ONEDRIVE_CLIENT_SECRET);
+			$data["scope"] = $infs["token_scope"];
+			$data["client_secret"] = getPostValue("client_secret", $infs["client_secret"]);
 			if(isset($code)){
 				$data["code"] = $code;
 				$data["grant_type"] = "authorization_code";
@@ -91,7 +91,7 @@ function getOnedriveAuth(){
 			}
 
 			$ch = curl_init();
-			if(defined("LOCALHOST")){
+			if($localhost){
 				curl_setopt($ch, CURLOPT_VERBOSE, 1);
 			}
 			curl_setopt($ch, CURLOPT_URL, $base_url);
@@ -118,27 +118,64 @@ function getOnedriveAuth(){
 			}
 
 		}else{
-			$data["scope"] = "offline_access files.readwrite";
+			$data["scope"] = $infs["login_scope"];
 			if(getPostValue("need_code")){
 				$data["response_type"] = "code";
 			}else{
 				$data["response_type"] = "token";
 			}
+			if(array_key_exists("login_extdat", $infs)){
+				foreach($infs["login_extdat"] as $extkey => $extval){
+					$data[$extkey] = $extval;
+				}
+			}
 			$state = base64_encode(openssl_random_pseudo_bytes(20));
-			$result = array("url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" . http_build_query($data), "state" => $state);
+			$result = array("url" => $infs["login_url"] . "?" . http_build_query($data), "state" => $state);
 		}
 	}
 
-	$result["logout"] = $logout;
+	$result["logout"] = $infs["logout_url"];
 	return $result;
 }
+function getOnedriveAuth(){
+	global $redirectUri;
+	//https://docs.microsoft.com/ja-jp/azure/active-directory/develop/v2-oauth2-auth-code-flow
+	$info = array(
+		  "client_id" => ONEDRIVE_CLIENT_ID
+		, "client_secret" => ONEDRIVE_CLIENT_SECRET
+		, "login_url" => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+		, "login_scope" => "offline_access files.readwrite"
+		, "token_url" => "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+		, "token_scope" => "files.readwrite"
+		, "logout_url" => "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=" . $redirectUri
+	);
 
-$redirectUri = ONEDRIVE_REDIRECT_URI;
+	return getDriveAuth($info);
+}
+
+function getGoogledriveAuth(){
+	$info = array(
+		  "client_id" => GOOGDRIVE_CLIENT_ID
+		, "client_secret" => GOOGDRIVE_CLIENT_SECRET
+		, "login_url" => "https://accounts.google.com/o/oauth2/v2/auth"
+		, "login_scope" => "https://www.googleapis.com/auth/drive.file"
+		, "login_extdat" => array("access_type" => "offline")
+		, "token_url" => "https://www.googleapis.com/oauth2/v4/token"
+		, "token_scope" => "https://www.googleapis.com/auth/drive.file"
+		, "logout_url" => "https://accounts.google.com/Logout"
+	);
+
+	return getDriveAuth($info);
+}
+
+$localhost = false;
+$redirectUri = REDIRECT_URI;
 $ourl = getallheaders()["Origin"];
 if($ourl == "http://localhost:10801"){
+	$localhost = true;
 	$redirectUri = $ourl . "/";
 }else{
-	$ourl = getBaseUrl(ONEDRIVE_REDIRECT_URI);
+	$ourl = getBaseUrl(REDIRECT_URI);
 }
 header("Access-Control-Allow-Origin: " . $ourl);
 header("Access-Control-Allow-Credentials: true");
@@ -153,6 +190,10 @@ if(isset($type)){
 		}
 		case "onedrive": {
 			$result = getOnedriveAuth();
+			break;
+		}
+		case "googledrive": {
+			$result = getGoogledriveAuth();
 			break;
 		}
 		default: {

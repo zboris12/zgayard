@@ -69,7 +69,7 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 
 	/**
 	 * @public
-	 * @param {ZBDrive} drv
+	 * @param {ZbDrive} drv
 	 * @param {string} tid
 	 */
 	this.downloadFile = function(drv, tid){
@@ -87,24 +87,14 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 
 	/**
 	 * @public
-	 * @param {ZBDrive} drv
-	 * @param {boolean} encfname
-	 * @param {string} fpath
+	 * @param {ZbDrive} drv
+	 * @param {string} fnm
 	 * @param {File} file
-	 * @param {string} baseId
-	 * @param {string} basePath
+	 * @param {string} fldrId
 	 */
-	this.uploadFile = function(drv, encfname, fpath, file, baseId, basePath){
-		/** @type {Array<string>} */
-		var farr = fpath.split("/");
-		if(encfname){
-			for(var i=0; i < farr.length; i++){
-				farr[i] = zbEncryptString(farr[i], this.keycfg);
-			}
-		}
-
+	this.uploadFile = function(drv, fnm, file, fldrId){
 		/** @type {WorkerInfoType} */
-	 	this.wktype = WorkerInfoType.UPLOAD;
+		this.wktype = WorkerInfoType.UPLOAD;
 		/** @type {ZBlobReader} */
 		this.reader = new ZBlobReader({
 			_blob: file,
@@ -112,13 +102,9 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		});
 		/** @type {DriveWriterOption} */
 		var wopt = {
-			_fnm: farr[0],
-			_fldrId: baseId,
+			_fnm: fnm,
+			_fldrId: fldrId,
 		};
-		if(farr.length > 1){
-			wopt._fnm = farr.join("/");
-			wopt._fldr = basePath;
-		}
 		/** @type {ZBWriter} */
 		this.writer = drv.createWriter(wopt);
 		this.startTransfer();

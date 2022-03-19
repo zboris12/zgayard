@@ -12,11 +12,6 @@ const g_CONFILE = "_zgayard_.conf";
 /** @const {string} */
 const g_HASHKEY = "zgayard";
 
-/** @type {Object<string, DriveDefine>} */
-var g_DRIVES = new Object();
-ZbOneDrive.addDefine(g_DRIVES);
-
-
 /** @const {Object<string, string>} */
 const g_imagetypes = {
 	"bmp": "image/bmp",

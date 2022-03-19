@@ -5,7 +5,9 @@ if(!FOROUTPUT){
 	self.importScripts("zbcommon.js");
 	self.importScripts("zbcrypto.js");
 	self.importScripts("zbidxdb.js");
+	self.importScripts("zbdrive.js");
 	self.importScripts("zbonedrive.js");
+	self.importScripts("zbgoogledrive.js");
 	self.importScripts("const.js");
 	self.importScripts("worker-const.js");
 	self.importScripts("downup.js");
@@ -17,7 +19,7 @@ self.canceled = false;
 
 /**
  * @param {CipherParams} keycfg
- * @param {ZBDrive} drv
+ * @param {ZbDrive} drv
  * @return {ZbTransfer}
  */
 function createTransfer(keycfg, drv){
@@ -58,11 +60,11 @@ function work(wkinf){
 		if(a_err){
 			console.error("IndexedDB is not supported in your browser settings.");
 		}
-		/** @type {DriveDefine} */
+		/** @type {ZbDriveDefine} */
 		var a_drvdef = g_DRIVES[cominf._drvnm];
 		if(a_drvdef){
-			/** @type {ZBDrive} */
-			var a_drv = a_drvdef._newInstance(stg, g_AUTHURL, g_RELAYURL);
+			/** @type {ZbDrive} */
+			var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL, g_RELAYURL);
 			a_drv.presetToken(cominf._token);
 
 			switch(wtype){
@@ -76,7 +78,7 @@ function work(wkinf){
 				var a_upinf = /** @type {WorkerUploadInfo} */(wkinf._upinf);
 				/** @type {ZbTransfer} */
 				var a_tfr2 = createTransfer(keycfg, a_drv);
-				a_tfr2.uploadFile(a_drv, cominf._encfname, a_upinf._fpath, a_upinf._file, a_upinf._baseId, a_upinf._basePath);
+				a_tfr2.uploadFile(a_drv, a_upinf._fname, a_upinf._file, a_upinf._parentId);
 				break;
 			}
 

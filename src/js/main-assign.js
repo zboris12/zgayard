@@ -1,10 +1,84 @@
 /** @define {string} */
 const WORKER_PATH = "js/";
 
-/** @const {boolean} */
+/** @const {boolean} @suppress {suspiciousCode} */
 const USE_WORKER = (true && window.Worker) ? true: false;
 /** @type {?Worker} */
 var g_worker = null;
+
+/**
+ * @constructor
+ * @param {DriveItem} fldr
+ */
+function ZbFolder(fldr){
+	/** @private @type {DriveItem} */
+	this.fldr = fldr;
+	/** @private @type {Array<ZbFolder>} */
+	this.childs = [];
+
+	/**
+	 * @public
+	 * @return {string}
+	 */
+	this.getId = function(){
+		return this.fldr._id;
+	};
+
+	/**
+	 * @public
+	 * @param {DriveItem} fldr
+	 * @return {boolean}
+	 */
+	this.isMe = function(fldr){
+		return this.fldr._id == fldr._id;
+	};
+
+	/**
+	 * @public
+	 * @param {string} fnm
+	 * @return {boolean}
+	 */
+	this.isSameName = function(fnm){
+		return this.fldr._name == fnm;
+	};
+
+	/**
+	 * @public
+	 * @param {string} fnm
+	 * @return {?ZbFolder}
+	 */
+	this.getChild = function(fnm){
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<this.childs.length; i++){
+			if(this.childs[i].isSameName(fnm)){
+				return this.childs[i];
+			}
+		}
+		return null;
+	};
+
+	/**
+	 * @public
+	 * @param {DriveItem} fldr
+	 * @return {ZbFolder}
+	 */
+	this.addChild = function(fldr){
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<this.childs.length; i++){
+			if(this.childs[i].isMe(fldr)){
+				return this.childs[i];
+			}
+		}
+		/** @type {ZbFolder} */
+		var chd = new ZbFolder(fldr);
+		this.childs.push(chd);
+		return chd;
+	};
+}
+/** @type {?ZbFolder} */
+var g_folders = null;
 
 /**
  * Event called from html
@@ -179,6 +253,7 @@ function terminateWorker(){
 	/** @type {?Worker} */
 	var a_worker = g_worker;
 	g_worker = null;
+	g_folders = null;
 	a_worker.terminate();
 	if(a_worker.hasUpd){
 		listFolder(true);
@@ -209,7 +284,6 @@ function addWorkerQueue(wkinf){
 			_iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
 			_key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
 			_drvnm: g_drive.getId(),
-			_encfname: isEncfname(),
 		};
 
 		g_worker.addEventListener("message", function(a_evt){
@@ -383,60 +457,141 @@ function upload(foderFlg){
 	}
 
 	/** @type {string} */
-	var basePath = "";
-	/** @type {string} */
-	var baseId = "";
-	/** @type {boolean} */
-	var encfname = isEncfname();
+	var baseId = g_paths[g_paths.length - 1]._id;
+
+	/** @type {number} */
+	var i = 0;
+	if(!g_folders){
+		g_folders = new ZbFolder(g_paths[0]);
+	}
+	/** @type {ZbFolder} */
+	var basefld = g_folders;
+	for(i=1; i<g_paths.length; i++){
+		basefld = basefld.addChild(g_paths[i]);
+	}
 
 	/** @type {function(number)} */
 	var uploadFile = function(a_idx){
-		/** @type {ZbTransfer} */
-		var a_tfr = doDownUp(tbdy, strow + a_idx, function(){
-			a_idx++;
-			if(a_idx < files.length){
-				uploadFile(a_idx);
-			}else{
-				listFolder(true);
+		/** @type {UploadTarget} */
+		var a_ele = targets[a_idx];
+		findFolderId(basefld, a_ele._fpath, function(b_err, b_fnm, b_ptid){
+			if(b_err){
+				setSpanMessage(tbdy, a_ele._idx, JSON.stringify(b_err));
+				return;
 			}
-		});
-		a_tfr.uploadFile(g_drive, encfname, targets[a_idx]._fpath, targets[a_idx]._file, baseId, basePath);
-	};
 
-	/** @type {function()} */
-	var startUpload = function(){
-		if(USE_WORKER){
-			targets.forEach(function(/** @type {UploadTarget} */ a_ele){
+			if(USE_WORKER){
 				addWorkerQueue({
 					_type: WorkerInfoType.UPLOAD,
 					_rowIdx: a_ele._idx,
 					_upinf: {
-						_fpath: a_ele._fpath,
+						_fname: b_fnm,
 						_file: a_ele._file,
-						_baseId: baseId,
-						_basePath: basePath,
+						_parentId: /** @type {string} */(b_ptid),
 					},
 				});
-			});
-		}else{
-			uploadFile(0);
-		}
-	};
+				a_idx++;
+				if(a_idx < files.length){
+					uploadFile(a_idx);
+				}
 
-	if(foderFlg){
-		// Get current folder's path
-		g_drive.getItem({
-			/** @type {string} */
-			_uid: g_paths[g_paths.length - 1]._id,
-			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-			_doneFunc: function(a_err, a_dat){
-				basePath = a_dat._parent.concat("/").concat(a_dat._name);
-				baseId = a_dat._id;
-				startUpload();
-			},
+			}else{
+				/** @type {ZbTransfer} */
+				var b_tfr = doDownUp(tbdy, strow + a_idx, function(){
+					a_idx++;
+					if(a_idx < files.length){
+						uploadFile(a_idx);
+					}else{
+						listFolder(true);
+					}
+				});
+				b_tfr.uploadFile(g_drive, b_fnm, a_ele._file, /** @type {string} */(b_ptid));
+			}
 		});
-	}else{
-		baseId = g_paths[g_paths.length - 1]._id;
-		startUpload();
+	};
+	uploadFile(0);
+}
+
+/**
+ * @param {ZbFolder} bsFldr Base folder
+ * @param {string} fpath
+ * @param {function((boolean|DriveJsonRet), string, string=)} func
+ */
+function findFolderId(bsFldr, fpath, func){
+	/** @type {Array<string>} */
+	var farr = fpath.split("/");
+	/** @type {string} */
+	var fnm = encryptFname(farr.pop());
+	/** @type {ZbFolder} */
+	var fldr = bsFldr;
+
+	if(farr.length == 0){
+		func(false, fnm, fldr.getId());
+		return;
 	}
+
+	/** @type {boolean} */
+	var newfld = false;
+	/** @type {function(number)} */
+	var getFolderId = function(a_idx){
+		/** @type {string} */
+		var a_orifnm = farr[a_idx];
+		/** @type {string} */
+		var a_fnm = encryptFname(a_orifnm);
+
+		/** @type {function(ZbFolder)} */
+		var a_doNext = function(b_fldr){
+			fldr = b_fldr;
+			a_idx++;
+			if(a_idx < farr.length){
+				getFolderId(a_idx);
+			}else{
+				func(false, fnm, fldr.getId());
+			}
+		};
+
+		if(newfld){
+			/** @type {DriveNewFolderOption} */
+			var b_opt = {
+				_folder: a_fnm,
+				_parentid: fldr.getId(),
+				_doneFunc: /** @type {function((boolean|DriveJsonRet), DriveItem=)} */(function(c_err, c_itm){
+					if(c_err){
+						func(c_err, fnm);
+					}else{
+						c_itm._name = a_orifnm;
+						a_doNext(fldr.addChild(c_itm));
+					}
+				}),
+			};
+			g_drive.newFolder(b_opt);
+			return;
+		}
+
+		/** @type {ZbFolder} */
+		var a_fldr = fldr.getChild(a_orifnm);
+		if(a_fldr){
+			a_doNext(a_fldr);
+			return;
+		}
+
+		/** @type {DriveSearchItemsOption} */
+		var a_opt = {
+			_fname: a_fnm,
+			_parentid: fldr.getId(),
+			_doneFunc: /** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */(function(b_err, b_lst){
+				if(b_err){
+					func(b_err, fnm);
+				}else if(b_lst.length == 0){
+					newfld = true;
+					getFolderId(a_idx);
+				}else{
+					b_lst[0]._name = a_orifnm;
+					a_doNext(fldr.addChild(b_lst[0]));
+				}
+			}),
+		};
+		g_drive.searchItems(a_opt);
+	};
+	getFolderId(0);
 }

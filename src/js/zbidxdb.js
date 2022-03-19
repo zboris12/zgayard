@@ -318,6 +318,39 @@ this.initIdxDb = function(func){
 };
 /**
  * @public
+ * @param {function(?string=)} func function(a_err){}
+ */
+this.dropIdxDb = function(func){
+	/** @const {string} */
+	const msg = "Failed to dropt IndexedDB.";
+	/** @type {IDBOpenDBRequest} */
+	var request = window.indexedDB.deleteDatabase(this.LSNM);
+	/**
+	 * @param {Event} a_evt
+	 */
+	request.onerror = function(a_evt){
+		if(func){
+			func(msg);
+		}else{
+			throw new Error(msg);
+		}
+	};
+	/**
+	 * @param {Event} a_evt
+	 */
+	request.onsuccess = function(a_evt){
+		this.clearSession(true);
+		this.datas = null;
+		this.skipLogin = false;
+		if(func){
+			func();
+		}else{
+			console.log("IndexedDB has been dropped.");
+		}
+	}.bind(this);
+};
+/**
+ * @public
  */
 this.saveAllData = function(){
 	if(!this.needSave || !this.datas){

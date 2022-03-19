@@ -113,15 +113,6 @@ var ZbCryptoOption;
 /**
  * @typedef
  * {{
- *    _name: string,
- *    _newInstance: function(ZbLocalStorage, string, string=):ZBDrive,
- *    _isTarget: function(?Object<string, string>):boolean,
- * }}
- */
-var DriveDefine;
-/**
- * @typedef
- * {{
  *   _status: number,
  *   _restext: string,
  * }}
@@ -137,7 +128,7 @@ var DriveJsonRet;
  *    _utoken: (string|undefined),
  *    _auth: (string|undefined),
  *    _data: (ArrayBuffer|ArrayBufferView|Blob|Document|FormData|null|string|undefined),
- *    _doneFunc: (function(DriveJsonRet)|undefined),
+ *    _doneFunc: (function(XMLHttpRequest)|undefined),
  *    _retry: (boolean|undefined),
  * }}
  */
@@ -150,6 +141,7 @@ var DriveAjaxOption;
  *   _size: (number|undefined),
  *   _lastModifiedDateTime: (string|undefined),
  *   _parent: (string|undefined),
+ *   _parentId: (string|undefined),
  *   _type: (string|undefined),
  * }}
  */
@@ -163,24 +155,44 @@ var DriveItem;
  * }}
  */
 var DriveInfo;
+
 /**
  * @typedef
  * {{
  *    _utype: (string|undefined),
  *    _utoken: (string|undefined),
  *    _auth: (string|undefined),
+ *    _doneFunc: (function((boolean|DriveJsonRet), *=)|undefined),
+ * }}
+ */
+var DriveBaseOption;
+// {
+//   _utype: "Bearer",
+//   _utoken: "xxxxxxxxxxxx",
+//   _auth: "yyyyyyyyy", // If "auth" is specified then "utype" and "utoken" will be ignored.  
+// }
+
+/**
+ * @typedef
+ * {{
  *    _doneFunc: function((boolean|DriveJsonRet), DriveInfo=),
  * }}
  */
 var DriveGetDriveOption;
+/** @lends {DriveBaseOption} *///(DriveGetDriveOption);
 /**
  * @typedef
  * {{
- *    _upath: (string|undefined),
- *    _uid: (string|undefined),
- *    _utype: (string|undefined),
- *    _utoken: (string|undefined),
- *    _auth: (string|undefined),
+ *    _fname: (string|undefined),
+ *    _parentid: (string|undefined),
+ *    _doneFunc: function((boolean|DriveJsonRet), Array<DriveItem>=),
+ * }}
+ */
+var DriveSearchItemsOption;
+/**
+ * @typedef
+ * {{
+ *    _uid: string,
  *    _doneFunc: function((boolean|DriveJsonRet), DriveItem=),
  * }}
  */
@@ -188,24 +200,8 @@ var DriveGetItemOption;
 /**
  * @typedef
  * {{
- *    _ufolder: (string|undefined),
- *    _uid: (string|undefined),
- *    _utype: (string|undefined),
- *    _utoken: (string|undefined),
- *    _auth: (string|undefined),
- *    _doneFunc: function((boolean|DriveJsonRet), Array<DriveItem>=),
- * }}
- */
-var DriveListFolderOption;
-/**
- * @typedef
- * {{
- *    _folder: (string|undefined),
- *    _parentfolder: (string|undefined),
+ *    _folder: string,
  *    _parentid: (string|undefined),
- *    _utype: (string|undefined),
- *    _utoken: (string|undefined),
- *    _auth: (string|undefined),
  *    _doneFunc: function((boolean|DriveJsonRet), DriveItem=),
  * }}
  */
@@ -213,12 +209,10 @@ var DriveNewFolderOption;
 /**
  * @typedef
  * {{
- *    _fid: (string|undefined),
+ *    _fid: string,
  *    _newname: (string|undefined),
  *    _parentid: (string|undefined),
- *    _utype: (string|undefined),
- *    _utoken: (string|undefined),
- *    _auth: (string|undefined),
+ *    _oldparentid: (string|undefined),
  *    _doneFunc: function((boolean|DriveJsonRet)),
  * }}
  */
@@ -228,7 +222,6 @@ var DriveUpdateOption;
  * @typedef
  * {{
  *    _auth: (string|undefined),
- *    _fldr: (string|undefined),
  *    _fldrId: (string|undefined),
  *    _fnm: string,
  * }}
@@ -243,84 +236,3 @@ var DriveWriterOption;
  * }}
  */
 var DriveReaderOption;
-
-/**
- * @interface
- * @param {ZbLocalStorage} _storage
- * @param {string} _authUrl
- * @param {string=} _relayUrl
- */
-function ZBDrive(_storage, _authUrl, _relayUrl){
-	/**
-	 * @public
-	 * @param {string} token
-	 */
-	this.presetToken = function(token){};
-	/**
-	 * @public
-	 * @return {string}
-	 */
-	this.getToken = function(){};
-	/**
-	 * @public
-	 * @param {boolean=} reuseToken
-	 * @return {?string}
-	 */
-	this.login = function(reuseToken){};
-	/**
-	 * @public
-	 */
-	this.logout = function(){};
-	/**
-	 * @public
-	 * @param {DriveGetDriveOption} opt
-	 */
-	this.getDrive = function(opt){};
-	/**
-	 * @public
-	 * @return {string}
-	 */
-	this.getId = function(){};
-	/**
-	 * @public
-	 * @param {DriveGetItemOption} opt
-	 */
-	this.getItem = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveListFolderOption} opt
-	 */
-	this.listFolder = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveNewFolderOption} opt
-	 */
-	this.newFolder = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveUpdateOption} opt
-	 */
-	this.rename = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveUpdateOption} opt
-	 */
-	this.move = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveUpdateOption} opt
-	 */
-	this.delete = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveWriterOption} opt
-	 * @return {ZBWriter}
-	 */
-	this.createWriter = function(opt){};
-	/**
-	 * @public
-	 * @param {DriveReaderOption} opt
-	 * @return {ZBReader}
-	 */
-	this.createReader = function(opt){};
-}

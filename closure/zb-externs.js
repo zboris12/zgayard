@@ -62,17 +62,15 @@ var WorkerInfo;
  *    _iv: string,
  *    _key: string,
  *    _drvnm: string,
- *    _encfname: boolean,
  * }}
  */
 var WorkerCommonInfo;
 /**
  * @typedef
  * {{
- *    _fpath: string,
+ *    _fname: string,
  *    _file: File,
- *    _baseId: string,
- *    _basePath: string,
+ *    _parentId: string,
  * }}
  */
 var WorkerUploadInfo;

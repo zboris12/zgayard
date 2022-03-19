@@ -1,6 +1,6 @@
 /** @type {?ZbLocalStorage} */
 var g_storage = null;
-/** @type {?ZBDrive} */
+/** @type {?ZbDrive} */
 var g_drive = null;
 /** @type {Array<Object<string, (string|boolean)>>} */
 var g_conf = new Array();
@@ -229,13 +229,13 @@ function loadSettings(){
 		/** @type {Element} */
 		var opt = document.createElement("option");
 		opt.value = ii;
-		opt.innerText = g_DRIVES[ii]._name;
+		opt.innerText = g_DRIVES[ii].getName();
 		if(drv){
 			if(drv == ii){
 				opt.selected = true;
 			}
 		}else{
-			if(g_DRIVES[ii]._isTarget(uparams)){
+			if(g_DRIVES[ii].isTarget(uparams)){
 				drv = ii;
 				opt.selected = true;
 			}
@@ -385,10 +385,10 @@ function applyLanguage(msgs){
  */
 function loadDrive(drvnm){
 	showInfo("loading");
-	/** @type {DriveDefine} */
+	/** @type {ZbDriveDefine} */
 	var drv = g_DRIVES[drvnm];
 	if(drv){
-		g_drive = drv._newInstance(g_storage, g_AUTHURL, g_RELAYURL);
+		g_drive = drv.newDriveInstance(g_storage, g_AUTHURL, g_RELAYURL);
 	}else{
 		showError("unkDrive");
 		return;
@@ -403,20 +403,18 @@ function loadDrive(drvnm){
 	}
 
 	// Get configuration file.
-	g_drive.getItem({
-		/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-		_doneFunc: function(a_err, a_dat){
+	g_drive.searchItems({
+		/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
+		_doneFunc: function(a_err, a_dats){
 			if(a_err){
-				if(a_err._status == 404){
-					showInputPassword(true, true);
-				}else{
-					showError(JSON.stringify(a_err));
-				}
+				showError(JSON.stringify(a_err));
+			}else if(a_dats.length == 0){
+				showInputPassword(true, true);
 			}else{
-				downloadConfile(a_dat._id);
+				downloadConfile(a_dats[0]._id);
 			}
 		},
-		_upath: g_CONFILE,
+		_fname: g_CONFILE,
 	});
 }
 /**
@@ -573,23 +571,21 @@ function deleteRoot(evt){
 			g_drive.delete(a_opt);
 		};
 
-		/** @type {DriveGetItemOption} */
+		/** @type {DriveSearchItemsOption} */
 		var opt = {
-			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-			_doneFunc: function(a_err, a_dat){
+			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
+			_doneFunc: function(a_err, a_dats){
 				if(a_err){
-					if(a_err._status == 404){
-						editconf();
-					}else{
-						console.error(a_err);
-					}
+					console.error(a_err);
+				}else if(a_dats.length == 0){
+					editconf();
 				}else{
-					delroot(a_dat._id);
+					delroot(a_dats[0]._id);
 				}
 			},
-			_upath: /** @type {string} */(g_conf[rootidx]["root"]),
+			_fname: /** @type {string} */(g_conf[rootidx]["root"]),
 		};
-		g_drive.getItem(opt);
+		g_drive.searchItems(opt);
 
 	}else{
 		reload();
@@ -813,6 +809,7 @@ function uploadConfile(conf, func){
 	/** @type {ZBlobReader} */
 	var reader = new ZBlobReader({
 		_blob: blob,
+		_bufSize: 256*1024, // This a requirement of google drive, which is "The number of bytes uploaded is required to be equal or greater than 262144".
 	});
 	/** @type {ZBWriter} */
 	var writer = g_drive.createWriter({
@@ -916,4 +913,19 @@ function appendRootItem(_conf, _selected, _sel){
 		opt.selected = true;
 	}
 	sel.appendChild(opt);
+}
+/**
+ * Event called from html
+ */
+function dropLoacalDb(){
+	if(!confirm(window["msgs"]["dropConfirm"])){
+		return;
+	}
+	g_storage.dropIdxDb(function(a_err){
+		if(a_err){
+			showError(a_err);
+		}else{
+			g_drive.logout();
+		}
+	});
 }

@@ -78,6 +78,11 @@ a, input {
 	left: 13px;
 }
 
+.btnDropDb {
+	position: absolute;
+	right: 10px;
+}
+
 #chkAll {
 	position: absolute;
 	left: 13px;
@@ -131,6 +136,9 @@ a, input {
 	right: 5px;
 	top: 0px;
 	cursor: pointer;
+}
+#spanGroundTitle {
+	margin-right: 30px;
 }
 
 #tblFileDetail {

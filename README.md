@@ -35,6 +35,7 @@ And I use this name to hope the merits from this application will be dedicated t
 * Automatically play the next video file after the current video is ended.
 * Supported online storage:
   * Microsoft Onedrive
+  * Google Drive
 
 ## TODO
 
