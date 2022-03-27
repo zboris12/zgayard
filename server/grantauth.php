@@ -121,13 +121,13 @@ function getDriveAuth($infs){
 			$data["scope"] = $infs["login_scope"];
 			if(getPostValue("need_code")){
 				$data["response_type"] = "code";
+				if(array_key_exists("login_extdat", $infs)){
+					foreach($infs["login_extdat"] as $extkey => $extval){
+						$data[$extkey] = $extval;
+					}
+				}
 			}else{
 				$data["response_type"] = "token";
-			}
-			if(array_key_exists("login_extdat", $infs)){
-				foreach($infs["login_extdat"] as $extkey => $extval){
-					$data[$extkey] = $extval;
-				}
 			}
 			$state = base64_encode(openssl_random_pseudo_bytes(20));
 			$result = array("url" => $infs["login_url"] . "?" . http_build_query($data), "state" => $state);
@@ -159,7 +159,7 @@ function getGoogledriveAuth(){
 		, "client_secret" => GOOGDRIVE_CLIENT_SECRET
 		, "login_url" => "https://accounts.google.com/o/oauth2/v2/auth"
 		, "login_scope" => "https://www.googleapis.com/auth/drive.file"
-		, "login_extdat" => array("access_type" => "offline") //, "prompt" => "consent")
+		, "login_extdat" => array("access_type" => "offline", "prompt" => "consent")
 		, "token_url" => "https://www.googleapis.com/oauth2/v4/token"
 		, "token_scope" => "https://www.googleapis.com/auth/drive.file"
 		, "logout_url" => "https://accounts.google.com/Logout"

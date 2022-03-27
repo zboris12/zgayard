@@ -1,3 +1,36 @@
+svg {
+	width: 24px;
+	height: 24px;
+	vertical-align: bottom;
+	stroke: #000000;
+	fill: none;
+}
+svg.red {
+	stroke: #ED1C24;
+}
+svg.blue {
+	stroke: #4B00EE;
+}
+svg.white {
+	stroke: #ffffff;
+}
+svg.folder {
+	fill: #FFD679;
+}
+svg.fred {
+	stroke: #ffffff;
+	fill: #ED1C24;
+}
+svg.fpink {
+	fill: #FFE7F3;
+}
+svg.fgreen {
+	fill: #E7FFE7;
+}
+svg.fyellow {
+	fill: #FFFFB0;
+}
+
 #spanError,
 #spanInfo {
 	font-weight: bolder;
@@ -92,6 +125,10 @@ a, input {
 	position: relative;
 }
 
+#tblQueue #spanQueue {
+	margin-right: 32px;
+}
+
 #tblQueue th > label {
 	position: absolute;
 	cursor: pointer;
@@ -139,6 +176,9 @@ a, input {
 }
 #spanGroundTitle {
 	margin-right: 30px;
+	display: table-cell;
+	height: 24px;
+	vertical-align: middle;
 }
 
 #tblFileDetail {

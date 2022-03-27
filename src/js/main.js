@@ -326,6 +326,23 @@ function addPath(th, fld, idx, norm){
 	th.appendChild(span);
 }
 /**
+ * @param {string} sid id of svg
+ * @param {string=} cls Class
+ * @return {Element} the svg element
+ */
+function createSvg(sid, cls){
+	/** @type {Element} */
+	var b_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	/** @type {Element} */
+	var b_use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+	if(cls){
+		b_svg.classList.add(cls);
+	}
+	b_use.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#".concat(sid));
+	b_svg.appendChild(b_use);
+	return b_svg;
+}
+/**
  * @param {Element} tby
  * @param {DriveItem} itm
  * @param {boolean=} fonly
@@ -345,21 +362,19 @@ function addItem(tby, itm, fonly){
 		var b_span = document.createElement("span");
 		/** @type {Element} */
 		var b_btn = document.createElement("span");
-	}
-	if(!fonly){
 		b_chk.type = "checkbox";
 		b_td.appendChild(b_chk);
 		if(isFolder(itm)){
-			b_span.innerHTML = "&#x1f4c1;";
+			b_span.appendChild(createSvg("folder", "folder"));
 		}else{
 			/** @type {string} */
 			var b_sfx = getSfx(b_fnm);
 			if(g_imagetypes[b_sfx]){
-				b_span.innerHTML = "&#x1f4f7;";
+				b_span.appendChild(createSvg("image", "fgreen"));
 			}else if(g_videotypes[b_sfx]){
-				b_span.innerHTML = "&#x1f3a5;";
+				b_span.appendChild(createSvg("video", "fpink"));
 			}else{
-				b_span.innerHTML = "&#x1f4c4;";
+				b_span.appendChild(createSvg("file", "fyellow"));
 			}
 		}
 		b_td.appendChild(b_span);
@@ -371,8 +386,8 @@ function addItem(tby, itm, fonly){
 	b_link.addEventListener("click", /** @type {function(Event)} */(clickItem));
 	b_td.appendChild(b_link);
 	if(!fonly){
-		b_btn.innerHTML = "&#x1f4dd;";
-		b_btn.setAttribute("class", "dropbtn");
+		b_btn.appendChild(createSvg("edit"));
+		b_btn.classList.add("dropbtn");
 		b_btn.addEventListener("click", showDropdown);
 		b_td.appendChild(b_btn);
 	}
@@ -985,6 +1000,7 @@ function viewFile(fid, fnm){
 			img.title = fnm;
 			img.style.display = "";
 			span.style.display = "none";
+			spanTitle.innerText = fnm;
 			tbdy.rows[1].style.display = "none";
 			tbdy.rows[2].style.display = "none";
 		}

@@ -50,6 +50,10 @@ And I use this name to hope the merits from this application will be dedicated t
 * [crypto-js](https://github.com/brix/crypto-js)
 * [videostream](https://github.com/jhiesey/videostream)
 
+## The Icons
+
+The svg icons are got from [iconsvg](https://iconsvg.xyz/).
+
 ## License
 
 This application is available under the
