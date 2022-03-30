@@ -215,6 +215,8 @@ function loadSettings(){
 	}
 	changeLanguage(lang);
 
+	document.getElementById("txtRelay").value = g_storage.getRelayUrl();
+
 	/**
 	 * Settings of drive
 	 *
@@ -281,6 +283,7 @@ function showSettings(evt){
 		document.getElementById("tblst").style.display = "";
 		document.getElementById("tblQueue").style.display = "";
 		document.getElementById("divAction").style.display = "";
+		document.getElementById("divHistory").style.display = "";
 	}else{
 		sel.disabled = false;
 		btn.style.display = "none";
@@ -388,34 +391,36 @@ function loadDrive(drvnm){
 	/** @type {ZbDriveDefine} */
 	var drv = g_DRIVES[drvnm];
 	if(drv){
-		g_drive = drv.newDriveInstance(g_storage, g_AUTHURL, g_RELAYURL);
+		g_drive = drv.newDriveInstance(g_storage, g_AUTHURL);
 	}else{
 		showError("unkDrive");
 		return;
 	}
-	/** @type {?string} */
-	var msg = g_drive.login(true);
-	if(msg){
-		showError(msg);
-		return;
-	}else{
-		g_storage.saveAllData();
-	}
+	g_drive.login(/** @type {function(string=)} */(function(a_err){
+		if(a_err){
+			g_storage.clearLogInfo(function(){
+				showError(window["msgs"]["loginFailed"].replace("{0}", a_err));
+			});
+			return;
+		}else{
+			g_storage.saveAllData();
+		}
 
-	// Get configuration file.
-	g_drive.searchItems({
-		/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
-		_doneFunc: function(a_err, a_dats){
-			if(a_err){
-				showError(JSON.stringify(a_err));
-			}else if(a_dats.length == 0){
-				showInputPassword(true, true);
-			}else{
-				downloadConfile(a_dats[0]._id);
-			}
-		},
-		_fname: g_CONFILE,
-	});
+		// Get configuration file.
+		g_drive.searchItems({
+			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
+			_doneFunc: function(b_err, b_dats){
+				if(b_err){
+					showError(JSON.stringify(b_err));
+				}else if(b_dats.length == 0){
+					showInputPassword(true, true);
+				}else{
+					downloadConfile(b_dats[0]._id);
+				}
+			},
+			_fname: g_CONFILE,
+		});
+	}), true);
 }
 /**
  * Event called from html
@@ -429,6 +434,7 @@ function saveSettings(){
 		needLoad = g_storage.setDrive(document.getElementById("selDrive").value);
 	}
 	g_storage.setSkipLogin(document.getElementById("chkSkipLogin").checked);
+	g_storage.setRelayUrl(document.getElementById("txtRelay").value);
 	changeLanguage(document.getElementById("seLang").value);
 	if(needLoad){
 		g_storage.clearSession();
@@ -459,6 +465,11 @@ function hideSettings(all){
 		document.getElementById("tblst").style.display = "block";
 		document.getElementById("tblQueue").style.display = "block";
 		document.getElementById("divAction").style.display = "block";
+		/** @type {Element} */
+		var divH = document.getElementById("divHistory");
+		if(divH.getElementsByTagName("a")[0].innerText){
+			divH.style.display = "block";
+		}
 		div.removeAttribute("cancelAll");
 	}
 	div.style.display = "";

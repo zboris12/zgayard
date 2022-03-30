@@ -3,10 +3,9 @@
  * @extends {ZbDrive}
  * @param {ZbLocalStorage} _storage
  * @param {string} _authUrl
- * @param {string=} _relayUrl
  */
-function ZbOneDrive(_storage, _authUrl, _relayUrl){
-	this.super(_storage, _authUrl, _relayUrl);
+function ZbOneDrive(_storage, _authUrl){
+	this.super(_storage, _authUrl);
 
 	/**
 	 * @override

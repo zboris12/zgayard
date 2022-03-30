@@ -1,9 +1,6 @@
 <div align="center"><img src="https://zboris12.github.io/zgayard/src/logo.png" title="zgayard"></div>
 
 # zgayard
-___A severe problem has been found! Onedrive for business can't work properly!  
-I'm still trying to find out how to solve it.___
-
 Create a safety yard in your online storage. [Let's go!](https://zboris12.github.io/zgayard/src/)  
 
 This is a web tool aimed to make your online storage more safety.  

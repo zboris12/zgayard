@@ -1,7 +1,5 @@
 /** @const {string} */
 const g_AUTHURL = "https://zgayard.f5.si/grantauth.php";
-/** @const {string} */
-const g_RELAYURL = "https://zgayard.f5.si/relay.php";
 /** @const {Object<string, string>} */
 const g_LANGUAGES = {
 	"en": "English",

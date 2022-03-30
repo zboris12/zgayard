@@ -64,7 +64,7 @@ function work(wkinf){
 		var a_drvdef = g_DRIVES[cominf._drvnm];
 		if(a_drvdef){
 			/** @type {ZbDrive} */
-			var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL, g_RELAYURL);
+			var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL);
 			a_drv.presetToken(cominf._token);
 
 			switch(wtype){

@@ -5,10 +5,9 @@
  * @extends {ZbDrive}
  * @param {ZbLocalStorage} _storage
  * @param {string} _authUrl
- * @param {string=} _relayUrl
  */
-function ZbGoogleDrive(_storage, _authUrl, _relayUrl){
-	this.super(_storage, _authUrl, _relayUrl);
+function ZbGoogleDrive(_storage, _authUrl){
+	this.super(_storage, _authUrl);
 
 	/**
 	 * @override
@@ -276,6 +275,20 @@ function ZbGoogleDrive(_storage, _authUrl, _relayUrl){
 			uopt._auth = opt._auth;
 		}
 		this.getItem(uopt);
+	};
+
+	/**
+	 * @override
+	 * @public
+	 * @param {XMLHttpRequest} ajax
+	 * @param {string=} auth
+	 */
+	this.setReadReqHeader = function(ajax, auth){
+		if(auth){
+			ajax.setRequestHeader("Authorization", auth);
+		}else{
+			ajax.setRequestHeader("Authorization", this.getToken());
+		}
 	};
 
 	/**

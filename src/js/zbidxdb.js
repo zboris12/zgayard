@@ -36,12 +36,17 @@ this.clearSession = function(all){
 			/** @type {?string} */
 			var lang = window.sessionStorage.getItem("language");
 			/** @type {?string} */
+			var rurl = window.sessionStorage.getItem("relay_url");
+			/** @type {?string} */
 			var drvnm = window.sessionStorage.getItem("drive");
 			/** @type {?string} */
 			var flg = window.sessionStorage.getItem("skipLogin");
 			window.sessionStorage.clear();
 			if(lang){
 				window.sessionStorage.setItem("language", lang);
+			}
+			if(rurl && !all){
+				window.sessionStorage.setItem("relay_url", rurl);
 			}
 			if(drvnm && !all){
 				window.sessionStorage.setItem("drive", drvnm);
@@ -59,15 +64,15 @@ this.clearSession = function(all){
 };
 /**
  * @public
- * @param {string} key
+ * @param {string} _key
  * @return {?string} The session data
  */
-this.getSessionData = function(key){
+this.getSessionData = function(_key){
 	/** @type {?string} */
 	var ret = null;
 	if(this.sessionOk){
 		try{
-			ret = window.sessionStorage.getItem(key);
+			ret = window.sessionStorage.getItem(_key);
 		}catch(ex){
 			this.sessionOk = false;
 			console.error(ex);
@@ -77,14 +82,14 @@ this.getSessionData = function(key){
 };
 /**
  * @public
- * @param {string} key
- * @param {string|boolean} target
+ * @param {string} _key
+ * @param {string|boolean} _tgt
  * @return {boolean} Is same or not
  */
-this.checkSessionData = function(key, target){
+this.checkSessionData = function(_key, _tgt){
 	/** @type {string|boolean|null} */
-	var data = this.getSessionData(key);
-	if(data && target == data){
+	var dat = this.getSessionData(_key);
+	if(dat && _tgt == dat){
 		return true;
 	}else{
 		return false;
@@ -92,14 +97,14 @@ this.checkSessionData = function(key, target){
 };
 /**
  * @public
- * @param {string} key
- * @param {string|boolean} data
+ * @param {string} _key
+ * @param {string|boolean} _dat
  * @return {boolean} Set ok or not
  */
-this.setSessionData = function(key, data){
+this.setSessionData = function(_key, _dat){
 	if(this.sessionOk){
 		try{
-			window.sessionStorage.setItem(key, data.toString());
+			window.sessionStorage.setItem(_key, _dat.toString());
 			return true;
 		}catch(ex){
 			this.sessionOk = false;
@@ -110,13 +115,13 @@ this.setSessionData = function(key, data){
 };
 /**
  * @public
- * @param {string} key
+ * @param {string} _key
  * @return {boolean} Remove ok or not
  */
-this.removeSessionData = function(key){
+this.removeSessionData = function(_key){
 	if(this.sessionOk){
 		try{
-			window.sessionStorage.removeItem(key);
+			window.sessionStorage.removeItem(_key);
 			return true;
 		}catch(ex){
 			this.sessionOk = false;
@@ -132,6 +137,8 @@ this.restoreFromSession = function(){
 	/** @type {?string} */
 	var lang = this.getSessionData("language");
 	/** @type {?string} */
+	var rurl = this.getSessionData("relay_url");
+	/** @type {?string} */
 	var drv = this.getSessionData("drive");
 	/** @type {?string} */
 	var flg = this.getSessionData("skipLogin");
@@ -139,6 +146,10 @@ this.restoreFromSession = function(){
 	if(lang){
 		this.sesdat.language = lang;
 		this.setLanguage(lang);
+	}
+	if(rurl){
+		this.sesdat.relayUrl = rurl;
+		this.setRelayUrl(rurl);
 	}
 	if(drv){
 		this.sesdat.drive = drv;
@@ -169,18 +180,13 @@ this.getDrive = function(trySession){
  * @return {boolean} Set ok or not
  */
 this.setDrive = function(drvnm){
-	this.setSessionData("drive", drvnm);
-	if(this.datas){
-		if(this.datas["drive"] != drvnm){
-			this.datas["drive"] = drvnm;
-			if(!this.datas[drvnm]){
-				this.datas[drvnm] = new Object();
-			}
-			this.needSave = true;
-			return true;
-		}else{
-			return false;
+	if(this.setSettingData("drive", drvnm)){
+		if(!this.datas[drvnm]){
+			this.datas[drvnm] = new Object();
 		}
+		return true;
+	}else if(this.datas){
+		return false;
 	}else{
 		return true;
 	}
@@ -225,15 +231,27 @@ this.getLanguage = function(trySession){
  * @return {boolean} Set ok or not
  */
 this.setLanguage = function(lang){
-	this.setSessionData("language", lang);
-	if(this.datas){
-		if(this.datas["language"] != lang){
-			this.datas["language"] = lang;
-			this.needSave = true;
-			return true;
-		}
+	return this.setSettingData("language", lang);
+};
+
+/**
+ * @public
+ * @return {string} Relay Url
+ */
+this.getRelayUrl = function(){
+	var rurl = /** @type {?string} */ (this.getValue("relay_url"));
+	if(!rurl && this.sesdat){
+		rurl = this.sesdat.relayUrl;
 	}
-	return false;
+	return rurl ? rurl : "";
+};
+/**
+ * @public
+ * @param {string} rurl
+ * @return {boolean} Set ok or not
+ */
+this.setRelayUrl = function(rurl){
+	return this.setSettingData("relay_url", rurl);
 };
 
 /**
@@ -528,6 +546,32 @@ this.processData = function(datafunc, endfunc){
 			datafunc(a_store);
 		}
 	};
+};
+/**
+ * @private
+ * @param {string} _key
+ * @param {string} _value
+ * @return {boolean} Set ok or not
+ */
+this.setSettingData = function(_key, _value){
+	if(_value){
+		this.setSessionData(_key, _value);
+		if(this.datas){
+			if(this.datas[_key] != _value){
+				this.datas[_key] = _value;
+				this.needSave = true;
+				return true;
+			}
+		}
+	}else{
+		this.removeSessionData(_key);
+		if(this.datas && this.datas[_key]){
+			delete this.datas[_key];
+			this.needSave = true;
+			return true;
+		}
+	}
+	return false;
 };
 /**
  * @private

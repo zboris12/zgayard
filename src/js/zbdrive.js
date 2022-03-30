@@ -25,12 +25,11 @@ ZbDriveDefine.prototype.getName = function(){
  * @public
  * @param {ZbLocalStorage} _storage
  * @param {string} _authUrl
- * @param {string=} _relayUrl
  * @return {ZbDrive}
  * @suppress {checkTypes}
  */
-ZbDriveDefine.prototype.newDriveInstance = function(_storage, _authUrl, _relayUrl){
-	return new this._drvtyp(_storage, _authUrl, _relayUrl);
+ZbDriveDefine.prototype.newDriveInstance = function(_storage, _authUrl){
+	return new this._drvtyp(_storage, _authUrl);
 };
 /**
  * @public
@@ -50,12 +49,10 @@ ZbDriveDefine.prototype.isTarget = function(uparams){
  * @constructor
  * @param {ZbLocalStorage} _storage
  * @param {string} _authUrl
- * @param {string=} _relayUrl
  */
-function ZbDrive(_storage, _authUrl, _relayUrl){
-	/** @public @type {string|undefined} */
-	this.relayUrl = _relayUrl;
-
+function ZbDrive(_storage, _authUrl){
+	/** @private @type {?string} */
+	this.relayUrl = null;
 	/** @private @type {string} */
 	this.authUrl = _authUrl;
 	/** @private @type {?string} */
@@ -72,9 +69,8 @@ function ZbDrive(_storage, _authUrl, _relayUrl){
 	 * @protected
 	 * @param {ZbLocalStorage} _storage
 	 * @param {string} _authUrl
-	 * @param {string=} _relayUrl
 	 */
-	this.super = function(_storage, _authUrl, _relayUrl){};
+	this.super = function(_storage, _authUrl){};
 }
 
 /** @const {string} */
@@ -88,6 +84,24 @@ ZbDrive.ITMTYP_FILE = "2";
  * @return {string}
  */
 ZbDrive.prototype.getId = function(){};
+
+/**
+ * @public
+ * @return {string}
+ */
+ZbDrive.prototype.getRelayUrl = function(){
+	if(this.relayUrl == null){
+		this.relayUrl = this.storage.getRelayUrl();
+	}
+	return this.relayUrl;
+};
+/**
+ * @public
+ * @param {string} rurl
+ */
+ZbDrive.prototype.setRelayUrl = function(rurl){
+	this.relayUrl = rurl;
+};
 
 /**
  * @public
@@ -171,14 +185,15 @@ ZbDrive.prototype.getToken = function(){
 };
 /**
  * @public
+ * @param {function(string=)} func function(a_errmsg){}
  * @param {boolean=} reuseToken
- * @return {?string} Error message
  */
-ZbDrive.prototype.login = function(reuseToken){
+ZbDrive.prototype.login = function(func, reuseToken){
 	if(reuseToken){
 		this.accessToken = this.storage.getSessionData("access_token");
 		if(this.accessToken){
-			return null;
+			func();
+			return;
 		}
 	}
 
@@ -194,10 +209,12 @@ ZbDrive.prototype.login = function(reuseToken){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				return "Unauthorized access to this url.";
+				func("Unauthorized access to this url.");
+				return;
 			}
 		}
-		return null;
+		func();
+		return;
 	}else if(uparams && uparams["code"]){
 		opt.code = uparams["code"];
 	}else if(canSkipLogin){
@@ -209,46 +226,48 @@ ZbDrive.prototype.login = function(reuseToken){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				return "Unauthorized access to this url.";
+				func("Unauthorized access to this url.");
+				return;
 			}
 		}
-		var ret = this.authorize(opt);
-		if(ret && ret["token_type"] && ret["access_token"]){
-			this.setAccessToken(ret["token_type"], ret["access_token"]);
-			if(canSkipLogin && opt.code && ret["refresh_token"]){
-				this.storage.saveDriveData("refresh_token", ret["refresh_token"]);
+		this.authorize(opt, function(a_ret){
+			if(a_ret && a_ret["token_type"] && a_ret["access_token"]){
+				this.setAccessToken(a_ret["token_type"], a_ret["access_token"]);
+				if(canSkipLogin && opt.code && a_ret["refresh_token"]){
+					this.storage.saveDriveData("refresh_token", a_ret["refresh_token"]);
+				}
+				if(a_ret["logout"]){
+					this.storage.setSessionData("logout_url", a_ret["logout"]);
+				}
+				func();
+			}else if(a_ret && a_ret["error"]){
+				func("["+a_ret["error"]+"] "+a_ret["error_description"]);
+			}else{
+				func("Unknown error occured when doing authorization.");
 			}
-			if(ret["logout"]){
-				this.storage.setSessionData("logout_url", ret["logout"]);
-			}
-		}else if(ret && ret["error"]){
-			return "["+ret["error"]+"] "+ret["error_description"];
-		}else{
-			return "Unknown error occured when doing authorization.";
-		}
+		}.bind(this));
 	}else{
 		if(canSkipLogin){
 			opt.needCode = true;
 		}
-		var ret = this.authorize(opt);
-		if(ret && ret["url"]){
-			if(ret["state"]){
-				if(!this.storage.setSessionData("login_state", ret["state"])){
-					ret["state"] = this.getId();
+		this.authorize(opt, function(a_ret){
+			if(a_ret && a_ret["url"]){
+				if(a_ret["state"]){
+					if(!this.storage.setSessionData("login_state", a_ret["state"])){
+						a_ret["state"] = this.getId();
+					}
 				}
+				if(a_ret["logout"]){
+					this.storage.setSessionData("logout_url", a_ret["logout"]);
+				}
+				window.location.href = a_ret["url"].concat("&state=".concat(encodeURIComponent(a_ret["state"])));
+			}else if(a_ret && a_ret["error"]){
+				func("["+a_ret["error"]+"] "+a_ret["error_description"]);
+			}else{
+				func("Unknown error occured when doing authorization.");
 			}
-			if(ret["logout"]){
-				this.storage.setSessionData("logout_url", ret["logout"]);
-			}
-			window.location.href = ret["url"].concat("&state=".concat(encodeURIComponent(ret["state"])));
-			return "Need signin.";
-		}else if(ret && ret["error"]){
-			return "["+ret["error"]+"] "+ret["error_description"];
-		}else{
-			return "Unknown error occured when doing authorization.";
-		}
+		}.bind(this));
 	}
-	return null;
 };
 /**
  * @public
@@ -446,6 +465,15 @@ ZbDrive.prototype.prepareReader = function(opt, func){};
 
 /**
  * @public
+ * @param {XMLHttpRequest} ajax
+ * @param {string=} auth
+ */
+ZbDrive.prototype.setReadReqHeader = function(ajax, auth){
+	//Defaut to do nothing
+};
+
+/**
+ * @public
  * @param {DriveReaderOption} opt
  * @return {ZbDriveReader}
  */
@@ -577,7 +605,7 @@ ZbDrive.prototype.setAccessToken = function(type, token){
 /**
  * @private
  * @param {Object<string, (string)>} opt
- * @return {*}
+ * @param {function(*)} func
  *
  * opt: {
  *   (optional)clientId: "xxxxx",
@@ -588,7 +616,7 @@ ZbDrive.prototype.setAccessToken = function(type, token){
  *   (optional)needCode: true,
  * }
  */
-ZbDrive.prototype.authorize = function(opt){
+ZbDrive.prototype.authorize = function(opt, func){
 	if(!opt){
 		throw new Error("Options are not specified when auth onedrive.");
 	}
@@ -616,20 +644,23 @@ ZbDrive.prototype.authorize = function(opt){
 //		throw new Error("Code or refresh token must be specified when auth onedrive.");
 	}
 
-	var ret = null;
 	/** @type {XMLHttpRequest} */
 	var ajax = new XMLHttpRequest();
-	ajax.open("POST", this.authUrl, false); //同期
+	ajax.open("POST", this.authUrl, true);
 	ajax.withCredentials = true;
-	ajax.send(formData);
-	if(ajax.readyState == 4){
-		if(ajax.status == 200){
-			ret = JSON.parse(ajax.responseText);
-		}else{
-			throw new Error(ajax.responseText+" ("+ajax.status+")");
+	ajax.onload = function(/** @type {Event} */a_evt){
+		var a_x = a_evt.target;
+		if (a_x.readyState == 4){
+			if(a_x.status == 200){
+				if(func){
+					func(JSON.parse(a_x.responseText));
+				}
+			}else{
+				throw new Error(a_x.responseText+" ("+a_x.status+")");
+			}
 		}
-	}
-	return ret;
+	};
+	ajax.send(formData);
 };
 /**
  * @private
@@ -642,9 +673,14 @@ ZbDrive.prototype.retryAjaxWithLogin = function(_opt){
 	}else{
 		return;
 	}
-	this.login();
-	_opt._auth = /** @type {string} */(this.accessToken);
-	this.sendAjax(_opt);
+	this.login(/** @type {function(string=)} */(function(a_err){
+		if(a_err){
+			console.error(a_err);
+		}else{
+			_opt._auth = /** @type {string} */(this.accessToken);
+			this.sendAjax(_opt);
+		}
+	}.bind(this)));
 };
 
 /**
@@ -1053,16 +1089,12 @@ function ZbDriveReader(_opt, _drv){
 			/** @type {XMLHttpRequest} */
 			var ajax = new XMLHttpRequest();
 			if(this.tryLevel >= 10){
-				ajax.open("GET", /** @type {string} */(this.drive.relayUrl), true);
+				ajax.open("GET", this.drive.getRelayUrl(), true);
 				ajax.setRequestHeader("Zb-Url", this.url);
 			}else{
 				ajax.open("GET", this.url, true);
 			}
-			if(this.opt._auth){
-				ajax.setRequestHeader("Authorization", this.opt._auth);
-			}else{
-				ajax.setRequestHeader("Authorization", this.drive.getToken());
-			}
+			this.drive.setReadReqHeader(ajax, this.opt._auth);
 //			if(this.pos > 0 || pos1 < this.size - 1){
 				ajax.setRequestHeader("Range", "bytes="+this.pos+"-"+pos1);
 //			}
@@ -1113,18 +1145,23 @@ function ZbDriveReader(_opt, _drv){
 					}else if(a_x.status == 401 && this.retryAuth == 1){
 						console.log("Retry auth.");
 						this.retryAuth = 2;
-						this.drive.login();
-						if(this.opt._auth){
-							delete this.opt._auth;
-						}
-						ajaxGet();
+						this.drive.login(/** @type {function(string=)} */(function(a_err){
+							if(a_err){
+								console.error(a_err);
+							}else{
+								if(this.opt._auth){
+									delete this.opt._auth;
+								}
+								ajaxGet();
+							}
+						}.bind(this)));
 					}else{
 						throw new Error(a_x.responseText+" ("+a_x.status+")");
 					}
 				}
 			}.bind(this);
 			ajax.onerror = function(a_evt){
-				if(this.tryLevel == 0 && this.drive.relayUrl){
+				if(this.tryLevel == 0 && this.drive.getRelayUrl()){
 					this.tryLevel = 10;
 					ajaxGet();
 				}else if(this.tryLevel == 1 || this.tryLevel == 11){
