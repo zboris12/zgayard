@@ -1044,6 +1044,27 @@ function playVedio(vdo, fid){
 }
 /**
  * Event called from html
+ * In the case of google chrome, the data source url may be corrupted, so need to recreate it.
+ * @param {Event} errevt
+ */
+function resetVideoSrc(errevt){
+	var vdo = /** @type {Element} */(errevt.target);
+	var vstrm = /** @type {VideoStream} */(vdo.vstrm);
+	if(vstrm){
+		if(vstrm.detailedError){
+			return;
+		}
+	}else{
+		return;
+	}
+	if(vstrm._elemWrapper && vstrm._elemWrapper._mediaSource){
+		errevt.stopImmediatePropagation();
+		vdo.src = window.URL.createObjectURL(vstrm._elemWrapper._mediaSource);
+	}
+}
+
+/**
+ * Event called from html
  */
 function hideGround(){
 	document.getElementById("divGround").style.display = "";

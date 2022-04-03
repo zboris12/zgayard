@@ -32,14 +32,16 @@ function getLocalStorageAuth($keyOnly=false){
 		$newkey = true;
 	}
 	if($localhost){
+		$samesite = "Strict";
 		$secure = false;
 	}else{
+		$samesite = "None";
 		$secure = true;
 	}
 	if(version_compare(phpversion(), "7.3") < 0){
-		setcookie("lskey", $lskey64, time() + (86400 * COOKIE_MAXAGE), "/; SameSite=None", "", $secure, true);
+		setcookie("lskey", $lskey64, time() + (86400 * COOKIE_MAXAGE), "/; SameSite=".$samesite, "", $secure, true);
 	}else{
-		setcookie("lskey", $lskey64, array("expires" => time() + (86400 * COOKIE_MAXAGE), "path" => "/", "samesite" => "None", "domain" => "", "secure" => $secure, "httpOnly" => true));
+		setcookie("lskey", $lskey64, array("expires" => time() + (86400 * COOKIE_MAXAGE), "path" => "/", "samesite" => $samesite, "domain" => "", "secure" => $secure, "httpOnly" => true));
 	}
 	if($keyOnly){
 		return $lskey;

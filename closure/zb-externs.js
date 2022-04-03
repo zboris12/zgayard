@@ -27,11 +27,22 @@ ZbSubReadable.prototype.super;
 ZbSubReadable.prototype.superCall;
 
 /**
+ * @typedef
+ * {{
+ *    _mediaSource: MediaSource,
+ * }}
+ */
+var MediaElementWrapper;
+
+/**
  * @constructor
  * @param {VDStreamWrapper} strm
  * @param {Element} vdo
  */
-function VideoStream(strm, vdo){};
+function VideoStream(strm, vdo){
+	/** @public @type {MediaElementWrapper} */
+	this._elemWrapper;
+};
 
 /** @interface */
 function VDStreamWrapper(){

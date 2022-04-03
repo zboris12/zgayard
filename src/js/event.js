@@ -159,6 +159,7 @@ window.addEventListener("load", function(){
 	ele.addEventListener("ended", function(){
 		clickItem(2, true);
 	});
+	ele.addEventListener("error", resetVideoSrc);
 	eles = rows[2].getElementsByTagName("input");
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
