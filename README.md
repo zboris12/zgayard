@@ -13,7 +13,7 @@ And I use this name to hope the merits from this application will be dedicated t
 ## NOTE: it is still in development
 
 * The UI is still very simple and ugly.
-* Only support Microsoft Onedrive now.
+* Only support a few online storages now.
 
 ## Main features
 

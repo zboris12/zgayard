@@ -16,6 +16,15 @@ var TableBody;
  * }}
  */
 var AjaxOption;
+/**
+ * @typedef
+ * {{
+ *    _fid: string,
+ *    _folder: string,
+ *    _time: string,
+ * }}
+ */
+var PlayedInfo;
 
 /**
  * @typedef

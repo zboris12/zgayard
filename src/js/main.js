@@ -131,12 +131,49 @@ function loadRecent(){
 	/** @type {Element} */
 	var div = document.getElementById("divHistory");
 	div.style.display = "";
-	/** @type {Object<string, string>} */
-	var rct = g_storage.getRecent();
-	if(!rct){
+	g_recents = g_storage.getRecent();
+	if(!g_recents){
 		return;
 	}
+	/** @type {Element} */
+	var div2 = div.getElementsByTagName("div")[0];
 
+	/** @type {function(number)} */
+	var showRecent = function(a_idx){
+		if(a_idx >= g_recents.length){
+			if(g_recents.length > 0){
+				div.style.display = "block";
+			}
+			return;
+		}
+		/** @type {PlayedInfo} */
+		var a_rct = g_recents[a_idx];
+		// Get recent item.
+		g_drive.getItem({
+			/** @type {string} */
+			_uid: a_rct._fid,
+			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
+			_doneFunc: function(b_err, b_dat){
+				if(b_err){
+					return;
+				}
+				if(b_dat._parentId){
+					a_rct._folder = b_dat._parentId;
+				}
+				setRecent(a_idx, decryptFname(b_dat._name), div2);
+				showRecent(a_idx+1);
+			},
+		});
+	};
+
+	showRecent(0);
+}
+/**
+ * @param {number} idx
+ * @param {string} nm
+ * @param {Element=} div
+ */
+function setRecent(idx, nm, div){
 	/** @type {function((number|string)):string} */
 	var formaTime = function(a_seconds){
 		/** @type {number} */
@@ -159,28 +196,49 @@ function loadRecent(){
 		return a_arr.join(":");
 	};
 
-	// Get recent item.
-	g_drive.getItem({
-		/** @type {string} */
-		_uid: rct["fid"],
-		/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-		_doneFunc: function(a_err, a_dat){
-			if(!a_err){
-				/** @type {Element} */
-				var a_lnk = div.getElementsByTagName("a")[0];
-				a_lnk.innerText = decryptFname(a_dat._name);
-				a_lnk.setAttribute("fid", a_dat._id);
-				if(a_dat._parentId){
-					a_lnk.setAttribute("parentId", a_dat._parentId);
-				}
-				if(rct["time"]){
-					a_lnk.setAttribute("time", rct["time"]);
-					a_lnk.innerText = a_lnk.innerText.concat(" [").concat(formaTime(rct["time"])).concat("]");
-				}
-				div.style.display = "block";
-			}
-		},
-	});
+	if(!div){
+		div = document.getElementById("divHistory").getElementsByTagName("div")[0];
+	}
+
+	/** @type {Element} */
+	var lnk = null;
+	/** @type {PlayedInfo} */
+	var pif = g_recents[idx];
+	/** @type {!NodeList<!Element>} */
+	var eles = div.getElementsByTagName("p");
+	if(idx < eles.length){
+		lnk = eles[idx].getElementsByTagName("a")[0];
+
+	}else{
+		/** @type {Element} */
+		var p = document.createElement("p");
+		/** @type {Element} */
+		var span = document.createElement("span");
+		span.title = window["msgs"]["spanDelHistory"];
+		span.appendChild(createSvg("cmulti", "red"));
+		span.addEventListener("click", clickDeleteRecent);
+		p.appendChild(span);
+		lnk = document.createElement("a");
+		lnk.href = "#";
+		lnk.addEventListener("click", clickRecent);
+		p.appendChild(lnk);
+		span = document.createElement("span");
+		span.title = window["msgs"]["spanPlayNext"];
+		span.appendChild(createSvg("next", "fblue"));
+		span.addEventListener("click", clickRecentNext);
+		p.appendChild(span);
+		div.appendChild(p);
+	}
+
+	lnk.innerText = nm;
+	lnk.setAttribute("fid", pif._fid);
+	if(pif._folder){
+		lnk.setAttribute("parentId", pif._folder);
+	}
+	if(pif._time){
+		lnk.setAttribute("time", pif._time);
+		lnk.innerText = lnk.innerText.concat(" [").concat(formaTime(pif._time)).concat("]");
+	}
 }
 /**
  * @param {boolean=} reload
@@ -377,6 +435,7 @@ function addItem(tby, itm, fonly){
 				b_span.appendChild(createSvg("file", "fyellow"));
 			}
 		}
+		b_span.addEventListener("click", clickIcon);
 		b_td.appendChild(b_span);
 	}
 	b_link.innerText = b_fnm;
@@ -402,6 +461,19 @@ function addItem(tby, itm, fonly){
 		b_tr.appendChild(b_td);
 	}
 	tby.appendChild(b_tr);
+}
+/**
+ * @param {Event} evt
+ */
+function clickIcon(evt){
+	var btn = /** @type {Element} */(getElement(evt));
+	if(btn.tagName != "SPAN"){
+		btn = findParent(btn, "SPAN");
+	}
+	var chk = previousElement(btn, "INPUT");
+	if(chk){
+		chk.click();
+	}
 }
 /**
  * Event called from html
@@ -959,7 +1031,7 @@ function viewFile(fid, fnm){
 	tbdy.rows[2].style.display = "";
 	if(vdoType){
 		spanTitle.innerText = fnm;
-		playVedio(vdo, fid);
+		playVedio(vdo, fid, fnm);
 		vdo.style.display = "";
 		span.style.display = "none";
 		tbdy.rows[1].style.display = "none";
@@ -1020,8 +1092,9 @@ function imageLoaded(){
 /**
  * @param {Element} vdo
  * @param {string} fid
+ * @param {string} fnm
  */
-function playVedio(vdo, fid){
+function playVedio(vdo, fid, fnm){
 	/** @type {ZBReader} */
 	var reader = g_drive.createReader({
 		_id: fid,
@@ -1029,6 +1102,8 @@ function playVedio(vdo, fid){
 	const VdoStrm = /** @type {typeof VideoStream} */(zb_require("videostream"));
 	/** @type {string} */
 	vdo.fid = fid;
+	/** @type {string} */
+	vdo.fnm = fnm;
 	/** @type {ZbStreamWrapper} */
 	vdo.wrapper = new ZbStreamWrapper({
 		_decrypt: true,
@@ -1083,7 +1158,33 @@ function endVideoStream(tbdy){
 	/** @type {Element} */
 	var vdo = tbdy.rows[0].cells[1].getElementsByTagName("video")[0];
 	if(vdo.fid){
-		g_storage.saveRecent(vdo.fid, vdo.currentTime);
+		/** @type {string} */
+		var parentid = g_paths[g_paths.length - 1]._id;
+		/** @type {string} */
+		var fnm = vdo.fnm;
+		/** @type {number} */
+		var i = 0;
+		if(!g_recents){
+			g_recents = new Array();
+		}
+		for(i=0; i<g_recents.length; i++){
+			if(g_recents[i]._folder == parentid){
+				g_recents[i]._fid = vdo.fid;
+				g_recents[i]._time = vdo.currentTime;
+				break;
+			}
+		}
+		if(i == g_recents.length){
+			g_recents.push({
+				_fid: vdo.fid,
+				_folder: parentid,
+				_time: vdo.currentTime,
+			});
+		}
+		delete vdo.fid;
+		delete vdo.fnm;
+		g_storage.saveRecent(g_recents[i], i);
+		setRecent(i, fnm);
 	}
 	vdo.style.display = "none";
 	if(vdo.vstrm){
@@ -1109,7 +1210,9 @@ function clickRecent(evt){
 function clickRecentNext(evt){
 	var btn = /** @type {Element} */(getElement(evt));
 	/** @type {Element} */
-	var lnk = previousElement(btn, "a");
+	var p = findParent(btn, "P");
+	/** @type {Element} */
+	var lnk = p.getElementsByTagName("a")[0];
 	playRecent(lnk, true);
 }
 /**
@@ -1213,10 +1316,31 @@ function restoreTime(evt){
 	var ctime = vdo.getAttribute("ctime");
 	if(ctime){
 		vdo.removeAttribute("ctime");
-		/** @type {Element} */
-		var lnk = document.getElementById("divHistory").getElementsByTagName("a")[0];
-		if(lnk.getAttribute("fid") == vdo.fid){
-			vdo.currentTime = ctime;
+		vdo.currentTime = ctime;
+	}
+}
+/**
+ * @param {Event} evt
+ */
+function clickDeleteRecent(evt){
+	var btn = /** @type {Element} */(getElement(evt));
+	/** @type {Element} */
+	var p = findParent(btn, "P");
+	/** @type {Element} */
+	var div = findParent(p, "DIV");
+	/** @type {!NodeList<!Element>} */
+	var eles = div.getElementsByTagName("p");
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		if(eles[i] == p){
+			break;
 		}
+	}
+	p.remove();
+	g_recents.splice(i, 1);
+	g_storage.removeRecent(i);
+	if(g_recents.length == 0){
+		findParent(div, "DIV").style.display = "";
 	}
 }

@@ -100,6 +100,17 @@ window.addEventListener("load", function(){
 		case "btnDelfs":
 			ele.addEventListener("click", deleteItems);
 			break;
+		case "btnHistory":
+			ele.addEventListener("click", /** function(Event) */function(a_evt){
+				/** @type {Element} */
+				var a_div = document.getElementById("divHistory");
+				if(a_div.style.display == "block"){
+					a_div.style.display = "";
+				}else{
+					a_div.style.display = "block";
+				}
+			});
+			break;
 		case "btnNewFldr":
 			ele.addEventListener("click", newFolder);
 			break;
@@ -116,18 +127,6 @@ window.addEventListener("load", function(){
 
 	ele = document.getElementById("tblQueue").getElementsByTagName("th")[0];
 	ele.getElementsByTagName("label")[0].addEventListener("click", hideQueueRows);
-
-	ele = document.getElementById("divHistory");
-	ele.getElementsByTagName("a")[0].addEventListener("click", clickRecent);
-	eles = ele.getElementsByTagName("input");
-	for(i=0; i<eles.length; i++){
-		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
-		case "btnPHNext":
-			ele.addEventListener("click", clickRecentNext);
-			break;
-		}
-	}
 
 	document.getElementById("divItemenu").addEventListener("click", clickMenu);
 

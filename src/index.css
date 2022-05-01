@@ -17,6 +17,10 @@ svg.white {
 svg.folder {
 	fill: #FFD679;
 }
+svg.fblue {
+	stroke: #4B00EE;
+	fill: #4B00EE;
+}
 svg.fred {
 	stroke: #ffffff;
 	fill: #ED1C24;
@@ -119,6 +123,14 @@ a, input {
 #chkAll {
 	position: absolute;
 	left: 13px;
+}
+
+#divAction div {
+	margin-top: 9px;
+	margin-bottom: 9px;
+}
+#divAction input {
+	margin-left: 5px;
 }
 
 #tblQueue th {
@@ -228,6 +240,16 @@ a, input {
 	background-color: #fff;
 	border: solid 1px #000;
 	border-radius: 5px;
+}
+
+#divHistory p {
+	margin: 0;
+	padding-left: 5px;
+}
+#divHistory p span {
+	cursor: pointer;
+	margin-left: 5px;
+	margin-right: 5px;
 }
 
 #divTos {

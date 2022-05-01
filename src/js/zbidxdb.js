@@ -8,7 +8,7 @@ this.LSNM = "zgayard1946";
 
 /** @private @type {boolean} */
 this.sessionOk = true;
-/** @private @type {Object<string, string|Object<string, string>>} */
+/** @private @type {Object<string, *>} */
 this.datas = null;
 /** @private @type {Object<string, string>} */
 this.sesdat = null;
@@ -16,6 +16,8 @@ this.sesdat = null;
 this.needSave = false;
 /** @private @type {boolean} */
 this.skipLogin = false;
+/** @private @type {number} */
+this.recentIdx = -1;
 
 /**
  * @public
@@ -487,30 +489,96 @@ this.clearLogInfo = function(func){
 };
 /**
  * @public
- * @param {string} fid
- * @param {string} ctime
+ * @param {PlayedInfo} pif
+ * @param {number} pos
  * @param {function()=} func function(){}
+ *
+ * this.getValue("recent") is 
+ * Array<{{
+ *  "drive": string,
+ *  "root": string,
+ *  "played": Array<{{
+ *   "fid": string,
+ *   "time": string,
+ *  }}>,
+ * }}>
  */
-this.saveRecent = function(fid, ctime, func){
+this.saveRecent = function(pif, pos, func){
+	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
+	if(!lst){
+		lst = new Array();
+	}
+	if(this.recentIdx < 0){
+		lst.push({
+			"drive": /** @type {string} */ (this.getValue("drive")),
+			"root": this.getDriveData("root"),
+			"played": new Array(),
+		});
+		this.recentIdx = lst.length - 1;
+	}
+	/** @type {Object<string, *>} */
+	var hh = lst[this.recentIdx];
 	/** @type {Object<string, string>} */
-	var val = {
-		"drive": /** @type {string} */ (this.getValue("drive")),
-		"root": this.getDriveData("root"),
-		"fid": fid,
-		"time": ctime,
+	var obj = {
+		"fid": pif._fid,
+		"time": pif._time,
 	};
-	this.saveData("recent", val, func);
+	if(pos >= 0 && pos < hh["played"].length){
+		hh["played"][pos] = obj;
+	}else{
+		hh["played"].push(obj);
+	}
+	this.saveData("recent", lst, func);
 };
 /**
  * @public
- * @return {Object<string, string>}
+ * @return {Array<PlayedInfo>}
  */
 this.getRecent = function(){
-	var val = /** @type {Object<string, string>} */(this.getValue("recent"));
-	if(val && val["drive"] == this.getValue("drive") && val["root"] == this.getDriveData("root")){
-		return val;
+	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
+	if(lst && this.recentIdx < 0){
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<lst.length; i++){
+			/** @type {Object<string, *>} */
+			var hh = lst[i];
+			if(hh["drive"] == this.getValue("drive") && hh["root"] == this.getDriveData("root")){
+				this.recentIdx = i;
+				break;
+			}
+		}
+	}
+	if(this.recentIdx >= 0){
+		/** @type {Array<PlayedInfo>} */
+		var retlst = new Array();
+		lst[this.recentIdx]["played"].forEach(function(a_ele){
+			/** @type {PlayedInfo} */
+			var a_pif = {
+				_fid: a_ele["fid"],
+				_folder: "",
+				_time: a_ele["time"],
+			};
+			retlst.push(a_pif);
+		});
+		return retlst;
 	}else{
 		return null;
+	}
+};
+/**
+ * @public
+ * @param {number} pos
+ * @param {function()=} func function(){}
+ */
+this.removeRecent = function(pos, func){
+	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
+	if(!lst || this.recentIdx < 0){
+		return;
+	}
+	var plst = /** @type {Array<Object<string, string>>} */(lst[this.recentIdx]["played"]);
+	if(pos < plst.length){
+		plst.splice(pos, 1);
+		this.saveData("recent", lst, func);
 	}
 };
 
@@ -576,7 +644,7 @@ this.setSettingData = function(_key, _value){
 /**
  * @private
  * @param {!string} key
- * @return {string|Object<string, string>|null}
+ * @return {*}
  */
 this.getValue = function(key){
 	if(this.datas && this.datas[key]){
@@ -588,7 +656,7 @@ this.getValue = function(key){
 /**
  * @private
  * @param {string} key
- * @param {string|Object<string, string>} value
+ * @param {*} value
  * @param {function()=} func function(){}
  */
 this.saveData = function(key, value, func){

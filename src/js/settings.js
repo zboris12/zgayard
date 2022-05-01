@@ -12,6 +12,8 @@ var g_keycfg = null;
 var g_paths = new Array();
 /** @type {number} */
 var g_hdlNotify = 0;
+/** @type {Array<PlayedInfo>} */
+var g_recents = new Array();
 
 /**
  * @param {*} msg
