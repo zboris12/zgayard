@@ -131,7 +131,7 @@ window.addEventListener("load", function(){
 	document.getElementById("divItemenu").addEventListener("click", clickMenu);
 
 	ele = document.getElementById("divNewName");
-	ele.getElementsByTagName("input")[0].addEventListener("keypress", keypressNewname);
+	ele.getElementsByTagName("input")[0].addEventListener("keyup", keyupNewname);
 	ele.getElementsByTagName("span")[0].addEventListener("click", admitRename);
 
 	ele = document.getElementById("divGround").firstElementChild;

@@ -208,6 +208,11 @@ a, input {
 	min-width: 200px;
 	text-align: left;
 }
+#tblFolder tbody:first-of-type {
+	display: block;
+	max-height: 500px;
+	overflow-y: auto;
+}
 #tblFolder td {
 	padding-left: 5px;
 }

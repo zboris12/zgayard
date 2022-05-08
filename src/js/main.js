@@ -742,6 +742,7 @@ function clickMenu(){
 		txt.style.width = rect.width + "px";
 		txt.style.height = rect.height + "px";
 		div1.style.display = "block";
+		txt.focus();
 		return;
 	case "btnMove":
 		showMove(lnk.getAttribute("uid"));
@@ -770,13 +771,16 @@ function showMove(uid){
  * Event called from html
  * @return {boolean}
  */
-function keypressNewname(){
+function keyupNewname(){
 	/** @type {Event} */
 	var evt = window.event;
-	if(evt.keyCode === 13){
+	if(evt.keyCode === 13){ // Enter Key
 		if(evt.shiftKey || evt.ctrlKey || evt.altKey){
 			return true;
 		}
+	}else if(evt.keyCode === 27){ // Esc Key
+		hideGround();
+		return false;
 	}else{
 		return true;
 	}
