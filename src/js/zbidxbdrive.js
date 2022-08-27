@@ -30,8 +30,6 @@ function IdxDbReader(_opt, _drv){
 	this.size = 0;
 	/** @private @type {number} */
 	this.pos = 0;
-	/** @private @type {boolean} */
-	this.prepared = false;
 
 	/**
 	 * current data (a bytes array)
@@ -74,15 +72,6 @@ function IdxDbReader(_opt, _drv){
 	 * @param {function()=} cb
 	 */
 	this.prepare = function(offset, cb){
-		console.log("offset:"+offset);
-		if(this.prepared){
-			this.checkOffset(offset);
-			if(cb){
-				cb();
-			}
-			return;
-		}
-
 		this.drive.prepareReader(this.opt, function(a_dat, a_res){
 			if(a_dat){
 				this.size = a_dat._size;
@@ -92,7 +81,6 @@ function IdxDbReader(_opt, _drv){
 						return c_a._idx - c_b._idx;
 					});
 					this.checkOffset(offset);
-					this.prepared = true;
 					if(cb){
 						cb();
 					}
@@ -133,7 +121,6 @@ function IdxDbReader(_opt, _drv){
 	 * @param {number=} size
 	 */
 	this.read = function(size){
-		console.log("read:"+size);
 		if(this.curdat){
 			this.readData(size);
 		}else{
@@ -357,6 +344,14 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 */
 	this.login = function(func, reuseToken){
 		this.checkDb(func);
+	};
+
+	/**
+	 * @override
+	 * @public
+	 */
+	this.logout = function(){
+		location.reload();
 	};
 
 	/**

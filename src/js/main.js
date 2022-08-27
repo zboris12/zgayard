@@ -1430,10 +1430,6 @@ function imageLoaded(){
  * @param {string} fnm
  */
 function playVedio(vdo, fid, fnm){
-	/** @type {ZBReader} */
-	var reader = g_drive.createReader({
-		_id: fid,
-	});
 	const VdoStrm = /** @type {typeof VideoStream} */(zb_require("videostream"));
 	/** @type {string} */
 	vdo.fid = fid;
@@ -1443,7 +1439,11 @@ function playVedio(vdo, fid, fnm){
 	vdo.wrapper = new ZbStreamWrapper({
 		_decrypt: true,
 		_keycfg: g_keycfg,
-		_reader: reader,
+		_reader: function(){
+			return g_drive.createReader({
+				_id: fid,
+			});
+		},
 	});
 //	vdo.addEventListener("error", function(err){
 //		console.error(err);

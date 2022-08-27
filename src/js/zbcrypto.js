@@ -457,7 +457,11 @@ function ZbCrypto(_info, _opts){
 		this.encrypt = false;
 	}
 	if(_info._reader){
-		this.reader = _info._reader;
+		if(typeof _info._reader == "function"){
+			this.reader = _info._reader();
+		}else{
+			this.reader = _info._reader;
+		}
 	}else{
 		throw new Error("reader must be specified.");
 	}
