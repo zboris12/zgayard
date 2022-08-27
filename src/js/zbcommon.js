@@ -1,22 +1,141 @@
 /**
- * Get target element.
+ * Get Attribute Infomation.
  *
- * @param {string|Event|EventTarget=} e Target hint.
- * @return {EventTarget} Target element
+ * @param {string} attrValue Attribute Value.
+ * @param {string=} attrName Attribute Name.
+ * @return {AttributeInfo}
  */
-function getElement(e){
-	/** @type {EventTarget} */
-	var ele = null;
-	if(!e){
-		ele = window.event.srcElement || window.event.target;
-	}else if(typeof e == "string"){
-		switch(e.charAt(0)){
-		case "#":
-			ele = document.getElementById(e.slice(1));
+function getAttrInfo(attrValue, attrName){
+	/** @type {string} */
+	var t = "";
+	/** @type {string} */
+	var n = "";
+	/** @type {string} */
+	var v = "";
+	if(attrName){
+		/** @type {number} */
+		var i = attrName.indexOf(".");
+		if(i >= 0){
+			t = attrName.substring(0, i).toUpperCase();
+			n = attrName.slice(i + 1);
+		}else{
+			n = attrName;
+		}
+		switch(n.toLowerCase()){
+		case "id":
+			n = "#";
+			break;
+		case "class":
+			n = ".";
 			break;
 		}
+		v = attrValue;
+		
+	}else{
+		n = attrValue.charAt(0);
+		if(n == "#" || n == "."){
+			v = attrValue.slice(1);
+		}else{
+			n = "";
+			t = attrValue.toUpperCase();
+		}
+	}
+	return {
+		_tag: t,
+		_name: n,
+		_value: v,
+	}
+}
+/**
+ * @param {Element} ele
+ * @param {AttributeInfo} attrInfo
+ * @return {boolean}
+ */
+function isTargetElement(ele, attrInfo){
+	if(attrInfo._name == "#"){
+		return (ele.id == attrInfo._value);
+	}else if(attrInfo._name == "."){
+		return ele.classList.contains(attrInfo._value);
+	}else if(attrInfo._name){
+		return (ele.getAttribute(attrInfo._name) == attrInfo._value);
+	}else{
+		return true;
+	}
+}
+/**
+ * Get target element.
+ *
+ * @param {string} attrValue Attribute Value.
+ * @param {string|Element=} parentEle Parent Element.
+ * @param {string=} attrName Attribute Name. If e is an attribute value.
+ * @return {Array<Element>} Target elements
+ */
+function getElementsByAttribute(attrValue, parentEle, attrName){
+	/** @type {number} */
+	var i = 0;
+	/** @type {Array<Element>} */
+	var eles = [];
+	/** @type {HTMLDocument|Element} */
+	var p = document;
+	if(parentEle){
+		if(typeof parentEle == "string"){
+			/** @type {Array<Element>} */
+			var ps = getElementsByAttribute(parentEle);
+			if(ps.length > 0){
+				p = ps[0];
+			}
+		}else{
+			p = parentEle;
+		}
+	}
+
+	/** @type {AttributeInfo} */
+	var attrInfo = getAttrInfo(attrValue, attrName);
+	if(!attrInfo._tag){
+		if(attrInfo._name == "#"){
+			eles.push(document.getElementById(attrInfo._value));
+		}else if(attrInfo._name == "."){
+			/** @type {!HTMLCollection<!Element>} */
+			var eles2 = p.getElementsByClassName(attrInfo._value);
+			for(i=0; i<eles2.length; i++){
+				eles.push(eles2[i]);
+			}
+		}else{
+			attrInfo._tag = "*";
+		}
+	}
+	if(attrInfo._tag){
+		/** @type {!NodeList<!Element>} */
+		var eles3 = p.getElementsByTagName(attrInfo._tag.toLowerCase()); // svg can't be got by "SVG", so change the tag name to lower case.
+		for(i=0; i<eles3.length; i++){
+			if(isTargetElement(eles3[i], attrInfo)){
+				eles.push(eles3[i]);
+			}
+		}
+	}
+	return eles;
+}
+/**
+ * Get target element.
+ *
+ * @param {string|Event|Element=} e Target hint.
+ * @param {string|Element=} parentEle Parent Element.
+ * @param {string=} attrName Attribute Name. If e is an attribute value.
+ * @return {Element} Target element
+ */
+function getElement(e, parentEle, attrName){
+	/** @type {Element} */
+	var ele = null;
+	if(!e){
+		ele = window.event.currentTarget || window.event.srcElement || window.event.target;
+	}else if(typeof e == "string"){
+		/** @type {Array<Element>} */
+		var eles = getElementsByAttribute(e, parentEle, attrName);
+		if(eles.length > 0){
+			ele = eles[0];
+		}
 	}else if(e instanceof Event){
-		ele = e.srcElement || e.target;
+		ele = /** @type {Element} */(e.currentTarget || e.srcElement || e.target);
 	}else{
 		ele = e;
 	}
@@ -25,22 +144,38 @@ function getElement(e){
 /**
  * Find parent element.
  *
- * @param {Element} ele Base element.
- * @param {string|null} tag TagName to find.
+ * @param {string} attrValue Attribute Value.
+ * @param {string|Element=} ele Base element.
+ * @param {string=} attrName Attribute Name. If e is an attribute value.
+ * @param {boolean=} notMe Include ele or not.
  * @return {Element|null} Parent element
  */
-function findParent(ele, tag){
+function findParent(attrValue, ele, attrName, notMe){
 	/** @type {Element} */
-	var p = ele.parentElement;
-	if(p){
-		if(p.tagName == tag){
-			return p;
+	var e = null;
+	if(ele){
+		if(typeof ele == "string"){
+			e = getElement(ele);
 		}else{
-			return findParent(p, tag);
+			e = ele;
 		}
 	}else{
-		return null;
+		e = getElement();
 	}
+	if(notMe){
+		e = e.parentElement;
+	}
+	/** @type {AttributeInfo} */
+	var attrInfo = getAttrInfo(attrValue, attrName);
+	while(e){
+		if(e.tagName == attrInfo._tag || !attrInfo._tag){
+			if(isTargetElement(e, attrInfo)){
+				break;
+			}
+		}
+		e = e.parentElement;
+	}
+	return e;
 }
 /**
  * Element is visible or not.
@@ -52,50 +187,35 @@ function isVisible(ele) {
     return !!(ele.offsetWidth || ele.offsetHeight || ele.getClientRects().length);
 }
 /**
+ * Show an element.
+ *
+ * @param {string|Event|Element|null} e Target hint.
+ */
+function showElement(e){
+	/** @type {Element} */
+	var ele = getElement(e);
+	if(ele && ele.style.display){
+		ele.style.display = "";
+	}
+}
+/**
  * Hide an element.
  *
- * @param {string|Event|EventTarget|null} e Target hint.
+ * @param {string|Event|Element|null} e Target hint.
  */
 function hideElement(e){
-	/** @type {EventTarget} */
+	/** @type {Element} */
 	var ele = getElement(e);
 	if(ele){
 		ele.style.display = "none";
 	}
 }
 /**
- * Get table and it's body.
- *
- * @param {string|Event|EventTarget=} e Target hint.
- * @param {number=} idx Index of body.
- * @return {TableBody|null} Table and it's body
- */
-function getTableBody(e, idx){
-	/** @type {Element} */
-	var tbl = /** @type {Element} */(getElement(e));
-	/** @type {Element} */
-	var tbdy = null;
-	if(tbl){
-		/** @type {number} */
-		var i = 0;
-		if(idx){
-			i = idx;
-		}
-		tbdy = tbl.getElementsByTagName("tbody")[i];
-		return {
-			_table: tbl,
-			_tbody: tbdy,
-		};
-	}else{
-		return null;
-	}
-}
-/**
  * Find next element.
  *
  * @param {Element} ele Base element.
- * @param {string|null} attr Attribute to find.
- * @return {Element|null} Next element
+ * @param {string=} attr Attribute to find.
+ * @return {?Element} Next element
  */
 function nextElement(ele, attr){
 	/** @type {Element} */
@@ -155,6 +275,14 @@ function previousElement(ele, attr, childFlg){
 		}
 	}
 	return tgt;
+}
+/**
+ * @param {Element} ele
+ * @param {string} attrName
+ * @return {number}
+ */
+function getIntAttr(ele, attrName){
+	return parseInt(ele.getAttribute(attrName), 10);
 }
 /**
  * @param {!Blob} blob
@@ -244,6 +372,32 @@ function makeQueryString(query, noEncode){
 		return "";
 	}
 }
+
+/**
+ * @param {Element} sp span which contains svg
+ * @param {string} sid id of image
+ * @param {string=} fl The color of style fill.
+ * @param {string=} sk The color of style stroke.
+ */
+function setSvgImage(sp, sid, fl, sk){
+	/** @type {Element} */
+	var b_svg = getElement("svg", sp);
+	/** @type {Element} */
+	var b_use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+	b_use.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#".concat(sid));
+	if(!b_svg){
+		b_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		sp.appendChild(b_svg);
+	}
+	b_svg.appendChild(b_use);
+	if(fl){
+		b_svg.style.fill = fl;
+	}
+	if(sk){
+		b_svg.style.stroke = sk;
+	}
+}
+
 /**
  * Format a number.
  *
@@ -303,6 +457,40 @@ function getSizeDisp(s){
 		num = Math.round(s/107374182.4)/10;
 	}
 	return formatNumber(num).concat(unit);
+}
+/**
+ * Get a fomatted string of time to display.
+ *
+ * @param {number} t Time which unit is second.
+ * @return {string} Formatted string
+ */
+function getTimeDisp(t){
+	/** @type {number} */
+	var s = t % 60;
+	t = (t - s) / 60;
+	/** @type {number} */
+	var m = t % 60;
+	/** @type {number} */
+	var h = (t - m) / 60;
+	/** @type {Array<string>} */
+	var hms = new Array();
+	if(h > 0){
+		hms.push(h.toString(10));
+	}
+	hms.push("0".concat(m).slice(-2));
+	hms.push("0".concat(s).slice(-2));
+	return hms.join(":");
+}
+/**
+ * Get the elapsed time from base time.
+ *
+ * @param {number} basetime
+ * @return {string} Formatted time string
+ */
+function getElapsedTime(basetime){
+	/** @type {number} */
+	var t = Math.floor((Date.now() - basetime) / 1000);
+	return getTimeDisp(t);
 }
 /**
  * Get a fomatted string of timestamp to display.

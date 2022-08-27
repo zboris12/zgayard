@@ -1,10 +1,205 @@
-window.addEventListener("load", function(){
-	window.addEventListener("scroll", function(){
-		document.getElementById("divGround").style.top = (document.documentElement.scrollTop || document.body.scrollTop) + "px";
-	});
+/** @type {?TouchPosition} */
+var g_touchPoSt = null;
+
+/**
+ * @param {MenuType} mtyp
+ * @return {?MenuSwithInfo}
+ */
+function getMenuInfo(mtyp){
 	/** @type {Element} */
-	var ele = document.getElementById("spanNotify");
-	ele.style.display = "none";
+	var ele = null;
+	/** @type {?MenuSwithInfo} */
+	var ret = null;
+	switch(mtyp){
+	case MenuType.NAV:
+		ele = getElement(".zb-nav-tools");
+		ret = {
+			_button: getElement("button", ele),
+			_menu: nextElement(ele),
+		};
+		break;
+	case MenuType.MAIN:
+		ele = getElement("button", getElement(".zb-main-header", "#divMain"));
+		ret = {
+			_button: ele,
+			_menu: nextElement(ele),
+		};
+		break;
+	case MenuType.ITEM:
+		ret = {
+			_menu: getElement("#ulIteMenu"),
+		};
+		break;
+	default:
+		return null;
+	}
+	return ret;
+}
+/**
+ * @param {MenuType} mtyp
+ */
+function addMenuButtonEvent(mtyp){
+	/** @type {?MenuSwithInfo} */
+	var menuInfo = getMenuInfo(mtyp);
+	if(!menuInfo){
+		return;
+	}
+	if(menuInfo._menu.style.display){
+		menuInfo._menu.style.maxHeight = "0px";
+	}
+	if(menuInfo._button){
+		menuInfo._button.addEventListener("click", /** @type {function(Event)} */(function(a_evt){
+			/** @type {MenuType} */
+			a_evt.buttonKey = mtyp;
+		}));
+	}
+}
+/**
+ * @param {Event} evt
+ * @param {MenuType} mtyp
+ */
+function switchMenu(evt, mtyp){
+	/** @type {?MenuSwithInfo} */
+	var menuInfo = getMenuInfo(mtyp);
+	if(!menuInfo){
+		return;
+	}
+	if(menuInfo._menu.style.display){
+		if(menuInfo._menu.style.maxHeight){
+			if(evt.buttonKey == mtyp){
+				showElement(menuInfo._menu);
+				menuInfo._menu.style.paddingTop = "";
+				menuInfo._menu.style.paddingBottom = "";
+				if(menuInfo._button){
+					hideElement(menuInfo._button.children[0]);
+					showElement(menuInfo._button.children[1]);
+				}
+				window.setTimeout(function(){
+					menuInfo._menu.style.maxHeight = "";
+				}, 50);
+			}
+		}else{
+			// It's in the way to show the menu
+			return;
+		}
+	}else if(menuInfo._menu.style.maxHeight){
+		// It's in the way to hide the menu
+		return;
+	}else if(!(evt.buttonKey == mtyp && !menuInfo._button)){
+		// Do not hide menu if there is no switch button when need show menu such as item menu.
+		menuInfo._menu.style.paddingTop = "0px";
+		menuInfo._menu.style.paddingBottom = "0px";
+		menuInfo._menu.style.maxHeight = "0px";
+		window.setTimeout(function(){
+			if(menuInfo._button){
+				showElement(menuInfo._button.children[0]);
+				hideElement(menuInfo._button.children[1]);
+			}
+			hideElement(menuInfo._menu);
+		}, 500);
+	}
+}
+/**
+ * @param {Event} evt
+ */
+function documentClick(evt){
+	switchMenu(evt, MenuType.NAV);
+	switchMenu(evt, MenuType.MAIN);
+	switchMenu(evt, MenuType.ITEM);
+	if(evt.buttonKey != MenuType.TEXT){
+		hideElement("#divInpName");
+	}
+}
+
+/**
+ * @param {Event} evt
+ */
+function divCheckbox(evt){
+	var ele = /** @type {Element} */(evt.target || evt.srcElement);
+	if(ele.tagName == "INPUT"){
+		return;
+	}
+	ele = getElement("input", findParent("div", ele));
+	ele.focus();
+	ele.click();
+}
+
+/**
+ * @param {Element} mnu
+ */
+function addMenuEvent(mnu){
+	/** @type {Element} */
+	var l = findParent("li", mnu);
+	switch(mnu.getAttribute("iid")){
+	case "menuGeneral":
+		l.addEventListener("click", showSettings);
+		break;
+	case "menuDrive":
+		l.addEventListener("click", showInputPassword);
+		break;
+	case "menuHistory":
+		l.addEventListener("click", function(a_evt){
+			getElement("#divHistory").style.top = "";
+		});
+		break;
+	}
+}
+
+/**
+ * @param {Event} evt
+ */
+function clickMainMenu(evt){
+	/** @type {Element} */
+	var ele = getElement("label", findParent("li"));
+	/** @type {string} */
+	var act = ele.getAttribute("iid");
+	/** @type {function()|undefined} */
+	var func = undefined;
+	ele = nextElement(ele);
+	if(ele){
+		func = function(){
+			ele.classList.remove("rotate-90");
+		};
+	}
+	switch(act){
+	case "menuNewFldr":
+		if(ele){
+			ele.classList.add("rotate-90");
+		}
+		showModal("new", func);
+		break;
+	case "menuUpload":
+		if(ele){
+			ele.classList.add("rotate-90");
+		}
+		showModal("upload", function(){
+			getElement("#upfiles").value = null;
+			getElement("#upfolder").value = null;
+			if(func){
+				func();
+			}
+		});
+		break;
+	case "menuMovefs":
+		if(ele){
+			ele.classList.add("rotate-90");
+		}
+		showMove(func);
+		break;
+	case "menuDownfs":
+		/** @type {Array<DriveItem>} */
+		var files = getMultiChecked(true);
+		if(files){
+			download(files);
+		}
+		break;
+	case "menuDelfs":
+		deleteItems();
+		break;
+	}
+}
+
+window.addEventListener("load", function(){
 	/**
 	 * "input file multiple" is not supported in Android, so we need to add "input file" manually.
 	 *
@@ -14,13 +209,45 @@ window.addEventListener("load", function(){
 	/** @type {boolean} */
 	var isAndroid = reg.test(navigator.userAgent);
 
+	/** @type {Element} */
+	var ele = getElement("#divMessage");
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("span", ele);
+	eles[eles.length - 1].children[0].addEventListener("click", function(evt){
+		showMessage(MessageType.NONE);
+	});
+
+	document.addEventListener("click", documentClick);
+	addMenuButtonEvent(MenuType.NAV);
+	addMenuButtonEvent(MenuType.MAIN);
+	addMenuButtonEvent(MenuType.ITEM);
+
 	/** @type {number} */
 	var i = 0;
-	/** @type {!NodeList<!Element>} */
-	var eles = document.getElementById("divSet").getElementsByTagName("input");
+	/** @type {number} */
+	var j = 0;
+	eles = getElementsByAttribute("span", getElement(".zb-nav-tools"));
+	for(i=0; i<eles.length; i++){
+		addMenuEvent(eles[i]);
+	}
+	eles = getElementsByAttribute("label", getElement(".zb-nav-menu"));
+	for(i=0; i<eles.length; i++){
+		addMenuEvent(eles[i]);
+	}
+
+	eles = getElementsByAttribute(".zb-settings");
+	for(i=0; i<eles.length; i++){
+		/** @type {Array<Element>} */
+		var chks = getElementsByAttribute(".checkbox", eles[i]);
+		for(j=0; j<chks.length; j++){
+			chks[j].addEventListener("click", divCheckbox);
+		}
+	}
+
+	eles = getElementsByAttribute("button", getElement("#divSet"));
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
+		switch(ele.getAttribute("iid")){
 		case "btnLogout":
 			ele.addEventListener("click", logout);
 			break;
@@ -33,7 +260,7 @@ window.addEventListener("load", function(){
 		}
 	}
 
-	eles = document.getElementById("divPwd").getElementsByTagName("span");
+	eles = getElementsByAttribute("span", getElement("#divPwd"));
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
 		switch(ele.getAttribute("tid")){
@@ -59,10 +286,10 @@ window.addEventListener("load", function(){
 			break;
 		}
 	}
-	eles = document.getElementById("divPwd").getElementsByTagName("input");
+	eles = getElementsByAttribute("button", getElement("#divPwd"));
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
+		switch(ele.getAttribute("iid")){
 		case "btnCancel":
 			ele.addEventListener("click", hideSetPwd);
 			break;
@@ -75,111 +302,157 @@ window.addEventListener("load", function(){
 		}
 	}
 
-	eles = document.getElementById("divHeader").getElementsByTagName("input");
+	ele = getElement("#divModal");
+	ele.addEventListener("click", hideModal);
+	ele.children[0].addEventListener("click", function(a_evt){
+		a_evt.stopPropagation();
+	});
+	eles = getElementsByAttribute("button", ele);
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
-		case "btnSet":
-			ele.addEventListener("click", showSettings);
+		switch(ele.getAttribute("iid")){
+		case "btnCancel":
+			ele.addEventListener("click", hideModal);
+			break;
+		case "btnOk":
+			ele.addEventListener("click", okModal);
 			break;
 		}
 	}
 
-	document.getElementById("chkAll").addEventListener("click", selectAll);
-
-	eles = document.getElementById("divAction").getElementsByTagName("input");
+	eles = getElementsByAttribute(".zb-main-menu");
 	for(i=0; i<eles.length; i++){
-		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
-		case "btnDownfs":
-			ele.addEventListener("click", download);
-			break;
-		case "btnMovefs":
-			ele.addEventListener("click", showMove);
-			break;
-		case "btnDelfs":
-			ele.addEventListener("click", deleteItems);
-			break;
-		case "btnHistory":
-			ele.addEventListener("click", /** function(Event) */function(a_evt){
-				/** @type {Element} */
-				var a_div = document.getElementById("divHistory");
-				if(a_div.style.display == "block"){
-					a_div.style.display = "";
-				}else{
-					a_div.style.display = "block";
+		/** @type {Array<Element>} */
+		var lis = getElementsByAttribute("li", eles[i]);
+		for(j=0; j<lis.length; j++){
+			lis[j].addEventListener("click", clickMainMenu);
+		}
+	}
+
+	ele = getElement("#chkAll");
+	ele.addEventListener("click", selectAll);
+	nextElement(ele).addEventListener("click", selectAll);
+
+	eles = getElementsByAttribute("li", "#ulIteMenu");
+	for(i=0; i<eles.length; i++){
+		eles[i].addEventListener("click", clickIteMenu);
+	}
+
+	ele = getElement("#divInpName");
+	ele.addEventListener("click", function(a_evt){
+		a_evt.stopPropagation();
+	});
+	getElement("input", ele).addEventListener("keyup", keyupNewname);
+	getElement("span", ele).addEventListener("click", admitRename);
+
+	ele = getElement("#diViewer");
+	ele.addEventListener("click", switchShowPrevNext);
+	ele.addEventListener("touchstart", function(a_evt){
+		if(g_touchPoSt || a_evt.changedTouches.length != 1){
+			return;
+		}
+		/** @type {Touch} */
+		var a_t = a_evt.changedTouches[0];
+		g_touchPoSt = {
+			_id: a_t.identifier,
+			_x: a_t.screenX,
+			_y: a_t.screenY,
+		};
+	});
+	ele.addEventListener("touchend", function(a_evt){
+		if(g_touchPoSt){
+			/** @type {Touch} */
+			var a_t = null;
+			/** @type {number} */
+			var a_i = 0;
+			for(a_i=0; a_i<a_evt.changedTouches.length; a_i++){
+				if(a_evt.changedTouches[a_i].identifier == g_touchPoSt._id){
+					a_t = a_evt.changedTouches[a_i];
+					break;
 				}
-			});
+			}
+			if(!a_t){
+				return;
+			}
+			
+			/** @type {number} */
+			var a_moveX = a_t.screenX - g_touchPoSt._x;
+			/** @type {number} */
+			var a_moveY = a_t.screenY - g_touchPoSt._y;
+			if(a_moveY < 10 && a_moveY > -10){
+				if(a_moveX > 50){
+					/* slide left to right means change to next */
+					clickNext();
+				}else if(a_moveX < -50){
+					/* slide right to left means change to previous */
+					clickPrevious();
+				}
+			}
+			g_touchPoSt = null;
+		}
+	});
+	getElement("button", ele).addEventListener("click", function(){
+		downloadById(findParent("div").getAttribute("uid"));
+	});
+	getElement("img", ele).addEventListener("load", imageLoaded);
+	ele = getElement("video", ele);
+	ele.addEventListener("canplay", restoreTime);
+	ele.addEventListener("ended", function(){
+		clickItem(findParent("div").getAttribute("uid"), 2, true);
+	});
+	screen.orientation.addEventListener("change", function(a_evt){
+		if(a_evt.currentTarget.type == "landscape-primary"){
+			/** @type {Element} */
+			var a_div = getElement("#diViewer");
+			if(isVisible(getElement("video", a_div))){
+				findParent("div", a_div, undefined, true).requestFullscreen();
+			}
+		}else if(document["fullscreen"]){
+			document.exitFullscreen();
+		}
+	});
+	document.addEventListener("fullscreenchange", function(a_evt){
+		if(document["fullscreen"]){
+			getElement("#diViewer").classList.add("full");
+		}else{
+			getElement("#diViewer").classList.remove("full");
+		}
+	});
+
+	ele = findParent("zb-viewer", ele, "div.class");
+	eles = getElementsByAttribute("span", ele);
+	for(i=0; i<eles.length; i++){
+		switch(eles[i].getAttribute("name")){
+		case "close":
+			eles[i].addEventListener("click", exitViewer);
 			break;
-		case "btnNewFldr":
-			ele.addEventListener("click", newFolder);
+		case "previous":
+			eles[i].addEventListener("click", clickPrevious);
 			break;
-		case "btnUpfs":
-			ele.addEventListener("click", upload);
+		case "next":
+			eles[i].addEventListener("click", clickNext);
 			break;
-		case "btnUpfld":
-			ele.addEventListener("click", /** function(Event) */function(){
-				upload(1);
+		case "fullscreen":
+			eles[i].addEventListener("click", function(){
+				findParent("div", "#diViewer", undefined, true).requestFullscreen();
 			});
 			break;
 		}
 	}
-
-	ele = document.getElementById("tblQueue").getElementsByTagName("th")[0];
-	ele.getElementsByTagName("label")[0].addEventListener("click", hideQueueRows);
-
-	document.getElementById("divItemenu").addEventListener("click", clickMenu);
-
-	ele = document.getElementById("divNewName");
-	ele.getElementsByTagName("input")[0].addEventListener("keyup", keyupNewname);
-	ele.getElementsByTagName("span")[0].addEventListener("click", admitRename);
-
-	ele = document.getElementById("divGround").firstElementChild;
-	ele.addEventListener("click", hideGround);
-	ele.firstElementChild.addEventListener("click", /** function(Event) */function(a_evt){
+	ele = findParent("zb-modal", ele, "div.class");
+	ele.addEventListener("click", exitViewer);
+	ele.children[0].addEventListener("click", function(a_evt){
 		a_evt.stopPropagation();
 	});
 
-	ele = nextElement(document.getElementById("spanGroundTitle"), "label");
-	ele.addEventListener("click", hideGround);
+	getElement(".zb-qbutton").addEventListener("click", function(a_evt){
+		getElement("#divQueue").style.top = "";
+	});
+	getElement("close", "#divQueue", "span.name").addEventListener("click", hideQueue);
 
-	/** @type {HTMLCollection} */
-	var rows = document.getElementById("tblFileDetail").getElementsByTagName("tbody")[0].rows
-	ele = rows[0];
-	ele.cells[0].addEventListener("click", /** function(Event) */function(a_evt){
-		clickItem(1);
+	getElement("close", "#divHistory", "span.name").addEventListener("click", function(a_evt){
+		getElement("#divHistory").style.top = "100%";
 	});
-	ele.cells[2].addEventListener("click", /** function(Event) */function(a_evt){
-		clickItem(2);
-	});
-	ele.getElementsByTagName("img")[0].addEventListener("load", imageLoaded);
-	ele = ele.getElementsByTagName("video")[0];
-	ele.addEventListener("canplay", restoreTime);
-	ele.addEventListener("ended", function(){
-		clickItem(2, true);
-	});
-	ele.addEventListener("error", resetVideoSrc);
-	eles = rows[2].getElementsByTagName("input");
-	for(i=0; i<eles.length; i++){
-		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
-		case "btnDownload":
-			ele.addEventListener("click", /** function(Event) */function(a_evt){
-				download(1);
-			});
-			break;
-		}
-	}
-
-	eles = document.getElementById("tblFolder").getElementsByTagName("input");
-	for(i=0; i<eles.length; i++){
-		ele = eles[i];
-		switch(ele.getAttribute("wordid")){
-		case "btnOk":
-			ele.addEventListener("click", moveToFolder);
-			break;
-		}
-	}
 
 	onbody();
 });

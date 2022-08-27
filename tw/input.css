@@ -1,0 +1,467 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+	@apply relative antialiased bg-gray-100;
+}
+span {
+	@apply cursor-default;
+}
+li > span {
+	cursor: inherit;
+}
+span > label {
+	cursor: inherit;
+}
+img {
+	@apply h-6 w-6;
+}
+svg {
+	@apply stroke-current h-6 w-6;
+	fill: none;
+}
+
+.template{
+	display: none!important;
+}
+
+#divMessage {
+	@apply border pl-4 pr-12 py-3 rounded fixed top-4 inset-x-0 z-50 w-max mx-auto block transition-opacity;
+	max-width: 90%;
+}
+#divMessage > span:first-of-type {
+	@apply font-bold mr-2;
+}
+#divMessage > span:nth-of-type(2) {
+	@apply block sm:inline;
+}
+#divMessage > span:last-of-type {
+	@apply absolute top-0 bottom-0 right-0 px-4 py-3;
+}
+#divMessage > span:last-of-type > svg {
+	@apply fill-current cursor-pointer;
+}
+div.zb-alert {
+	@apply bg-red-100 border-red-400 text-red-700;
+}
+div.zb-alert svg {
+	@apply text-red-500;
+}
+div.zb-notice {
+	@apply bg-blue-100 border-blue-500 text-blue-700;
+}
+div.zb-notice svg {
+	@apply text-blue-500;
+}
+
+nav {
+	@apply p-2 md:px-4;
+}
+nav > div {
+	@apply relative flex items-start gap-2;
+}
+div.zb-nav-icon > img {
+	@apply w-8 h-8;
+}
+span.zb-nav-title {
+	@apply my-auto;
+}
+div.zb-nav-tools {
+	@apply absolute right-1 top-1/2 -translate-y-1/2;
+}
+div.zb-nav-tools > div {
+	@apply inline-block pt-2.5 align-top md:pt-0 md:align-baseline;
+}
+div.zb-nav-tools > div > img {
+	@apply inline-block;
+}
+div.zb-nav-tools > div > span {
+	@apply inline-block h-full align-bottom;
+}
+div.zb-nav-tools > ul {
+	@apply hidden md:inline-flex items-center space-x-1 text-sm font-semibold;
+}
+div.zb-nav-tools > ul > li {
+	@apply px-2 xl:px-4 py-2 text-gray-800 underline rounded-md cursor-pointer hover:bg-gray-200 hover:no-underline;
+}
+div.zb-nav-tools > ul > li > span {
+	@apply cursor-pointer;
+}
+div.zb-nav-tools > button {
+	@apply md:hidden bg-gray-200 p-2 rounded-md;
+}
+div.zb-nav-menu {
+	@apply absolute top-10 left-0 right-0 w-full overflow-hidden max-h-screen bg-white rounded-md border z-30 ease-in-out duration-500;
+	transition-property: max-height;
+}
+div.zb-nav-menu > ul {
+	@apply p-4;
+}
+div.zb-nav-menu > ul > li {
+	@apply px-4 py-2 rounded underline cursor-pointer hover:bg-gray-200 hover:no-underline;
+}
+div.zb-nav-menu > ul > li > span {
+	@apply flex items-center gap-4 cursor-pointer;
+}
+
+div.zb-settings {
+	@apply max-w-lg mx-auto bg-white rounded-lg shadow-xl overflow-hidden p-6;
+}
+div.zb-settings > span {
+	@apply block text-2xl font-bold text-center mb-2 border-b border-blue-300;
+}
+div.zb-settings > div:first-of-type {
+	@apply overflow-x-hidden overflow-y-auto;
+	max-height: calc(100vh - 110px);
+}
+div.zb-settings > div:first-of-type > div {
+	@apply relative md:flex;
+}
+div.zb-settings > div:first-of-type > div > label {
+	@apply self-center text-blue-500 inline-block truncate md:w-1/5;
+}
+div.zb-settings > div:first-of-type > div > label.notice {
+	@apply w-full whitespace-normal;
+}
+div.zb-settings > div:first-of-type > div > label.notice.bold {
+	@apply font-bold border-b-2;
+}
+div.zb-settings > div:first-of-type > div > span.blank {
+	@apply hidden md:inline-block md:w-1/5;
+}
+div.zb-settings > div:first-of-type > div > div {
+	@apply relative border-b-2 focus-within:border-blue-500 block mt-1 w-full md:inline-block md:w-4/5;
+}
+div.zb-settings > div:nth-of-type(2) {
+	@apply block text-center mt-3;
+}
+div.zb-settings div.checkbox {
+	@apply hover:bg-gray-200;
+}
+div.zb-settings input[type="checkbox"] {
+	@apply ml-4 mr-2 leading-tight;
+}
+div.zb-settings select,
+div.zb-settings input[type="text"],
+div.zb-settings input[type="password"] {
+	@apply block appearance-none w-full bg-transparent hover:bg-gray-200 py-1 px-4 rounded leading-tight focus:outline-none focus:border-gray-500;
+}
+div.zb-settings select + div {
+	@apply pointer-events-none absolute inset-y-0 right-2 flex items-center px-2 text-gray-700;
+}
+div.zb-settings select + div > svg {
+	@apply h-4 w-4;
+}
+div.zb-settings div.chgroot select + div {
+	@apply right-12;
+}
+div.zb-settings div.button {
+	@apply float-right;
+}
+div.zb-settings div.button span {
+	@apply inline-block cursor-pointer rounded hover:bg-gray-200;
+}
+div.zb-settings div.button span:first-of-type {
+	@apply text-blue-700;
+}
+div.zb-settings div.button span:last-of-type {
+	@apply text-red-700;
+}
+div.zb-settings div.button + div {
+	@apply w-auto overflow-hidden;
+}
+
+input[type="file"] {
+	@apply block w-full hover:bg-gray-200 py-1 px-4 rounded leading-tight focus:outline-none focus:border-gray-500;
+}
+
+button {
+	@apply font-semibold m-1 py-1 px-4 rounded border hover:ring;
+}
+button.zb-ok {
+	@apply text-white bg-blue-500 border-blue-500 hover:bg-blue-700 hover:border-blue-700;
+}
+button.zb-cancel {
+	@apply bg-transparent text-blue-500 border-blue-500 hover:text-blue-700 hover:border-blue-700;
+}
+button.zb-ok-purple {
+	@apply text-white ring-purple-900 bg-purple-500 border-purple-500 hover:bg-purple-400 hover:border-purple-400;
+}
+
+div.zb-modal {
+	@apply flex justify-center items-center fixed inset-0 z-40 outline-none focus:outline-none;
+	background-color: rgba(128, 128, 128, 0.5);
+}
+div.zb-modal > div {
+	@apply relative w-auto my-6 mx-auto max-w-full;
+}
+div.zb-modal > div > div {
+	@apply border-0 rounded-lg shadow-lg relative flex flex-col w-full bg-white outline-none focus:outline-none;
+}
+
+#divMain {
+	@apply md:w-11/12 mx-auto bg-white rounded-lg shadow-xl overflow-x-hidden overflow-y-auto px-6 py-3;
+}
+
+ul.zb-main-menu {
+	@apply hidden md:inline-flex space-x-2 mb-2 items-center text-sm font-semibold;
+}
+ul.zb-main-menu.pop {
+	@apply block absolute top-full right-0 mb-0 bg-gray-200 p-2 rounded-md shadow overflow-hidden z-30;
+}
+ul.zb-main-menu > li {
+	@apply px-2 xl:px-4 py-2 cursor-pointer text-gray-800 rounded-md hover:bg-gray-200;
+}
+ul.zb-main-menu.pop > li {
+	@apply mx-2 hover:bg-gray-100;
+}
+ul.zb-main-menu > li > span {
+	@apply w-max block;
+}
+ul.zb-main-menu > li > span > svg {
+	@apply w-4 h-4 inline-block transition-transform ease-in-out;
+}
+#ulIteMenu {
+	@apply right-auto;
+}
+div.zb-main-header {
+	@apply relative grid grid-cols-10 border-b-2 border-blue-500;
+}
+div.zb-main-header > ul {
+	@apply col-span-9 md:col-span-6 lg:col-span-7 flex flex-wrap items-center text-lg font-semibold;
+}
+div.zb-main-header > ul > li {
+	@apply px-2 py-2 text-blue-800 rounded-md hover:bg-blue-200 cursor-pointer;
+}
+div.zb-main-header > ul > li.normal {
+	@apply text-blue-500;
+}
+div.zb-main-header > ul > li > svg {
+	@apply w-4 h-4 inline-block;
+}
+div.zb-main-header > div {
+	@apply md:col-span-4 lg:col-span-3 ml-auto flex items-end;
+}
+div.zb-main-header > div > button {
+	@apply bg-gray-200 p-3 rounded-md;
+}
+
+ul.zb-main-list {
+	@apply divide-y-2 divide-gray-200 overflow-x-auto w-full;
+}
+ul.zb-main-list > li {
+	@apply grid grid-cols-10 font-semibold;
+}
+ul.zb-main-list > li > div:first-of-type {
+	@apply relative block col-span-10 md:col-span-7 py-2;
+}
+ul.zb-main-list > li.header > div:first-of-type {
+	@apply text-center;
+}
+ul.zb-main-list > li > div:first-of-type > span:first-of-type {
+	@apply cursor-pointer inline-block text-blue-800 hover:bg-blue-200 ml-8 my-auto;
+}
+ul.zb-main-list > li.header > div:first-of-type > span:first-of-type {
+	@apply cursor-default text-black mx-auto my-auto;
+}
+ul.zb-main-list > li > div:first-of-type > span:nth-of-type(2),
+ul.zb-main-list > li > div:first-of-type > span:nth-of-type(3) {
+	@apply absolute left-1 top-1/2 -translate-y-1/2;
+}
+ul.zb-main-list > li > div:first-of-type > span:nth-of-type(3) {
+	@apply text-red-800;
+}
+ul.zb-main-list > li > div:first-of-type > span:nth-of-type(4) {
+	@apply cursor-pointer hover:bg-gray-200 absolute right-1 top-1/2 -translate-y-1/2;
+}
+ul.zb-main-list > li > div:first-of-type > div {
+	@apply block md:hidden pr-6 text-right text-sm font-normal;
+}
+ul.zb-main-list > li > div:first-of-type > div > span {
+	@apply pr-2;
+}
+ul.zb-main-list > li > div:nth-of-type(2) {
+	@apply hidden md:block text-center py-2 border-l-2 border-gray-200;
+}
+ul.zb-main-list > li > div:nth-of-type(3) {
+	@apply hidden md:block col-span-2 text-center py-2 border-l-2 border-gray-200;
+}
+ul.zb-main-list input {
+	@apply hidden;
+}
+#divInpName {
+	@apply block absolute;
+}
+#divInpName > input {
+	@apply inline-block shadow appearance-none w-full border rounded py-2 pl-3 pr-7 text-gray-700 leading-tight bg-yellow-100;
+}
+#divInpName > span {
+	@apply absolute right-1 top-1/2 -translate-y-1/2 rounded text-blue-500 cursor-pointer hover:text-blue-800;
+}
+
+div.zb-viewer > div {
+	@apply relative;
+}
+div.zb-viewer > div:first-of-type {
+	@apply border-b-2 border-blue-500;
+}
+div.zb-viewer > div:first-of-type > span {
+	@apply block ml-2 mr-7;
+}
+div.zb-viewer > div:first-of-type > div {
+	@apply flex absolute right-1 top-0;
+}
+div.zb-viewer > div:first-of-type > div > span {
+	@apply inline-block cursor-pointer text-blue-700 hover:bg-blue-200;
+}
+#diViewer {
+	@apply bg-white;
+}
+#diViewer > span {
+	@apply m-5 block;
+}
+#diViewer > button {
+	@apply mx-auto mb-3 block;
+}
+#diViewer > img {
+	@apply h-auto w-auto;
+}
+#diViewer > img,
+#diViewer > video {
+	max-height: calc(100vh - 28px);
+}
+#diViewer ~ div {
+	@apply absolute top-0 h-full flex items-center opacity-0 hover:opacity-100 transition-opacity;
+}
+#diViewer + div {
+	@apply left-1;
+}
+#diViewer + div + div {
+	@apply right-1;
+}
+#diViewer ~ div > span{
+	@apply cursor-pointer text-blue-700 bg-blue-100;
+}
+
+#diViewer.full {
+	@apply h-full;
+}
+#diViewer.full > img,
+#diViewer.full > video {
+	@apply max-h-full h-full w-full object-contain;
+}
+
+div.zb-qbutton {
+	@apply fixed z-10 bottom-5 left-5 inline-block cursor-pointer bg-white rounded-full border-2 border-blue-300 overflow-hidden hover:border-blue-500;
+}
+div.zb-qbutton > div {
+	@apply bg-blue-300 text-blue-700 whitespace-nowrap w-0 ease-in-out duration-500;
+	transition-property: width;
+}
+div.zb-qbutton.done > div {
+	@apply bg-gray-300 text-gray-700;
+}
+div.zb-qbutton.error > div {
+	@apply bg-red-300 text-red-700;
+}
+div.zb-qbutton > div > svg {
+	@apply inline-block;
+}
+
+div.zb-progressbar {
+	@apply bg-gray-200 rounded-full h-2.5;
+}
+div.zb-progressbar > span {
+	@apply bg-blue-600 h-full rounded-full block w-0 ease-in-out duration-500;
+	transition-property: width;
+}
+
+div.zb-queue {
+	@apply fixed top-1/2 w-full md:w-1/2 h-1/2 bg-white rounded-lg shadow-xl text-center z-20 overflow-hidden transition-transform duration-700;
+	transition-property: top;
+}
+div.zb-queue > div {
+	@apply relative border-b-2 border-blue-500 bg-blue-100 p-1 rounded-t-lg;
+}
+div.zb-queue > div > span:first-of-type {
+	@apply text-lg font-semibold;
+}
+div.zb-queue > div > span:last-of-type {
+	@apply cursor-pointer absolute right-1 text-red-700 top-1/2 -translate-y-1/2;
+}
+div.zb-queue > ul {
+	@apply divide-y-2 divide-gray-200 w-full overflow-x-hidden overflow-y-auto text-left text-sm;
+	height: calc(100% - 40px);
+}
+div.zb-queue > ul > li {
+	@apply relative pl-2 py-1;
+}
+
+div.zb-queue > ul.zb-task > li {
+	@apply grid grid-cols-10 pr-7;
+}
+div.zb-queue > ul.zb-task > li > span:first-of-type {
+	@apply col-span-9 text-lg;
+}
+div.zb-queue > ul.zb-task > li > span:first-of-type > svg {
+	@apply mr-1 inline-block text-blue-700;
+}
+div.zb-queue > ul.zb-task > li > span:nth-of-type(2) {
+	@apply text-right mt-auto;
+}
+div.zb-queue > ul.zb-task > li.error > div {
+	@apply hidden;
+}
+div.zb-queue > ul.zb-task > li > div.zb-progressbar {
+	@apply col-span-10;
+}
+div.zb-queue > ul.zb-task > li.error > div.zb-progressbar {
+	@apply h-auto text-red-700 block px-2;
+}
+div.zb-queue > ul.zb-task > li > div:nth-of-type(2),
+div.zb-queue > ul.zb-task > li > div:nth-of-type(3) {
+	@apply col-span-4;
+}
+div.zb-queue > ul.zb-task > li.done > div:nth-of-type(3) {
+	@apply hidden;
+}
+div.zb-queue > ul.zb-task > li > div:last-of-type {
+	@apply col-span-2 text-right;
+}
+div.zb-queue > ul.zb-task > li.done > div:last-of-type {
+	@apply col-span-6;
+}
+div.zb-queue > ul.zb-task > li > span:last-of-type {
+	@apply absolute cursor-pointer right-0.5 top-1/2 -translate-y-1/2 text-red-700;
+}
+div.zb-queue > ul.zb-task > li.done > span:last-of-type,
+div.zb-queue > ul.zb-task > li.error > span:last-of-type {
+	@apply cursor-default;
+}
+
+div.zb-queue > ul.zb-history > li {
+	@apply pr-2;
+}
+div.zb-queue > ul.zb-history > li > div > span {
+	@apply cursor-pointer text-lg inline-block underline;
+}
+div.zb-queue > ul.zb-history > li > div:first-of-type {
+	@apply inline-block;
+}
+div.zb-queue > ul.zb-history > li > div:first-of-type > span:first-of-type {
+	@apply mr-1 text-red-700 align-top;
+}
+div.zb-queue > ul.zb-history > li > div:last-of-type {
+	@apply float-right text-blue-700;
+}
+
+#divTos {
+	@apply text-center text-sm mt-3;
+}
+#divTos > img {
+	@apply mr-1 inline-block;
+}
+#divTos > a {
+	@apply align-top;
+}

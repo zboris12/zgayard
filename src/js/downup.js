@@ -18,11 +18,20 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 	this.isCanceled = isCancelFunc;
 	/** @public @type {function(WorkerStepInfo)} */
 	this.sendStepInfo = sendSpInfFunc;
+	/** @private @type {number} */
+	this.begintime = 0;
 
 	/**
 	 * @private
 	 */
 	this.startTransfer = function(){
+		/** @type {WorkerStepInfo} */
+		var stepinf = {
+			_type: StepInfoType.BEGIN,
+			_wtype: this.wktype,
+			_size: this.reader.getSize(),
+		};
+		this.sendStepInfo(stepinf);
 		/** @type {ZbCrypto} */
 		var cypt = new ZbCrypto({
 			_decrypt: (this.wktype == WorkerInfoType.DOWNLOAD),
@@ -36,10 +45,12 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			var a_stepinf = {
 				_type: StepInfoType.INPROGRESS,
 				_wtype: this.wktype,
+				_begin: this.begintime,
 				_speed: cypt.calSpeed(),
 				_pos: this.reader.getPos(),
 				_size: this.reader.getSize(),
 			};
+
 			this.sendStepInfo(a_stepinf);
 			if(this.isCanceled()){
 				return false;
@@ -53,6 +64,8 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			var a_stepinf = {
 				_type: StepInfoType.DONE,
 				_wtype: this.wktype,
+				_begin: this.begintime,
+				_pos: this.reader.getPos(),
 				_size: this.writer.getTotalSize(),
 			};
 			if(a_err){
@@ -64,6 +77,8 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			}
 			this.sendStepInfo(a_stepinf);
 		}.bind(this));
+
+		this.begintime = Date.now();
 		cypt.start();
 	};
 

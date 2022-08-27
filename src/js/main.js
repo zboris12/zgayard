@@ -1,4 +1,152 @@
 /**
+ * @enum {number}
+ */
+const MenuType = {
+	NAV: 1,
+	MAIN: 2,
+	ITEM: 3,
+	TEXT: 4,
+};
+
+/**
+ * @param {string} typ
+ * @param {function()=} func A function called while exit modal
+ */
+function showModal(typ, func){
+	/** @type {string} */
+	var ttl = "";
+	switch(typ){
+	case "new":
+		ttl = "spanNew";
+		break;
+	case "upload":
+		ttl = "spanUpload";
+		break;
+	case "selfldr":
+		ttl = "spanSelFldr";
+		break;
+	default:
+		return;
+	}
+	/** @type {Element} */
+	var div = getElement("#divModal");
+	/** @type {Element} */
+	var ele = getElement("#spanModal");
+	ele.innerText = window["msgs"][ttl];
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("div", nextElement(ele));
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		ele = eles[i];
+		if(ele.hasAttribute("type")){
+			if(ele.getAttribute("type") == typ){
+				showElement(ele);
+			}else{
+				hideElement(ele);
+			}
+		}
+	}
+
+	if(func){
+		div.onhide = func;
+	}
+	showElement(div);
+}
+/**
+ * Call from html event.
+ */
+function hideModal(){
+	/** @type {Element} */
+	var div = findParent("zb-modal", getElement(), "div.class");
+	if(div){
+		if(div.onhide){
+			div.onhide();
+			delete div.onhide;
+		}
+		hideElement(div);
+	}
+}
+/**
+ * Call from html event.
+ */
+function okModal(){
+	/** @type {function(boolean)} */
+	var func = function(a_ret){
+		if(a_ret){
+			hideModal();
+		}
+	};
+	/** @type {string} */
+	var typ = "";
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("div", nextElement(getElement("#spanModal")));
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		/** @type {Element} */
+		var ele = eles[i];
+		if(ele.hasAttribute("type")){
+			if(isVisible(ele)){
+				typ = ele.getAttribute("type");
+				break;
+			}
+		}
+	}
+	
+	switch(typ){
+	case "new":
+		newFolder(func);
+		break;
+	case "upload":
+		/** @type {Array<File>} */
+		var files = [];
+		/** @type {FileList} */
+		var flst = getElement("#upfiles").files;
+		for(i=0; i<flst.length; i++){
+			files.push(flst[i]);
+		}
+		flst = getElement("#upfolder").files;
+		for(i=0; i<flst.length; i++){
+			files.push(flst[i]);
+		}
+		if(files.length <= 0){
+			showError("noFiles");
+		}else{
+			func(true);
+			upload(files);
+		}
+		break;
+	case "selfldr":
+		moveToFolder(func);
+		break;
+	}
+}
+/**
+ * @param {string|Element} div
+ * @return {Element} ul
+ */
+function getHeaderUl(div){
+	return getElement(".zb-main-header", div).children[0];
+}
+/**
+ * @param {string|Element} div
+ * @return {Element} ul
+ */
+function getListUl(div){
+	return getElement("zb-main-list", div, "ul.class");
+}
+/**
+ * Get the span of name.
+ *
+ * @param {Element} itm li
+ * @return {Element} span
+ */
+function getNameSpan(itm){
+	return getElement("fnm", itm, "span.name");
+}
+
+/**
  * @param {string} fnm
  * @return {string}
  */
@@ -35,8 +183,13 @@ function onbody(){
 		loadSettings();
 	});
 }
+/**
+ * A function.
+ */
 function checkRootFolder(){
 	hideSetPwd();
+	showElement(".zb-nav-tools");
+	showElement("#divMain");
 	getDriveInfo(function(){
 		/** @type {string} */
 		var fldr = /** @type {string} */(g_conf[g_rootidx]["root"]);
@@ -78,32 +231,38 @@ function checkRootFolder(){
  */
 function addQuotaUsed(sz, trashFlg){
 	/** @type {Element} */
-	var ele = document.getElementById("spanQuota");
+	var ele = getElement("#spanQuota");
 	if(typeof sz == "string"){
 		sz = parseInt(sz, 10);
 	}
 	/** @type {number} */
-	var total = parseInt(ele.getAttribute("total"), 10);
+	var total = getIntAttr(ele, "total");
 	/** @type {number} */
-	var trash = parseInt(ele.getAttribute("trash"), 10);
+	var trash = getIntAttr(ele, "trash");
 	/** @type {number} */
 	var used = 0;
 	if(ele.hasAttribute("used")){
-		used = parseInt(ele.getAttribute("used"), 10);
+		used = getIntAttr(ele, "used");
 	}
 	if(trashFlg){
-		trash += sz;
-		ele.setAttribute("trash", trash);
 		used -= sz;
 		ele.setAttribute("used", used);
-		return;
+		if(total > 0){
+			trash += sz;
+			ele.setAttribute("trash", trash);
+			return;
+		}
 	}else{
 		used += sz;
 		ele.setAttribute("used", used);
 	}
-	/** @type {number} */
-	var free = total - used - trash;
-	ele.innerText = window["msgs"]["quotaInfo"].replace("{0}", g_DRIVES[g_drive.getId()].getName()).replace("{1}", getSizeDisp(free));
+	if(total > 0){
+		/** @type {number} */
+		var free = total - used - trash;
+		ele.innerText = window["msgs"]["quotaInfo"].replace("{0}", getSizeDisp(free));
+	}else{
+		ele.innerText = window["msgs"]["quotaInfoU"].replace("{0}", getSizeDisp(used));
+	}
 }
 /**
  * @param {function()} func
@@ -116,7 +275,7 @@ function getDriveInfo(func){
 				showError(a_err);
 			}else{
 				/** @type {Element} */
-				var a_ele = document.getElementById("spanQuota");
+				var a_ele = getElement("#spanQuota");
 				a_ele.setAttribute("total", a_dat._total);
 				a_ele.setAttribute("trash", a_dat._trash);
 				addQuotaUsed(a_dat._used);
@@ -127,28 +286,48 @@ function getDriveInfo(func){
 		},
 	});
 }
-function loadRecent(){
+/**
+ * @param {boolean} showFl
+ */
+function showMenuHistory(showFl){
 	/** @type {Element} */
-	var div = document.getElementById("divHistory");
-	div.style.display = "";
+	var nav = getElement("nav");
+	/** @type {function(string, string)} */
+	var _showMenuHistory = function(a_divcls, a_mnutag){
+		/** @type {Element} */
+		var a_nt = getElement(a_divcls, nav, "div.class");
+		/** @type {Element} */
+		var a_mnu = getElement("menuHistory", a_nt, a_mnutag.concat(".iid"));
+		/** @type {Element} */
+		var a_li = findParent("li", a_mnu);
+		if(showFl){
+			showElement(a_li);
+		}else{
+			hideElement(a_li);
+		}
+	};
+	_showMenuHistory("zb-nav-tools", "span");
+	_showMenuHistory("zb-nav-menu", "label");
+}
+function loadRecent(){
 	g_recents = g_storage.getRecent();
 	if(!g_recents){
 		return;
 	}
 	/** @type {Element} */
-	var div2 = div.getElementsByTagName("div")[0];
+	var ul = getElement("ul", "#divHistory");
 
 	/** @type {function(number)} */
 	var showRecent = function(a_idx){
 		if(a_idx >= g_recents.length){
 			if(g_recents.length > 0){
-				div.style.display = "block";
+				showMenuHistory(true);
 			}
 			return;
 		}
 		/** @type {PlayedInfo} */
 		var a_rct = g_recents[a_idx];
-		// Get recent item.
+		// /* Get recent item. */
 		g_drive.getItem({
 			/** @type {string} */
 			_uid: a_rct._fid,
@@ -160,7 +339,7 @@ function loadRecent(){
 				if(b_dat._parentId){
 					a_rct._folder = b_dat._parentId;
 				}
-				setRecent(a_idx, decryptFname(b_dat._name), div2);
+				setRecent(a_idx, decryptFname(b_dat._name), ul);
 				showRecent(a_idx+1);
 			},
 		});
@@ -171,9 +350,9 @@ function loadRecent(){
 /**
  * @param {number} idx
  * @param {string} nm
- * @param {Element=} div
+ * @param {Element=} ul
  */
-function setRecent(idx, nm, div){
+function setRecent(idx, nm, ul){
 	/** @type {function((number|string)):string} */
 	var formaTime = function(a_seconds){
 		/** @type {number} */
@@ -196,48 +375,50 @@ function setRecent(idx, nm, div){
 		return a_arr.join(":");
 	};
 
-	if(!div){
-		div = document.getElementById("divHistory").getElementsByTagName("div")[0];
+	if(!ul){
+		ul = getElement("ul", "#divHistory");
 	}
 
-	/** @type {Element} */
-	var lnk = null;
 	/** @type {PlayedInfo} */
 	var pif = g_recents[idx];
-	/** @type {!NodeList<!Element>} */
-	var eles = div.getElementsByTagName("p");
-	if(idx < eles.length){
-		lnk = eles[idx].getElementsByTagName("a")[0];
+	/** @type {Element} */
+	var spnm = null;
+	/** @type {Element} */
+	var l = getElement(pif._folder, ul, "li.parentId");
+	if(l == null){
+		l = getElement("template", ul, "li.class").cloneNode(true);
+		l.classList.remove("template");
+
+		/** @type {Array<Element>} */
+		var eles = getElementsByAttribute("span", l);
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<eles.length; i++){
+			/** @type {Element} */
+			var sp = eles[i];
+			switch(sp.getAttribute("name")){
+			case "delete":
+				sp.addEventListener("click", clickDeleteRecent);
+				break;
+			case "file":
+				sp.addEventListener("click", clickRecent);
+				spnm = sp;
+				break;
+			case "next":
+				sp.addEventListener("click", clickRecentNext);
+				break;
+			}
+		}
+		l.setAttribute("parentId", pif._folder);
+		ul.appendChild(l);
 
 	}else{
-		/** @type {Element} */
-		var p = document.createElement("p");
-		/** @type {Element} */
-		var span = document.createElement("span");
-		span.title = window["msgs"]["spanDelHistory"];
-		span.appendChild(createSvg("cmulti", "red"));
-		span.addEventListener("click", clickDeleteRecent);
-		p.appendChild(span);
-		lnk = document.createElement("a");
-		lnk.href = "#";
-		lnk.addEventListener("click", clickRecent);
-		p.appendChild(lnk);
-		span = document.createElement("span");
-		span.title = window["msgs"]["spanPlayNext"];
-		span.appendChild(createSvg("next", "fblue"));
-		span.addEventListener("click", clickRecentNext);
-		p.appendChild(span);
-		div.appendChild(p);
+		spnm = getElement("file", l, "span.name");
 	}
 
-	lnk.innerText = nm;
-	lnk.setAttribute("fid", pif._fid);
-	if(pif._folder){
-		lnk.setAttribute("parentId", pif._folder);
-	}
+	spnm.innerText = nm;
 	if(pif._time){
-		lnk.setAttribute("time", pif._time);
-		lnk.innerText = lnk.innerText.concat(" [").concat(formaTime(pif._time)).concat("]");
+		spnm.innerText = spnm.innerText.concat(" [").concat(formaTime(pif._time)).concat("]");
 	}
 }
 /**
@@ -257,37 +438,54 @@ function listFolder(reload, onlyfolder, fld, func){
 		fld = g_paths[idx];
 	}
 	/** @type {string} */
-	var tblid = "#tblst";
+	var divid = "#divMain";
 	if(onlyfolder){
-		tblid = "#tblFolder";
+		divid = "#divModal";
 	}
 
-	/** @type {?TableBody} */
-	var t = getTableBody(tblid);
+	/** @type {number} */
+	var i = 0;
 	/** @type {Element} */
-	var tbl = t._table;
+	var div = getElement(divid);
 	/** @type {Element} */
-	var tbdy = t._tbody;
-	tbdy.innerHTML = "";
+	var ulPath = getHeaderUl(div);
+	/** @type {Element} */
+	var ulList = getListUl(div);
+
 	showInfo("loading");
 
+	/** @type {Array<Element>} */
+	var eles = getListItems(ulList);
+	for(i=0; i<eles.length; i++){
+		ulList.removeChild(eles[i]);
+	}
+
 	/** @type {Element} */
-	var th = tbl.getElementsByTagName("th")[0];
-	/** @type {Element} */
-	var oldlnk = previousElement(th, "a", true);
+	var oldlnk = previousElement(ulPath, undefined, true);
+	if(oldlnk && oldlnk.classList.contains("template")){
+		oldlnk = null;
+	}
+
 	if(reload){
 		if(oldlnk){
-			oldlnk.classList.remove("fnormal");
+			oldlnk.classList.remove("normal");
 		}
 	}else{
 		if(oldlnk){
 			if(idx == 0 && !onlyfolder){
-				th.innerHTML = "";
+				// while(oldlnk){
+					// if(oldlnk.classList.contains("template")){
+						// break;
+					// }else{
+						// ulPath.removeChild(oldlnk);
+						// oldlnk = previousElement(ulPath, undefined, true);
+					// }
+				// }
 			}else{
-				oldlnk.classList.add("fnormal");
+				oldlnk.classList.add("normal");
 			}
 		}
-		addPath(th, fld, idx);
+		addPath(ulPath, fld, idx);
 	}
 
 	g_drive.searchItems({
@@ -333,267 +531,255 @@ function listFolder(reload, onlyfolder, fld, func){
 					a_sort.push(b_ele);
 				}
 			});
-			// Create List
+			/* Create List */
 			a_sort.forEach(/** function(DriveItem, number) */function(b_ele, b_idx){
 				if(!onlyfolder || isFolder(b_ele)){
-					addItem(tbdy, b_ele, onlyfolder);
+					addItem(ulList, b_ele);
 				}
 			});
 			if(!onlyfolder){
-				document.getElementById("divHeader").style.display = "block";
-				tbl.style.display = "block";
-				document.getElementById("divAction").style.display = "block";
 				/** @type {Element} */
-				var a_chk = document.getElementById("chkAll");
-				a_chk.checked = false;
+				var a_chk = getElement("#chkAll");
+				/** @type {Element} */
+				var a_li = findParent("li", a_chk);
+				getElement("checkbox", a_li, "input.type").checked = false;
+				hideElement(getElement("chkbox", a_li, "span.name"));
 				if(a_arr.length > 0){
-					a_chk.style.display = "";
+					showElement(a_chk);
 				}else{
-					a_chk.style.display = "none";
+					hideElement(a_chk);
 				}
 			}
 			if(func){
 				func(a_sort);
+			}else{
+				hideMessage();
 			}
-			showInfo();
 		},
 		_parentid: fld._id,
 	});
 }
 /**
- * @param {Element} th
+ * @param {Element} ul
  * @param {DriveItem} fld
  * @param {number} idx
  * @param {boolean=} norm
  */
-function addPath(th, fld, idx, norm){
+function addPath(ul, fld, idx, norm){
 	/** @type {Element} */
-	var lnk = document.createElement("a");
+	var l = getElement("template", ul, "li.class").cloneNode(true);
 	/** @type {Element} */
-	var span = document.createElement("span");
-	lnk.href = "#";
-	lnk.innerText = fld._name;
-	lnk.setAttribute("uid", fld._id);
-	lnk.setAttribute("idx", idx);
-	lnk.addEventListener("click", clickPath);
+	var sp = getElement("span", l);
+	sp.innerText = fld._name;
+	l.setAttribute("name", "folder");
+	l.setAttribute("uid", fld._id);
+	l.setAttribute("idx", idx);
+	l.addEventListener("click", clickPath);
+	l.classList.remove("template");
 	if(norm){
-		lnk.classList.add("fnormal");
+		l.classList.add("normal");
 	}
-	th.appendChild(lnk);
-	span.innerText = ">";
-	th.appendChild(span);
+	showElement(l);
+	ul.appendChild(l);
 }
 /**
  * @param {string} sid id of svg
- * @param {string=} cls Class
+ * @param {string=} fl The color of style fill.
  * @return {Element} the svg element
  */
-function createSvg(sid, cls){
+function createSvg(sid, fl){
 	/** @type {Element} */
 	var b_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 	/** @type {Element} */
 	var b_use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-	if(cls){
-		b_svg.classList.add(cls);
+	if(fl){
+		b_svg.style.fill = fl;
 	}
 	b_use.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#".concat(sid));
 	b_svg.appendChild(b_use);
 	return b_svg;
 }
 /**
- * @param {Element} tby
+ * @param {Element} ul
  * @param {DriveItem} itm
- * @param {boolean=} fonly
  */
-function addItem(tby, itm, fonly){
+function addItem(ul, itm){
+	/** @type {string} */
+	var fnm = itm._name;
+	/** @type {string} */
+	var sz = "";
+	/** @type {string} */
+	var tms = "";
 	/** @type {Element} */
-	var b_tr = document.createElement("tr");
-	/** @type {Element} */
-	var b_td = document.createElement("td");
-	/** @type {Element} */
-	var b_link = document.createElement("a");
-	var b_fnm = itm._name;
-	if(!fonly){
+	var l = getElement("template", ul, "li.class").cloneNode(true);
+	l.classList.remove("template");
+	l.setAttribute("uid", itm._id);
+	l.setAttribute("utype", /** @type {string} */(itm._type));
+
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("span", l);
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
 		/** @type {Element} */
-		var b_chk = document.createElement("input");
-		/** @type {Element} */
-		var b_span = document.createElement("span");
-		/** @type {Element} */
-		var b_btn = document.createElement("span");
-		b_chk.type = "checkbox";
-		b_td.appendChild(b_chk);
-		if(isFolder(itm)){
-			b_span.appendChild(createSvg("folder", "folder"));
-		}else{
-			/** @type {string} */
-			var b_sfx = getSfx(b_fnm);
-			if(g_imagetypes[b_sfx]){
-				b_span.appendChild(createSvg("image", "fgreen"));
-			}else if(g_videotypes[b_sfx]){
-				b_span.appendChild(createSvg("video", "fpink"));
+		var sp = eles[i];
+		switch(sp.getAttribute("name")){
+		case "fnm":
+			sp.innerText = fnm;
+			sp.addEventListener("click", /** @type {function(Event)} */(clickItem));
+			break;
+		case "icon":
+			if(isFolder(itm)){
+				setSvgImage(sp, "folder", "#FFD679");
 			}else{
-				b_span.appendChild(createSvg("file", "fyellow"));
+				/** @type {string} */
+				var sfx = getSfx(fnm);
+				if(g_imagetypes[sfx]){
+					setSvgImage(sp, "image", "#E7FFE7"); // green
+				}else if(g_videotypes[sfx]){
+					setSvgImage(sp, "video", "#FFE7F3"); // pink
+				}else{
+					setSvgImage(sp, "file", "#FFFFB0"); // yellow
+				}
 			}
+			sp.addEventListener("click", clickIcon);
+			break;
+		case "chkbox":
+			sp.addEventListener("click", clickIcon);
+			hideElement(sp);
+			break;
+		case "edit":
+			sp.addEventListener("click", showDropdown);
+			break;
+		case "size":
+			if(!sz){
+				sz = getSizeDisp(/** @type {number} */(itm._size));
+			}
+			sp.innerText = sz;
+			break;
+		case "tms":
+			if(!tms){
+				tms = getTimestampDisp(/** @type {string} */(itm._lastModifiedDateTime));
+			}
+			sp.innerText = tms;
+			break;
 		}
-		b_span.addEventListener("click", clickIcon);
-		b_td.appendChild(b_span);
 	}
-	b_link.innerText = b_fnm;
-	b_link.href = "#";
-	b_link.setAttribute("uid", itm._id);
-	b_link.setAttribute("utype", /** @type {string} */(itm._type));
-	b_link.addEventListener("click", /** @type {function(Event)} */(clickItem));
-	b_td.appendChild(b_link);
-	if(!fonly){
-		b_btn.appendChild(createSvg("edit"));
-		b_btn.classList.add("dropbtn");
-		b_btn.addEventListener("click", showDropdown);
-		b_td.appendChild(b_btn);
+
+	showElement(l);
+	ul.appendChild(l);
+}
+/**
+ * @param {Element} l li
+ * @param {number=} chkd 1 means set to true, -1 means set to false
+ */
+function switchChecked(l, chkd){
+	if(chkd != 1 && chkd != -1){
+		/** @type {Element} */
+		var chk = getElement("checkbox", l, "input.type");
+		chk.checked = !chk.checked;
+		if(chk.checked){
+			chkd = 1;
+		}else{
+			chkd = -1;
+		}
 	}
-	b_tr.appendChild(b_td);
-	if(!fonly){
-		b_td = document.createElement("td");
-		b_td.innerText = getSizeDisp(/** @type {number} */(itm._size));
-		b_td.setAttribute("class", "right");
-		b_tr.appendChild(b_td);
-		b_td = document.createElement("td");
-		b_td.innerText = getTimestampDisp(/** @type {string} */(itm._lastModifiedDateTime));
-		b_tr.appendChild(b_td);
-	}
-	tby.appendChild(b_tr);
+	if(chkd > 0){
+		showElement(getElement("chkbox", l, "span.name"));
+	}else{
+		hideElement(getElement("chkbox", l, "span.name"));
+	}	
 }
 /**
  * @param {Event} evt
  */
 function clickIcon(evt){
-	var btn = /** @type {Element} */(getElement(evt));
-	if(btn.tagName != "SPAN"){
-		btn = findParent(btn, "SPAN");
-	}
-	var chk = previousElement(btn, "INPUT");
-	if(chk){
-		chk.click();
-	}
+	switchChecked(findParent("li"));
 }
 /**
  * Event called from html
- * @param {number|Event=} direction
+ * @param {string|Event} uidevt Event or uid
+ * @param {number=} direction
  * @param {boolean=} noLoop
  *
  * direction: 1 previous, 2 next, self if omitted.
  */
-function clickItem(direction, noLoop){
+function clickItem(uidevt, direction, noLoop){
 	/** @type {Element} */
-	var ele = null;
-	/** @type {Element} */
-	var tbdy = null;
-	/** @type {HTMLCollection} */
-	var rows = null;
-	/** @type {number} */
-	var rowidx = 0
-	if(direction && !(direction instanceof Event)){
-		tbdy = getTableBody("#tblFileDetail")._tbody;
-		rows = /** @type {HTMLCollection} */(getTableBody("#tblst")._tbody.rows);
-		rowidx = tbdy.rows[0].getAttribute("rowidx");
-		if(direction == 1){
-			if(rowidx > 0){
-				rowidx--;
-			}else if(noLoop){
-				return;
-			}else{
-				rowidx = rows.length - 1;
-			}
+	var itm = null;
+	/** @type {string} */
+	var uid = "";
+	/** @type {boolean} */
+	var onlyfolder = false;
+	if(typeof uidevt == "string"){
+		uid = uidevt;
+	}else{
+		itm = findParent("li");
+		uid = itm.getAttribute("uid");
+		onlyfolder = (findParent("div", itm).getAttribute("type") == "selfldr");
+	}
+	if(direction || !itm){
+		itm = getMenuTarget(uid, direction, noLoop);
+		uid = itm.getAttribute("uid");
+	}
+
+	/** @type {DriveItem} */
+	var drvitm = {
+		_id: uid,
+		_name: getNameSpan(itm).innerText,
+		_type: itm.getAttribute("utype"),
+	};
+	if(isFolder(itm)){
+		if(onlyfolder){
+			listFolder(false, true, drvitm);
 		}else{
-			rowidx++;
-			if(rowidx >= rows.length){
-				if(noLoop){
-					return;
-				}else{
-					rowidx = 0;
-				}
-			}
-		}
-		ele = rows[rowidx].getElementsByTagName("a")[0];
-		// Skip folder
-		if(isFolder(ele)){
-			tbdy.rows[0].setAttribute("rowidx", rowidx);
-			clickItem(direction);
-			return;
+			g_paths.push(drvitm);
+			listFolder();
 		}
 	}else{
-		window.event.preventDefault();
-		ele = /** @type {Element} */(getElement());
-		if(isFolder(ele)){
-			/** @type {Element} */
-			var tbl = findParent(ele, "TABLE");
-			if(tbl.getAttribute("onlyfolder")){
-				listFolder(false, true, {
-					_id: ele.getAttribute("uid"),
-					_name: ele.innerText,
-				});
-			}else{
-				g_paths.push({
-					_id: ele.getAttribute("uid"),
-					_name: ele.innerText,
-				});
-				listFolder();
-			}
-			return;
-		}else{
-			tbdy = getTableBody("#tblFileDetail")._tbody;
-			rows = /** @type {HTMLCollection} */(getTableBody("#tblst")._tbody.rows);
-			rowidx = findParent(ele, "TR").rowIndex - rows[0].rowIndex;
-		}
+		viewFile(drvitm._id, drvitm._name);
 	}
-	tbdy.rows[0].cells[1].getElementsByTagName("span")[0].innerText = ele.innerText;
-	tbdy.rows[0].setAttribute("uid", ele.getAttribute("uid"));
-	tbdy.rows[0].setAttribute("rowidx", rowidx);
-	tbdy.rows[1].cells[0].innerText = window["msgs"]["thSize"] + ": " + rows[rowidx].cells[1].innerText;
 
-	viewFile(ele.getAttribute("uid"), ele.innerText);
 }
 /**
  * Event called from html
+ * @param {Event} evt
  */
-function clickPath(){
-	window.event.preventDefault();
+function clickPath(evt){
 	/** @type {Element} */
-	var ele = /** @type {Element} */(getElement());
+	var itm = findParent("li");
 	/** @type {Element} */
-	var tbl = findParent(ele, "TABLE");
+	var ul = findParent("ul", itm);
+	/** @type {boolean} */
+	var onlyfolder = (findParent("div", ul).getAttribute("type") == "selfldr");
+
+	/** @type {number} */
+	var cnt = 0;
 	/** @type {Element} */
-	var th = tbl.getElementsByTagName("th")[0];
-	if(tbl.getAttribute("onlyfolder")){
+	var next = nextElement(itm);
+	while(next){
+		if(next.tagName == itm.tagName){
+			cnt++;
+		}
+		next = nextElement(next);
+	}
+	if(cnt > 0){
 		/** @type {number} */
-		var cnt = 0;
-		/** @type {Element} */
-		var next = ele.nextElementSibling;
-		while(next){
-			if(next.tagName == ele.tagName){
-				cnt++;
-			}
-			next = next.nextElementSibling
+		var i = 0;
+		for(i=0; i<cnt; i++){
+			ul.removeChild(ul.lastElementChild);
 		}
-		if(cnt > 0){
-			for(var i=0; i<cnt; i++){
-				th.removeChild(th.lastElementChild);
-				th.removeChild(th.lastElementChild);
-			}
-		}
+	}
+
+	if(onlyfolder){
 		listFolder(true, true, {
-			_name: ele.innerText,
-			_id : ele.getAttribute("uid"),
+			_name: getElement("span", itm).innerText,
+			_id : itm.getAttribute("uid"),
 		});
 	}else{
-		/** @type {number} */
-		var idx = parseInt(ele.getAttribute("idx"), 10);
-		if(idx < g_paths.length - 1){
-			/** @type {Array<DriveItem>} */
-			var darr = g_paths.splice(idx + 1);
-			darr.forEach(/** function(DriveItem) */function(a_ele){
-				th.removeChild(th.lastElementChild);
-				th.removeChild(th.lastElementChild);
-			});
+		cnt = getIntAttr(itm, "idx");
+		if(cnt < g_paths.length - 1){
+			g_paths.splice(cnt + 1);
 		}
 		listFolder(true);
 	}
@@ -632,154 +818,232 @@ function getSfx(fnm){
  * Event called from html
  */
 function selectAll(){
-	/** @type {boolean} */
-	var chkd = getElement().checked;
-	/** @type {!NodeList<!Element>} */
-	var eles = getTableBody("#tblst")._tbody.getElementsByTagName("input");
-	for(var i=0; i<eles.length; i++){
-		if(eles[i].type == "checkbox"){
-			eles[i].checked = chkd;
-		}
-	}
-}
-/**
- * @param {number} typ
- *
- * typ: 1 show dropdown, 2 show file detail, 3 show folder selector
- */
-function showGround(typ){
 	/** @type {Element} */
-	var div = document.getElementById("divGround");
-	if(typ == 1){
-		div.style.backgroundColor = "transparent";
-		document.getElementById("tblFileDetail").parentElement.style.display = "none";
-	}else{
-		div.style.backgroundColor = "";
-		document.getElementById("tblFileDetail").parentElement.style.display = "";
-		if(typ == 2){
-			document.getElementById("spanGroundTitle").innerText = window["msgs"]["gtlFDetail"];
-			document.getElementById("tblFileDetail").style.display = "";
-		}else{
-			document.getElementById("tblFileDetail").style.display = "none";
-		}
-		if(typ == 3){
-			document.getElementById("spanGroundTitle").innerText = window["msgs"]["gtlMoveto"];
-			/** @type {Element} */
-			var tbl = document.getElementById("tblFolder");
-			tbl.getElementsByTagName("th")[0].innerHTML = null;
-			tbl.style.display = "";
-		}else{
-			document.getElementById("tblFolder").style.display = "none";
+	var l = findParent("li");
+	/** @type {Element} */
+	var chk = getElement("checkbox", l, "input.type");
+	switchChecked(l);
+	/** @type {number} */
+	var chkd = -1;
+	if(chk.checked){
+		chkd = 1;
+	}
+	
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("li", findParent("ul", l));
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		if(!(eles[i].classList.contains("header") || eles[i].classList.contains("template"))){
+			switchChecked(eles[i], chkd);
 		}
 	}
-
-	div.style.display = "table";
 }
 /**
  * Event called from html
+ * @param {Event} evt
  */
-function showDropdown(){
+function showDropdown(evt){
 	/** @type {Element} */
-	var btn = /** @type {Element} */(getElement());
-	/** @type {HTMLCollection} */
-	var rows = getTableBody("#tblst")._tbody.rows;
-	/** @type {number} */
-	var rowidx = findParent(btn, "TR").rowIndex - rows[0].rowIndex;
-	/** @type {Element} */
-	var menu = document.getElementById("divItemenu");
+	var btn = findParent("span");
 	/** @type {DOMRect} */
 	var rect = btn.getBoundingClientRect();
-	menu.style.left = rect.right + "px";
+	/** @type {Element} */
+	var li = findParent("li", btn);
+	/** @type {Element} */
+	var menu = getElement("#ulIteMenu");
+	if(!menu.hasAttribute("ofwid")){
+		menu.setAttribute("ofwid", menu.offsetWidth);
+	}
+	if(rect.right + menu.getAttribute("ofwid") > document.body.offsetWidth){
+		menu.style.left = (rect.left - menu.getAttribute("ofwid")) + "px";
+	}else{
+		menu.style.left = rect.right + "px";
+	}
 	menu.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + rect.top) + "px";
-	menu.style.display = "block";
-	menu.setAttribute("rowidx", rowidx);
-	showGround(1);
+	menu.setAttribute("uid", li.getAttribute("uid"));
+	menu.setAttribute("utype", li.getAttribute("utype"));
+	/** @type {MenuType} */
+	evt.buttonKey = MenuType.ITEM;
 }
 /**
- * @return {HTMLElement}
+ * @param {string} uid
+ * @param {number=} direction
+ * @param {boolean=} noLoop
+ * @return {Element}
+ *
+ * direction: 1 previous, 2 next, self if omitted.
  */
-function getMenuTarget(){
+function getMenuTarget(uid, direction, noLoop){
+	if(!uid){
+		return null;
+	}
 	/** @type {Element} */
-	var div = document.getElementById("divItemenu");
-	/** @type {HTMLCollection} */
-	var rows = getTableBody("#tblst")._tbody.rows;
+	var ul = getListUl("#divMain");
+	/** @type {Array<Element>} */
+	var eles = getListItems(ul);
 	/** @type {number} */
-	var rowidx = parseInt(div.getAttribute("rowidx"), 10);
-	return rows[rowidx].getElementsByTagName("a")[0];
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		if(eles[i].getAttribute("uid") == uid){
+			break;
+		}
+	}
+	if(i >= eles.length){
+		/* Not Found */
+		return null;
+	}
+	switch(direction){
+	case 1:
+		// Skip folder
+		while(i >= 0){
+			i--;
+			if(i < 0){
+				if(noLoop){
+					return null;
+				}else{
+					noLoop = true; // To prevent infinite loop.
+					i = eles.length - 1;
+				}
+			}
+			if(!isFolder(eles[i])){
+				break;
+			}
+		}
+		break;
+	case 2:
+		// Skip folder
+		while(i < eles.length){
+			i++;
+			if(i >= eles.length){
+				if(noLoop){
+					return null;
+				}else{
+					noLoop = true; // To prevent infinite loop.
+					i = 0;
+				}
+			}
+			if(!isFolder(eles[i])){
+				break;
+			}
+		}
+		break;
+	}
+	return eles[i];
 }
 /**
  * Event called from html
+ *
+ * @param {Event} evt
  */
-function clickMenu(){
+function clickIteMenu(evt){
 	/** @type {Element} */
-	var ele = /** @type {Element} */(getElement());
+	var li = findParent("li");
 	/** @type {Element} */
-	var div = findParent(ele, "DIV");
-	/** @type {Element} */
-	var lnk = getMenuTarget();
-	div.style.display = "";
-	switch(ele.getAttribute("wordid")){
-	case "btnDownload":
-		if(isFolder(lnk)){
+	var ul = findParent("ul", li);
+	/** @type {string} */
+	var uid = ul.getAttribute("uid");
+	if(!uid){
+		return;
+	}
+
+	/** @type {string} */
+	var act = getElement("label", li).getAttribute("iid");
+	switch(act){
+	case "menuDownload":
+		if(isFolder(ul)){
 			showError("noDownFolder");
 		}else{
-			div.setAttribute("uid", lnk.getAttribute("uid"));
-			div.setAttribute("uname", lnk.innerText);
-			download(2);
+			downloadById(uid);
 		}
-		hideGround();
 		break;
-	case "btnRename":
+	case "menuRename":
 		/** @type {Element} */
-		var div1 = document.getElementById("divNewName");
+		var div = getElement("#divInpName");
 		/** @type {Element} */
-		var txt = div1.getElementsByTagName("input")[0];
+		var txt = getElement("input", div);
+		/** @type {Element} */
+		var itm = getMenuTarget(uid);
+		/** @type {Element} */
+		var sp = getNameSpan(itm);
 		/** @type {DOMRect} */
-		var rect = lnk.getBoundingClientRect();
-		txt.value = lnk.innerText;
-		div1.style.left = rect.left + "px";
-		div1.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + rect.top - 2) + "px";
-		txt.style.width = rect.width + "px";
-		txt.style.height = rect.height + "px";
-		div1.style.display = "block";
+		var rect = sp.getBoundingClientRect();
+		/** @type {DOMRect} */
+		var rect2 = getElement("edit", itm, "span.name").getBoundingClientRect();
+		txt.value = sp.innerText;
+		div.style.left = rect.left + "px";
+		div.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + rect.top - 2) + "px";
+		txt.style.width = (rect2.left - rect.left) + "px";
+		txt.style.height = (rect.height + 2) + "px";
+		showElement(div);
 		txt.focus();
-		return;
-	case "btnMove":
-		showMove(lnk.getAttribute("uid"));
+		/** @type {MenuType} */
+		evt.buttonKey = MenuType.TEXT;
 		break;
-	case "btnDelete":
-		deleteItems(lnk.getAttribute("uid"));
-		hideGround();
+	case "menuMove":
+		showMove(uid);
+		break;
+	case "menuDelete":
+		deleteItems(uid);
 		break;
 	}
 }
 /**
- * @param {string|Event} uid
+ * @param {string} uid 
  */
-function showMove(uid){
-	if(typeof uid == "string"){
-		document.getElementById("tblFolder").setAttribute("uid", uid);
+function downloadById(uid){
+	/** @type {Element} */
+	var itm = getMenuTarget(uid);
+	/** @type {Element} */
+	var sp = getNameSpan(itm);
+	/** @type {DriveItem} */
+	var drvitm = {
+		_name: sp.innerText,
+		_id: uid,
+	};
+	download([drvitm]);
+}
+/**
+ * @param {string|function()=} uidfunc 
+ */
+function showMove(uidfunc){
+	/** @type {function()|undefined} */
+	var func = undefined;
+	/** @type {Element} */
+	var div = getElement("#divModal");
+	if(typeof uidfunc == "string"){
+		div.setAttribute("uid", uidfunc);
 	}else if(getMultiChecked()){
-		document.getElementById("tblFolder").removeAttribute("uid");
+		div.removeAttribute("uid");
+		func = uidfunc;
 	}else{
 		return;
 	}
-	showGround(3);
+	/** @type {Element} */
+	var ul = getHeaderUl(div);
+	/** @type {Array<Element>} */
+	var eles = getListItems(ul);
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		ul.removeChild(eles[i]);
+	}
 	listFolder(false, true, g_paths[0]);
+	showModal("selfldr", func);
 }
 /**
  * Event called from html
+ *
+ * @param {Event} evt
  * @return {boolean}
  */
-function keyupNewname(){
-	/** @type {Event} */
-	var evt = window.event;
+function keyupNewname(evt){
 	if(evt.keyCode === 13){ // Enter Key
 		if(evt.shiftKey || evt.ctrlKey || evt.altKey){
 			return true;
 		}
 	}else if(evt.keyCode === 27){ // Esc Key
-		hideGround();
+		hideElement(findParent("div"));
 		return false;
 	}else{
 		return true;
@@ -792,68 +1056,72 @@ function keyupNewname(){
  */
 function admitRename(){
 	/** @type {Element} */
-	var txt = /** @type {Element} */(getElement());
-	if(txt.tagName != "INPUT"){
-		txt = previousElement(txt, "INPUT");
-	}
+	var div = findParent("div");
+	/** @type {Element} */
+	var txt = getElement("input", div);
 	if(!txt.value){
 		showError("noNewName");
 		return;
 	}
 	/** @type {Element} */
-	var div = document.getElementById("divItemenu");
-	/** @type {HTMLCollection} */
-	var rows = getTableBody("#tblst")._tbody.rows;
-	/** @type {number} */
-	var rowidx = parseInt(div.getAttribute("rowidx"), 10);
+	var menu = getElement("#ulIteMenu");
+	/** @type {string} */
+	var uid = menu.getAttribute("uid");
 	/** @type {Element} */
-	var lnk = rows[rowidx].getElementsByTagName("a")[0];
-	if(txt.value != lnk.innerText){
-		/** @type {string} */
-		var fnm = encryptFname(txt.value);
-		/** @type {DriveUpdateOption} */
-		var opt = {
-			/** @type {function((boolean|DriveJsonRet))} */
-			_doneFunc: function(a_err){
-				if(a_err){
-					showError(a_err._restext);
-					return;
-				}
-				lnk.innerText = txt.value;
-				showNotify("renDone");
-			},
+	var itm = getMenuTarget(uid);
+	if(itm){
+		/** @type {Element} */
+		var sp = getNameSpan(itm);
+		if(txt.value != sp.innerText){
 			/** @type {string} */
-			_fid: lnk.getAttribute("uid"),
-			/** @type {string} */
-			_newname: fnm,
+			var fnm = encryptFname(txt.value);
+			/** @type {DriveUpdateOption} */
+			var opt = {
+				/** @type {function((boolean|DriveJsonRet))} */
+				_doneFunc: function(a_err){
+					if(a_err){
+						showError(a_err._restext);
+						return;
+					}
+					sp.innerText = txt.value;
+					showNotify("renDone");
+				},
+				/** @type {string} */
+				_fid: uid,
+				/** @type {string} */
+				_newname: fnm,
+			}
+			g_drive.rename(opt);
 		}
-		g_drive.rename(opt);
 	}
-	hideGround();
+	hideElement(div);
 }
 /**
- * Event called from html
+ * @param {function(boolean)=} func
  */
-function moveToFolder(){
-	hideGround();
-
+function moveToFolder(func){
 	/** @type {Element} */
-	var tbl = document.getElementById("tblFolder");
+	var div = getElement("#divModal");
 	/** @type {Element} */
-	var th = tbl.getElementsByTagName("th")[0];
+	var ul = getHeaderUl(div);
 	/** @type {Element} */
-	var lnk = previousElement(th, "a", true);
+	var li = previousElement(ul, "li", true);
 	/** @type {string} */
-	var pntid = lnk.getAttribute("uid") ;
+	var pntid = li.getAttribute("uid") ;
 	if(pntid == g_paths[g_paths.length - 1]._id){
+		if(func){
+			func(false);
+		}
 		return;
+	}else if(func){
+		func(true);
 	}
 
-	var arr = null;
+	/** @type {Array<DriveItem>} */
+	var arr = [];
 	/** @type {string} */
-	var uid = tbl.getAttribute("uid");
+	var uid = div.getAttribute("uid");
 	if(uid){
-		arr = /** @type {Array<DriveItem>} */(new Array());
 		arr.push({
 			_id: uid,
 			_name: "",
@@ -861,7 +1129,7 @@ function moveToFolder(){
 	}else{
 		arr = getMultiChecked();
 	}
-	if(!arr){
+	if(arr.length == 0){
 		return;
 	}
 
@@ -881,8 +1149,9 @@ function moveToFolder(){
 				opt._fid = arr[idx]._id;
 				g_drive.move(opt);
 			}else{
-				listFolder(true);
-				showNotify("moveDone");
+				listFolder(true, false, undefined, function(){
+					showNotify("moveDone");
+				});
 			}
 		},
 		/** @type {string} */
@@ -895,17 +1164,16 @@ function moveToFolder(){
 	g_drive.move(opt);
 }
 /**
- * Event called from html
- * @param {string|Event} uid
+ * @param {string=} uid
  */
 function deleteItems(uid){
+	/** @type {Array<DriveItem>} */
 	var arr = null;
-	if(typeof uid == "string"){
-		arr = /** @type {Array<DriveItem>} */(new Array());
-		arr.push({
+	if(uid){
+		arr = [/** @type {DriveItem} */({
 			_id: uid,
 			_name: "",
-		});
+		})];
 	}else{
 		arr = getMultiChecked();
 	}
@@ -921,11 +1189,13 @@ function deleteItems(uid){
 	var idx = 0;
 	/** @type {DriveUpdateOption} */
 	var opt = {
-		/** @type {function((boolean|DriveJsonRet))} */
-		_doneFunc: function(a_err){
+		/** @type {function((boolean|DriveJsonRet), number=)} */
+		_doneFunc: function(a_err, a_sz){
 			if(a_err){
 				showError(a_err._restext);
 				return;
+			}else if(a_sz){
+				addQuotaUsed(a_sz, true);
 			}
 			idx++;
 			if(idx < arr.length){
@@ -942,13 +1212,16 @@ function deleteItems(uid){
 	g_drive.delete(opt);
 }
 /**
- * Event called from html
+ * @param {function(boolean)=} func
  */
-function newFolder(){
+function newFolder(func){
 	/** @type {string} */
-	var fldnm = document.getElementById("txtName").value;
+	var fldnm = getElement("#fldnm").value;
 	if(!fldnm){
 		showError("noFldName");
+		if(func){
+			func(false);
+		}
 		return;
 	}
 	/** @type {DriveNewFolderOption} */
@@ -957,11 +1230,17 @@ function newFolder(){
 		_doneFunc: function(a_err, a_dat){
 			if(a_err){
 				showError(a_err._restext);
+				if(func){
+					func(false);
+				}
 				return;
 			}
 			a_dat._name = fldnm;
-			addItem(getTableBody("#tblst")._tbody, a_dat);
+			addItem(getListUl("#divMain"), a_dat);
 			showNotify("flDone");
+			if(func){
+				func(true);
+			}
 		},
 		/** @type {string} */
 		_folder: encryptFname(fldnm),
@@ -978,21 +1257,19 @@ function newFolder(){
 function getMultiChecked(noFolder){
 	/** @type {Array<DriveItem>} */
 	var files = new Array();
-	/** @type {!NodeList<!Element>} */
-	var eles = getTableBody("#tblst")._tbody.getElementsByTagName("input");
-	for(var i=0; i<eles.length; i++){
-		/** @type {Element} */
-		var e = eles[i];
-		if(e.type == "checkbox" && e.checked){
-			/** @type {Element} */
-			var lnk = nextElement(e, "a");
-			if(noFolder && isFolder(lnk)){
+	/** @type {Array<Element>} */
+	var eles = getListItems(getListUl("#divMain"));
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		if(getElement("checkbox", eles[i], "input.type").checked){
+			if(noFolder && isFolder(eles[i])){
 				showError("noDownFolder");
 				return null;
 			}else{
 				files.push({
-					_name: lnk.innerText,
-					_id: lnk.getAttribute("uid"),
+					_name: getNameSpan(eles[i]).innerText,
+					_id: eles[i].getAttribute("uid"),
 				});
 			}
 		}
@@ -1010,38 +1287,42 @@ function getMultiChecked(noFolder){
  */
 function viewFile(fid, fnm){
 	/** @type {Element} */
-	var tbdy = getTableBody("#tblFileDetail")._tbody;
-	showGround(2);
+	var div = getElement("#diViewer");
+	/** @type {Element} */
+	var div2 = findParent("zb-viewer", div, "div.class");
+	/** @type {Element} */
+	var sptl = getElement("title", div2, "span.name");
+	/** @type {Element} */
+	var span = getElement("span", div);
+	/** @type {Element} */
+	var img = getElement("img", div);
+	/** @type {Element} */
+	var vdo = endVideoStream(div);
+
+	span.innerText = window["msgs"]["loading"];
+	showElement(span);
+	hideElement(nextElement(span));
+	hideElement(img);
+	sptl.innerText = fnm;
+	img.src = "";
+	div.setAttribute("uid", fid);
+	showElement(findParent("zb-modal", div2, "div.class"));
 
 	/** @type {string} */
 	var sfx = getSfx(fnm);
-	/** @type {Element} */
-	var span = tbdy.rows[0].cells[1].getElementsByTagName("span")[0];
-	/** @type {Element} */
-	var img = tbdy.rows[0].cells[1].getElementsByTagName("img")[0];
 	/** @type {string} */
 	var imgType = g_imagetypes[sfx];
 	/** @type {string} */
 	var vdoType = g_videotypes[sfx];
-	/** @type {Element} */
-	var spanTitle = document.getElementById("spanGroundTitle");
-	spanTitle.innerText = window["msgs"]["gtlFDetail"];
-	span.style.display = "";
-	img.style.display = "none";
-	img.src = "";
-	/** @type {Element} */
-	var vdo = endVideoStream(tbdy);
-	tbdy.rows[1].style.display = "";
-	tbdy.rows[2].style.display = "";
+
 	if(vdoType){
-		spanTitle.innerText = fnm;
 		playVedio(vdo, fid, fnm);
-		vdo.style.display = "";
-		span.style.display = "none";
-		tbdy.rows[1].style.display = "none";
-		tbdy.rows[2].style.display = "none";
+		showElement(vdo);
+		hideElement(span);
 		return;
 	}else if(!imgType){
+		span.innerText = window["msgs"]["cantView"];
+		showElement(nextElement(span));
 		return;
 	}
 
@@ -1073,15 +1354,65 @@ function viewFile(fid, fnm){
 //			img.src = "data:"+imgType+";base64," + a_words.toString(CryptoJS.enc.Base64);
 			var a_blob = new Blob([a_buf], { "type" : imgType });
 			img.src = window.URL.createObjectURL(a_blob);
-			img.title = fnm;
-			img.style.display = "";
-			span.style.display = "none";
-			spanTitle.innerText = fnm;
-			tbdy.rows[1].style.display = "none";
-			tbdy.rows[2].style.display = "none";
+			showElement(img);
+			hideElement(span);
 		}
 	});
 	cypt.start();
+}
+/**
+ * Event called from html
+ * @param {Event=} evt
+ */
+function switchShowPrevNext(evt){
+	/** @type {Element} */
+	var div = getElement(evt ? evt : "#diViewer");
+	/** @type {Element} */
+	var tgt = nextElement(div, "div");
+	/** @type {string} */
+	var opa = "";
+	if(evt){
+		if(tgt.style.opacity){
+			/* Do nothing when click the viewer during button is displaying. */
+			return;
+		}else{
+			opa = "1";
+		}
+	}
+	while(tgt){
+		tgt.style.opacity = opa;
+		tgt = nextElement(tgt, "div");
+	}
+	if(evt){
+		window.setTimeout(switchShowPrevNext, 5000);
+	}
+}
+/**
+ * Event called from html
+ */
+function clickPrevious(){
+	/** @type {string} */
+	var uid = getElement("#diViewer").getAttribute("uid");
+	if(uid){
+		clickItem(uid, 1);
+	}
+}
+/**
+ * Event called from html
+ */
+function clickNext(){
+	/** @type {string} */
+	var uid = getElement("#diViewer").getAttribute("uid");
+	if(uid){
+		clickItem(uid, 2);
+	}
+}
+/**
+ * Call from html event.
+ */
+function exitViewer(){
+	endVideoStream(getElement("#diViewer"));
+	hideModal();
 }
 /**
  * Event called from html
@@ -1141,26 +1472,13 @@ function resetVideoSrc(errevt){
 		vdo.src = window.URL.createObjectURL(vstrm._elemWrapper._mediaSource);
 	}
 }
-
 /**
- * Event called from html
- */
-function hideGround(){
-	document.getElementById("divGround").style.display = "";
-	endVideoStream();
-	document.getElementById("divItemenu").style.display = "";
-	document.getElementById("divNewName").style.display = "";
-}
-/**
- * @param {Element=} tbdy
+ * @param {Element} div
  * @return {Element}
  */
-function endVideoStream(tbdy){
-	if(!tbdy){
-		tbdy = getTableBody("#tblFileDetail")._tbody;
-	}
+function endVideoStream(div){
 	/** @type {Element} */
-	var vdo = tbdy.rows[0].cells[1].getElementsByTagName("video")[0];
+	var vdo = getElement("video", div);
 	if(vdo.fid){
 		/** @type {string} */
 		var parentid = g_paths[g_paths.length - 1]._id;
@@ -1189,8 +1507,9 @@ function endVideoStream(tbdy){
 		delete vdo.fnm;
 		g_storage.saveRecent(g_recents[i], i);
 		setRecent(i, fnm);
+		showMenuHistory(true);
 	}
-	vdo.style.display = "none";
+	hideElement(vdo);
 	if(vdo.vstrm){
 		vdo.vstrm.destroy();
 		vdo.wrapper.destroyStream();
@@ -1200,41 +1519,48 @@ function endVideoStream(tbdy){
 	return vdo;
 }
 /**
- * @param {Event} evt
+ * @param {Element} li
+ * @return {number}
  */
-function clickRecent(evt){
-	window.event.preventDefault();
-	/** @type {EventTarget} */
-	var lnk = getElement(evt);
-	playRecent(lnk);
+function findRecentIndex(li){
+	/** @type {string|undefined} */
+	var pnt = li.getAttribute("parentId");
+	if(pnt && g_recents){
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<g_recents.length; i++){
+			if(g_recents[i]._folder == pnt){
+				return i;
+			}
+		}
+	}
+	return -1;
 }
 /**
  * @param {Event} evt
- */
-function clickRecentNext(evt){
-	var btn = /** @type {Element} */(getElement(evt));
-	/** @type {Element} */
-	var p = findParent(btn, "P");
-	/** @type {Element} */
-	var lnk = p.getElementsByTagName("a")[0];
-	playRecent(lnk, true);
-}
-/**
- * @param {EventTarget} lnk
  * @param {boolean=} next
  */
-function playRecent(lnk, next){
-	document.getElementById("divHistory").style.display = "";
+function clickRecent(evt, next){
+	getElement("close", "#divHistory", "span.name").click();
+	/** @type {Element} */
+	var ele = getElement(evt);
+	/** @type {Element} */
+	var li = findParent("li", ele);
 
-	/** @type {string} */
-	var fid = lnk.getAttribute("fid");
-	if(!fid){
+	/** @type {number} */
+	var idx = findRecentIndex(li);
+	if(idx < 0){
 		return;
 	}
-	/** @type {string|undefined} */
-	var pnt = lnk.getAttribute("parentId");
+	/** @type {PlayedInfo} */
+	var pif = g_recents[idx];
 	/** @type {string} */
-	var ctime = lnk.getAttribute("time");
+	var fid = pif._fid;
+	/** @type {string|undefined} */
+	var pnt = pif._folder;
+	/** @type {string} */
+	var ctime = pif._time;
+
 	// locate folder
 	showInfo("loading");
 	/** @type {Array<DriveItem>} */
@@ -1271,13 +1597,19 @@ function playRecent(lnk, next){
 	};
 	/** @type {function()} */
 	var gotoPlay = function(){
+		/** @type {Element} */
+		var a_ulPath = getHeaderUl("#divMain");
 		/** @type {number} */
 		var a_i = 0;
-		/** @type {Element} */
-		var a_th = getTableBody("#tblst")._table.getElementsByTagName("th")[0];
-		a_th.innerHTML = "";
+		/** @type {Array<Element>} */
+		var a_eles = getElementsByAttribute("li", a_ulPath);
+		for(a_i = 0; a_i < a_eles.length; a_i++){
+			if(!a_eles[a_i].hasAttribute("template")){
+				a_eles[a_i].remove();
+			}
+		}
 		for(a_i = 0; a_i < paths.length; a_i++){
-			addPath(a_th, paths[a_i], a_i, true);
+			addPath(a_ulPath, paths[a_i], a_i, true);
 		}
 		g_paths = paths;
 		listFolder(true, false, undefined,  /** @type {function(Array<DriveItem>)} */(function(b_arr){
@@ -1289,26 +1621,24 @@ function playRecent(lnk, next){
 				}
 			}
 			if(b_i < b_arr.length){
-				/** @type {Element} */
-				var b_row = getTableBody("#tblFileDetail")._tbody.rows[0];
 				if(next){
-					b_row.setAttribute("rowidx", b_i);
-					clickItem(2, true);
+					clickItem(fid, 2);
 				}else{
-					b_row.getElementsByTagName("video")[0].setAttribute("ctime", ctime);
-					if(b_i == 0){
-						b_row.setAttribute("rowidx", 1);
-						clickItem(1, true);
-					}else{
-						b_row.setAttribute("rowidx", b_i - 1);
-						clickItem(2, true);
+					if(ctime){
+						getElement("video", "#diViewer").setAttribute("ctime", ctime);
 					}
+					clickItem(fid);
 				}
 			}
-			
 		}));
 	};
 	getDrvFld();
+}
+/**
+ * @param {Event} evt
+ */
+function clickRecentNext(evt){
+	clickRecent(evt, true);
 }
 /**
  * @param {Event} evt
@@ -1327,24 +1657,19 @@ function restoreTime(evt){
  * @param {Event} evt
  */
 function clickDeleteRecent(evt){
-	var btn = /** @type {Element} */(getElement(evt));
 	/** @type {Element} */
-	var p = findParent(btn, "P");
+	var ele = getElement(evt);
 	/** @type {Element} */
-	var div = findParent(p, "DIV");
-	/** @type {!NodeList<!Element>} */
-	var eles = div.getElementsByTagName("p");
+	var li = findParent("li", ele);
 	/** @type {number} */
-	var i = 0;
-	for(i=0; i<eles.length; i++){
-		if(eles[i] == p){
-			break;
-		}
+	var idx = findRecentIndex(li);
+	if(idx < 0){
+		return;
 	}
-	p.remove();
-	g_recents.splice(i, 1);
-	g_storage.removeRecent(i);
+	li.remove();
+	g_recents.splice(idx, 1);
+	g_storage.removeRecent(idx);
 	if(g_recents.length == 0){
-		findParent(div, "DIV").style.display = "";
+		showMenuHistory(false);
 	}
 }

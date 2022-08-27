@@ -1,12 +1,29 @@
-//function showError(msg){}
 /**
  * @typedef
  * {{
- *    _table: Element,
- *    _tbody: Element,
+ *    _tag: string,
+ *    _name: string,
+ *    _value: string,
  * }}
  */
-var TableBody;
+var AttributeInfo;
+/**
+ * @typedef
+ * {{
+ *    _button: (Element|undefined),
+ *    _menu: Element,
+ * }}
+ */
+var MenuSwithInfo;
+/**
+ * @typedef
+ * {{
+ *    _id: number,
+ *    _x: number,
+ *    _y: number,
+ * }}
+ */
+var TouchPosition;
 /**
  * @typedef
  * {{
@@ -222,7 +239,7 @@ var DriveNewFolderOption;
  *    _newname: (string|undefined),
  *    _parentid: (string|undefined),
  *    _oldparentid: (string|undefined),
- *    _doneFunc: function((boolean|DriveJsonRet)),
+ *    _doneFunc: function((boolean|DriveJsonRet), number=),
  * }}
  */
 var DriveUpdateOption;

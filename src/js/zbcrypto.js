@@ -446,8 +446,12 @@ function ZbCrypto(_info, _opts){
 	this.basetime = 0;
 	/** @private @type {number} */
 	this.basepos = 0;
-	/** @private @type {string} */
-	this.speed = "0B/s";
+	/**
+	 * Size per second.
+	 *
+	 * @private @type {number}
+	 */
+	this.speed = 0;
 
 	if(_info._decrypt){
 		this.encrypt = false;
@@ -499,12 +503,11 @@ function ZbCrypto(_info, _opts){
 	};
 	/**
 	 * @public
-	 * @return {string}
+	 * @return {number}
 	 */
 	this.calSpeed = function(){
 		if(Date.now() > this.basetime){
-			var s = (this.reader.getPos() - this.basepos) * 1000 / (Date.now() - this.basetime + 1000);
-			this.speed = getSizeDisp(s) + "/s";
+			this.speed = (this.reader.getPos() - this.basepos) * 1000 / (Date.now() - this.basetime + 1000);
 			this.basetime = Date.now() + 1000;
 			this.basepos = this.reader.getPos();
 		}

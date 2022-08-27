@@ -6,6 +6,7 @@
 		"js/zbdrive.js",
 		"js/zbonedrive.js",
 		"js/zbgoogledrive.js",
+		"js/zbidxbdrive.js",
 		"js/const.js",
 		"js/worker-const.js",
 		"js/downup.js",

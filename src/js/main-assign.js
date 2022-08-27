@@ -81,18 +81,57 @@ function ZbFolder(fldr){
 var g_folders = null;
 
 /**
- * Event called from html
+ * Get items in list.
+ *
+ * @param {Element} ul
+ * @param {function(Element):number=} func
+ *  A function called to check the element is target or not.
+ *  The return value means 1: not target, 2: target, -1: not target and stop loop, -2: target and stop loop.
+ * @return {Array<Element>} items
  */
-function cancel(){
-	var ele = /** @type {Element} */(getElement());
-	ele.disabled = true;
+function getListItems(ul, func){
+	/** @type {number} */
+	var i = 0;
+	/** @type {Array<Element>} */
+	var eles = [];
+	/** @type {!NodeList<!Element>} */
+	var eles2 = ul.getElementsByTagName("li");
+	for(i=0; i<eles2.length; i++){
+		/** @type {Element} */
+		var ele = eles2[i];
+		if(!(ele.classList.contains("header") || ele.classList.contains("template"))){
+			if(func){
+				/** @type {number} */
+				var j = func(ele);
+				if(j == 2 || j == -2){
+					eles.push(ele);
+				}
+				if(j < 0){
+					break;
+				}
+			}else{
+				eles.push(ele);
+			}
+		}
+	}
+	return eles;
+}
+
+/**
+ * Event called from html
+ * @param {Event} evt
+ */
+function cancel(evt){
+	/** @type {Element} */
+	var ele = getElement(evt);
+	hideElement(ele);
 	if(g_worker){
 		/** @type {Element} */
-		var tr = findParent(ele, "TR");
+		var li = findParent("li", ele);
 		/** @type {WorkerInfo} */
 		var wkinf = {
 			_type: WorkerInfoType.CANCEL,
-			_rowIdx: parseInt(tr.getAttribute("rowIdx"), 10),
+			_rowIdx: getIntAttr(li, "rowIdx"),
 		};
 		g_worker.postMessage(wkinf);
 	}else{
@@ -101,135 +140,349 @@ function cancel(){
 }
 
 /**
- * Event called from html
+ * @param {number} ftyp Finished task's type. 1: successfully, 2: canceled, 3: error occured.
+ * @param {Element=} qb
+ * @param {number=} allcnt Count of all tasks.
  */
-function hideQueueRows(){
-	/** @type {?TableBody} */
-	var t = getTableBody("#tblQueue");
+function addQbFinished(ftyp, qb, allcnt){
+	/** @type {number} */
+	var finished = 0;
+	/** @type {number} */
+	var stoped = 0;
+	if(!qb){
+		qb = getElement(".zb-qbutton");
+	}
+	if(!allcnt && qb.hasAttribute("count")){
+		allcnt = getIntAttr(qb, "count");
+	}
+	if(qb.hasAttribute("fincount")){
+		finished = getIntAttr(qb, "fincount");
+	}
+	if(qb.hasAttribute("stopcount")){
+		stoped = getIntAttr(qb, "stopcount");
+	}
+
+	switch(ftyp){
+	case 1:
+		finished++;
+		qb.setAttribute("fincount", finished);
+		break;
+	case 3:
+		qb.setAttribute("haserr", "1");
+	case 2:
+		stoped++;
+		qb.setAttribute("stopcount", stoped);
+		break;
+	}
+
+	if(allcnt > 0){
+		getElement("div", qb).style.width = Math.floor(finished * 100 / allcnt) + "%";
+	}else{
+		getElement("div", qb).style.width = "0%";
+	}
+	if(allcnt == finished + stoped){
+		if(qb.hasAttribute("haserr")){
+			qb.classList.add("error");
+		}else{
+			qb.classList.add("done");
+		}
+	}
+}
+/**
+ * @param {number} cnt
+ */
+function showQbutton(cnt){
 	/** @type {Element} */
-	var tbl = t._table;
+	var qb = getElement(".zb-qbutton");
+	/** @type {number} */
+	var allcnt = 0;
+	if(qb.hasAttribute("count")){
+		allcnt = getIntAttr(qb, "count");
+	}
+	allcnt += cnt;
+	qb.setAttribute("count", allcnt);
+	addQbFinished(0, qb, allcnt);
+	if(qb.classList.contains("error")){
+		qb.classList.remove("error");
+	}
+	if(qb.classList.contains("done")){
+		qb.classList.remove("done");
+	}
+	showElement(qb);
+}
+/**
+ * Event called from html
+ * @param {Event} evt
+ */
+function hideQueue(evt){
 	/** @type {Element} */
-	var tbdy = t._tbody;
-	/** @type {boolean} */
-	var remian = false;
+	var div = findParent(".zb-queue", getElement(evt));
+	/** @type {Element} */
+	var qb = getElement(".zb-qbutton");
+	div.style.top = "100%";
+	if(qb.classList.contains("done") || qb.classList.contains("error")){
+		hideElement(qb);
+		qb.removeAttribute("count");
+		qb.removeAttribute("fincount");
+		qb.removeAttribute("stopcount");
+		qb.removeAttribute("haserr");
+
+		/** @type {Element} */
+		var ul = getElement("ul", div);
+		/** @type {Array<Element>} */
+		var eles = getListItems(ul);
+		/** @type {number} */
+		var i = 0;
+		for(i=eles.length - 1; i>=0; i--){
+			ul.removeChild(eles[i]);
+		}
+		ul.removeAttribute("rowCount");
+	}
+}
+
+/**
+ * @param {Element} ul
+ * @param {string} nm name
+ * @param {boolean=} downFl Is download or upload
+ * @return {Element} li
+ */
+function addQueueRow(ul, nm, downFl){
+	/** @type {number} */
+	var idx = 0;
+	if(ul.hasAttribute("rowCount")){
+		idx = getIntAttr(ul, "rowCount");
+	}
+	/** @type {Element} */
+	var l = getElement("template", ul, "li.class").cloneNode(true);
+	l.classList.remove("template");
+	l.setAttribute("rowIdx", idx);
+	if(downFl){
+		l.setAttribute("downFl", 1);
+	}
+	ul.setAttribute("rowCount", idx + 1);
+
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("span", l);
 	/** @type {number} */
 	var i = 0;
-	for(i=0; i<tbdy.rows.length; i++){
-		if(tbdy.rows[i].getAttribute("end")){
-			hideElement(tbdy.rows[i]);
-		}else{
-			remian = true;
-		}
-	}
-	if(!remian){
-		hideElement(tbl);
-	}
-}
-
-/**
- * @param {Element} tbdy
- * @param {number} idx row index
- * @param {string} nm name
- */
-function addQueueRow(tbdy, idx, nm){
-	/** @type {Element} */
-	var tr = document.createElement("tr");
-	/** @type {Element} */
-	var td = document.createElement("td");
-	/** @type {Element} */
-	var span = document.createElement("span");
-	/** @type {Element} */
-	var btn = document.createElement("input");
-	td.innerText = nm;
-	tr.appendChild(td);
-	td = document.createElement("td");
-	span.innerText = window["msgs"]["waiting"];
-	td.appendChild(span);
-	tr.appendChild(td);
-	td = document.createElement("td");
-	btn.type = "button";
-	btn.value = window["msgs"]["btnCancel"];
-	btn.style.display = "none";
-	btn.addEventListener("click", cancel);
-	td.appendChild(btn);
-	tr.appendChild(td);
-	tr.setAttribute("rowIdx", idx);
-	tbdy.appendChild(tr);
-}
-
-/**
- * @param {Element} ele table body or span
- * @param {number} idx row index if idx < 0 then ele is span, else ele is table body
- * @param {string} msg message
- */
-function setSpanMessage(ele, idx, msg){
-	/** @type {Element} */
-	var span = ele;
-	if(idx >= 0){
-		span = ele.rows[idx].getElementsByTagName("span")[0];
-	}
-	span.innerText = msg;
-}
-
-/**
- * @param {Element} ele table body or button
- * @param {number} idx row index if idx < 0 then ele is button, else ele is table body
- */
-function hideCancelButton(ele, idx){
-	/** @type {Element} */
-	var btn = ele;
-	if(idx >= 0){
-		btn = ele.rows[idx].getElementsByTagName("input")[0];
-		ele.rows[idx].setAttribute("end", "1");
-	}else{
+	for(i=0; i<eles.length; i++){
 		/** @type {Element} */
-		var row = findParent(ele, "TR");
-		if(row){
-			row.setAttribute("end", "1");
+		var sp = eles[i];
+		switch(sp.getAttribute("name")){
+		case "cancel":
+			sp.addEventListener("click", cancel);
+			break;
+		case "icon":
+			/** @type {Element} */
+			var lbl = getElement("label", sp);
+			lbl.innerText = nm;
+			if(downFl){
+				setSvgImage(sp, "download");
+			}else{
+				setSvgImage(sp, "upload");
+			}
+			break;
+		case "elTime":
+			previousElement(sp, "label").innerText = window["msgs"]["elTime"];
+			break;
+		case "esTime":
+			previousElement(sp, "label").innerText = window["msgs"]["esTime"];
+			break;
+		case "speed":
+			sp.innerText = window["msgs"]["waiting"];
+			break;
 		}
 	}
-	btn.style.display = "none";
-	if(window.gc){
-		window.gc();
+
+	ul.appendChild(l);
+	return l;
+}
+
+/**
+ * @param {number} idx
+ * @param {Element=} ul
+ * @return {Element}
+ */
+function getTargetLi(idx, ul){
+	if(!ul){
+		ul = getElement("ul", "#divQueue");
+	}
+	/** @type {Array<Element>} */
+	var eles = getListItems(ul, function(a_ele){
+		if(a_ele.getAttribute("rowIdx") == idx){
+			return -2;
+		}else{
+			return 1;
+		}
+	});
+	if(eles.length > 0){
+		return eles[0];
+	}else{
+		return null;
 	}
 }
+
 /**
- * @param {Element} tbdy
+ * @param {Element} li
+ * @param {WorkerStepInfo} spinf
+ * @return {Element} The span of icon
+ */
+function setProgressInfo(li, spinf){
+	/** @type {Element} */
+	var iconSpan = null;
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("span", li);
+	/** @type {string} */
+	var per = "";
+	switch(spinf._type){
+	case StepInfoType.BEGIN:
+		per = "0%";
+		break;
+	case StepInfoType.INPROGRESS:
+		per = Math.round(spinf._pos * 100 / spinf._size) + "%";
+		break;
+	case StepInfoType.DONE:
+		per = "100%";
+		break;
+	}
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
+		/** @type {Element} */
+		var sp = eles[i];
+		switch(sp.getAttribute("name")){
+		case "icon":
+			iconSpan = sp;
+			break;
+		case "percent":
+			switch(spinf._type){
+			case StepInfoType.BEGIN:
+			case StepInfoType.INPROGRESS:
+				sp.innerText = per;
+				break;
+			case StepInfoType.DONE:
+				if(!spinf._err){
+					sp.innerText = per;
+				}
+				break;
+			}
+			break;
+		case "elTime":
+			switch(spinf._type){
+			case StepInfoType.INPROGRESS:
+			case StepInfoType.DONE:
+			case StepInfoType.CANCELED:
+				sp.innerText = getElapsedTime(/** @type {number} */(spinf._begin));
+				break;
+			}
+			break;
+		case "esTime":
+			switch(spinf._type){
+			case StepInfoType.INPROGRESS:
+				sp.innerText = getTimeDisp(Math.round((spinf._size - spinf._pos) / spinf._speed));
+				break;
+			}
+			break;
+		case "speed":
+			switch(spinf._type){
+			case StepInfoType.INPROGRESS:
+				sp.innerText = getSizeDisp(/** @type {number} */(spinf._speed)) + "/s";
+				break;
+			case StepInfoType.DONE:
+			case StepInfoType.CANCELED:
+				if(!spinf._err){
+					li.classList.add("done");
+					sp.innerText = window["msgs"]["avspeed"].replace("{0}", getSizeDisp(spinf._pos * 1000 / (Date.now() - spinf._begin)));
+				}
+				break;
+			}
+			break;
+		case "cancel":
+			switch(spinf._type){
+			case StepInfoType.BEGIN:
+				showElement(sp);
+				break;
+			case StepInfoType.DONE:
+			case StepInfoType.CANCELED:
+				/** @type {Element} */
+				var svg = getElement("svg", sp);
+				svg.removeChild(svg.firstElementChild);
+				if(spinf._err || spinf._type == StepInfoType.CANCELED){
+					setSvgImage(sp, "multi");
+					addQbFinished(spinf._err ? 3 : 2);
+				}else{
+					setSvgImage(sp, "chkbox", undefined,"#10B981");
+					addQbFinished(1);
+				}
+				showElement(sp);
+				break;
+			}
+			break;
+		default:
+			/** @type {Element} */
+			var div = findParent("div", sp);
+			if(div && div.classList.contains("zb-progressbar")){
+				switch(spinf._type){
+				case StepInfoType.BEGIN:
+				case StepInfoType.INPROGRESS:
+					sp.style.width = per;
+					break;
+				case StepInfoType.DONE:
+					if(spinf._err){
+						li.classList.add("error");
+						div.innerText = spinf._err;
+					}else{
+						sp.style.width = per;
+					}
+					break;
+				}
+			}
+			break;
+		}
+	}
+	return iconSpan;
+}
+/**
+ * @param {WorkerStepInfo} spinf
+ * @param {Element=} ul
+ * @return {boolean} single progress is finished or not.
+ */
+function handleProgress(spinf, ul){
+	var rowIdx = /** @type {number} */(spinf._rowIdx);
+	/** @type {Element} */
+	var li = getTargetLi(rowIdx, ul);
+	return handleLiProgress(li, spinf);
+}
+/**
+ * @param {Element} li
  * @param {WorkerStepInfo} spinf
  * @return {boolean} single progress is finished or not.
  */
-function handleProgress(tbdy, spinf){
+function handleLiProgress(li, spinf){
 	/** @type {boolean} */
 	var ret = false;
-	var rowIdx = /** @type {number} */(spinf._rowIdx);
 	switch(spinf._type){
 	case StepInfoType.BEGIN:
-		/** @type {Element} */
-		var span = tbdy.rows[rowIdx].getElementsByTagName("span")[0];
-		/** @type {Element} */
-		var btn = tbdy.rows[rowIdx].getElementsByTagName("input")[0];
-		span.innerText = "0%";
-		btn.style.display = "";
-		break;
 	case StepInfoType.INPROGRESS:
-		setSpanMessage(tbdy, rowIdx, spinf._speed + " " + Math.round(spinf._pos * 100 / spinf._size) + "%");
+		setProgressInfo(li, spinf);
 		break;
 	case StepInfoType.DONE:
 		if(spinf._finished && g_worker){
 			terminateWorker();
 		}
-		hideCancelButton(tbdy, rowIdx);
-		if(spinf._err){
-			setSpanMessage(tbdy, rowIdx, spinf._err);
-		}else if(spinf._wtype == WorkerInfoType.DOWNLOAD){
-			setSpanMessage(tbdy, rowIdx, window["msgs"]["downDone"]);
-			if(spinf._blob){
+		/** @type {Element} */
+		var sp = setProgressInfo(li, spinf);
+		if(!spinf._err){
+			if(spinf._wtype == WorkerInfoType.UPLOAD){
+				addQuotaUsed(spinf._size);
+			}else if(spinf._wtype == WorkerInfoType.DOWNLOAD && spinf._blob){
 				 /** @type {string} */
-				var fnm = tbdy.rows[rowIdx].cells[0].innerText;
-				downloadBlob(spinf._blob, fnm, document.getElementById("download"));
+				var fnm = getElement("label", sp).innerText;
+				downloadBlob(spinf._blob, fnm, getElement("#lnkDown"));
 			}
-		}else{
-			setSpanMessage(tbdy, rowIdx, window["msgs"]["upDone"]);
+		}
+		if(window.gc){
+			window.gc();
 		}
 		ret = true;
 		break;
@@ -237,11 +490,9 @@ function handleProgress(tbdy, spinf){
 		if(spinf._finished && g_worker){
 			terminateWorker();
 		}
-		hideCancelButton(tbdy, rowIdx);
-		if(spinf._wtype == WorkerInfoType.DOWNLOAD){
-			setSpanMessage(tbdy, rowIdx, window["msgs"]["downCanceled"]);
-		}else{
-			setSpanMessage(tbdy, rowIdx, window["msgs"]["updCanceled"]);
+		setProgressInfo(li, spinf);
+		if(window.gc){
+			window.gc();
 		}
 		ret = true;
 		break;
@@ -270,13 +521,6 @@ function isEncfname(){
  */
 function addWorkerQueue(wkinf){
 	if(!g_worker){
-		/** @type {?TableBody} */
-		var t = getTableBody("#tblQueue");
-		/** @type {Element} */
-		var tbl = t._table;
-		/** @type {Element} */
-		var tbdy = t._tbody;
-
 		g_worker = new Worker(WORKER_PATH+"worker.js");
 		/** @type {WorkerCommonInfo} */
 		g_worker.cominf = {
@@ -288,7 +532,7 @@ function addWorkerQueue(wkinf){
 
 		g_worker.addEventListener("message", function(a_evt){
 			var a_spinf = /** @type {WorkerStepInfo} */(a_evt.data);
-			handleProgress(tbdy, a_spinf);
+			handleProgress(a_spinf);
 		});
 	}
 	wkinf._cominf = g_worker.cominf;
@@ -299,21 +543,15 @@ function addWorkerQueue(wkinf){
 }
 
 /**
- * @param {Element} tbdy
- * @param {number} idx
+ * @param {Element} li
  * @param {function()} func
+ * @return {ZbTransfer}
  */
-function doDownUp(tbdy, idx, func){
-	/** @type {WorkerStepInfo} */
-	var spinf = {
-		_type: StepInfoType.BEGIN,
-		_wtype: WorkerInfoType.DOWNLOAD,
-		_size: 0,
-		_rowIdx: idx,
-	};
-	handleProgress(tbdy, spinf);
+function doDownUp(li, func){
+	/** @type {number} */
+	var idx = getIntAttr(li, "rowIdx");
 	/** @type {Element} */
-	var btn = tbdy.rows[idx].getElementsByTagName("input")[0];
+	var btn = getElement("cancel", li, "span.name");
 	/** @type {ZbTransfer} */
 	var tfr = new ZbTransfer(g_keycfg, /** @type {function():boolean} */(function(){
 		if(btn.getAttribute("canceled")){
@@ -323,7 +561,7 @@ function doDownUp(tbdy, idx, func){
 		}
 	}), /** @type {function(WorkerStepInfo)} */(function(b_spinf){
 		b_spinf._rowIdx = idx;
-		if(handleProgress(tbdy, b_spinf)){
+		if(handleLiProgress(li, b_spinf)){
 			func();
 		}
 	}));
@@ -331,69 +569,38 @@ function doDownUp(tbdy, idx, func){
 }
 
 /**
- * Event called from html
- * @param {Event|number=} typ
+ * @param {Array<DriveItem>} files
  */
-function download(typ){
-	showInfo();
-	/** @type {Array<DriveItem>} */
-	var files = new Array();
-	switch(typ){
-	case 1:
-		/** @type {Element} */
-		var tr1 = getTableBody("#tblFileDetail")._tbody.rows[0];
-		files.push({
-			_name: tr1.getElementsByTagName("span")[0].innerText,
-			_id: tr1.getAttribute("uid"),
-		});
-		break;
-	case 2:
-		/** @type {Element} */
-		var div = document.getElementById("divItemenu");
-		files.push({
-			_name: div.getAttribute("uname"),
-			_id: div.getAttribute("uid"),
-		});
-		break;
-	default:
-		files = getMultiChecked(true);
-		if(!files){
-			return;
-		}
-	}
-
-	/** @type {?TableBody} */
-	var t = getTableBody("#tblQueue");
+function download(files){
 	/** @type {Element} */
-	var tbl = t._table;
-	/** @type {Element} */
-	var tbdy = t._tbody;
-//	tbdy.innerHTML = "";
-	tbl.style.display = "block";
+	var ul = getElement("ul", "#divQueue");
 	/** @type {number} */
-	var strow = tbdy.rows.length;
-	/** @type {number} */
-	var idx = strow;
+	var i = 0;
 
-	files.forEach(function(/** @type {DriveItem} */ a_ele){
-		addQueueRow(tbdy, idx, a_ele._name);
+	showQbutton(files.length);
+	for(i=0; i<files.length; i++){
+		/** @type {Element} */
+		var li = addQueueRow(ul, files[i]._name, true);
 		if(USE_WORKER){
 			addWorkerQueue({
 				_type: WorkerInfoType.DOWNLOAD,
-				_rowIdx: idx,
+				_rowIdx: getIntAttr(li, "rowIdx"),
 				_downinf: {
-					_targetId: a_ele._id,
+					_targetId: files[i]._id,
 				},
 			});
+		}else{
+			files[i]._parentId = li.getAttribute("rowIdx");
 		}
-		idx++;
-	});
+	}
 
 	if(!USE_WORKER){
 		/** @type {function(number)} */
 		var downloadFile = function(a_idx){
+			/** @type {Element} */
+			var a_li = getTargetLi(parseInt(files[a_idx]._parentId, 10), ul);
 			/** @type {ZbTransfer} */
-			var a_tfr = doDownUp(tbdy, strow + a_idx, function(){
+			var a_tfr = doDownUp(a_li, function(){
 				a_idx++;
 				if(a_idx < files.length){
 					downloadFile(a_idx);
@@ -407,38 +614,19 @@ function download(typ){
 
 /**
  * Event called from html
- * @param {number|Event|boolean} foderFlg
+ *
+ * @param {Array<File>} files
  */
-function upload(foderFlg){
-	showInfo();
-	/** @type {?Array<File>} */
-	var files = null;
-	foderFlg = (foderFlg === 1);
-	if(foderFlg){
-		files = document.getElementById("upfolder").files;
-	}else{
-		files = document.getElementById("upfiles").files;
-	}
-	if(files.length <= 0){
-		showError("noFiles");
-		return;
-	}
-	/** @type {?TableBody} */
-	var t = getTableBody("#tblQueue");
+function upload(files){
 	/** @type {Element} */
-	var tbl = t._table;
-	/** @type {Element} */
-	var tbdy = t._tbody;
-//	tbdy.innerHTML = "";
-	tbl.style.display = "block";
-	/** @type {number} */
-	var strow = tbdy.rows.length;
-	/** @type {number} */
-	var idx = strow;
-
+	var ul = getElement("ul", "#divQueue");
 	/** @type {Array<UploadTarget>} */
 	var targets = new Array();
-	for(var i = 0; i < files.length; i++){
+	/** @type {number} */
+	var i = 0;
+
+	showQbutton(files.length);
+	for(i=0; i<files.length; i++){
 		/** @type {string} */
 		var fpath =  "";
 		if(files[i].webkitRelativePath){
@@ -446,21 +634,18 @@ function upload(foderFlg){
 		}else{
 			fpath = files[i].name;
 		}
+		/** @type {Element} */
+		var li = addQueueRow(ul, fpath);
 		targets.push({
 			_fpath: fpath,
 			_file: files[i],
-			_idx: idx,
+			_idx: getIntAttr(li, "rowIdx"),
 		});
-
-		addQueueRow(tbdy, idx, fpath);
-		idx++;
 	}
 
 	/** @type {string} */
 	var baseId = g_paths[g_paths.length - 1]._id;
 
-	/** @type {number} */
-	var i = 0;
 	if(!g_folders){
 		g_folders = new ZbFolder(g_paths[0]);
 	}
@@ -476,7 +661,13 @@ function upload(foderFlg){
 		var a_ele = targets[a_idx];
 		findFolderId(basefld, a_ele._fpath, function(b_err, b_fnm, b_ptid){
 			if(b_err){
-				setSpanMessage(tbdy, a_ele._idx, JSON.stringify(b_err));
+				handleProgress({
+					_type: StepInfoType.DONE,
+					_wtype: WorkerInfoType.UPLOAD,
+					_rowIdx: a_ele._idx,
+					_size: 0,
+					_err: JSON.stringify(b_err),
+				}, ul);
 				return;
 			}
 
@@ -491,13 +682,15 @@ function upload(foderFlg){
 					},
 				});
 				a_idx++;
-				if(a_idx < files.length){
+				if(a_idx < targets.length){
 					uploadFile(a_idx);
 				}
 
 			}else{
+				/** @type {Element} */
+				var b_li = getTargetLi(a_ele._idx, ul);
 				/** @type {ZbTransfer} */
-				var b_tfr = doDownUp(tbdy, strow + a_idx, function(){
+				var b_tfr = doDownUp(b_li, function(){
 					a_idx++;
 					if(a_idx < files.length){
 						uploadFile(a_idx);

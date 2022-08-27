@@ -1,13 +1,14 @@
 /** @define {boolean} */
 var FOROUTPUT = false;
 if(!FOROUTPUT){
-	self.importScripts("/vendor/crypto-js.js");
+	self.importScripts("../vendor/crypto-js.js");
 	self.importScripts("zbcommon.js");
 	self.importScripts("zbcrypto.js");
 	self.importScripts("zbidxdb.js");
 	self.importScripts("zbdrive.js");
 	self.importScripts("zbonedrive.js");
 	self.importScripts("zbgoogledrive.js");
+	self.importScripts("zbidxbdrive.js");
 	self.importScripts("const.js");
 	self.importScripts("worker-const.js");
 	self.importScripts("downup.js");

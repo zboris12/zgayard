@@ -12,7 +12,6 @@ And I use this name to hope the merits from this application will be dedicated t
 
 ## NOTE: it is still in development
 
-* The UI is still very simple and ugly.
 * Only support a few online storages now.
 
 ## Main features
@@ -36,7 +35,6 @@ And I use this name to hope the merits from this application will be dedicated t
 
 ## TODO
 
-* Make the UI cool and responsive.
 * Support to download multiple files and compress them to a zip file
 * More online storage support
 * More language support
@@ -50,6 +48,10 @@ And I use this name to hope the merits from this application will be dedicated t
 ## The Icons
 
 The svg icons are got from [iconsvg](https://iconsvg.xyz/).
+
+## The UI
+
+The UI of the webpage is powered by [Tailwind CSS](https://tailwindcss.com/).
 
 ## License
 

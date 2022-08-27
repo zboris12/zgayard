@@ -11,74 +11,109 @@ var g_keycfg = null;
 /** @type {Array<DriveItem>} */
 var g_paths = new Array();
 /** @type {number} */
-var g_hdlNotify = 0;
+var g_hdlMessage = 0;
 /** @type {Array<PlayedInfo>} */
 var g_recents = new Array();
 
 /**
+ * @enum {number}
+ */
+const MessageType = {
+	NONE: 0,
+	INFO: 1,
+	ERROR: 2,
+};
+
+/**
+ * @param {MessageType} typ type
+ * @param {string=} msg message
+ * @param {string=} tl title
+ */
+function showMessage(typ, msg, tl){
+	if(g_hdlMessage){
+		window.clearTimeout(g_hdlMessage);
+		g_hdlMessage = 0;
+	}
+
+	/** @type {Element} */
+	var ele = getElement("#divMessage");
+	if(typ == MessageType.NONE){
+		if(!ele.style.display){
+			ele.style.opacity = "0";
+			g_hdlMessage = window.setTimeout(function(){
+				g_hdlMessage = 0;
+				hideElement(ele);
+			}, 150);
+		}
+	}else{
+		/** @type {Array<Element>} */
+		var eles = getElementsByAttribute("span", ele);
+		if(typ == MessageType.INFO){
+			ele.className = "zb-notice";
+			eles[0].innerText = "Notice";
+		}else{
+			ele.className = "zb-alert";
+			eles[0].innerText = "Error";
+		}
+		if(msg){
+			eles[1].innerText = msg;
+		}else{
+			eles[1].innerText = "";
+		}
+		if(tl){
+			eles[0].innerText = tl;
+		}
+		if(ele.style.opacity){
+			showElement(ele);
+			g_hdlMessage = window.setTimeout(function(){
+				g_hdlMessage = 0;
+				ele.style.opacity = "";
+			}, 50);
+		}
+	}
+}
+function hideMessage(){
+	showMessage(MessageType.NONE);
+}
+/**
  * @param {*} msg
  */
 function showError(msg){
-	/** @type {Element} */
-	var ele = document.getElementById("spanError");
+	/** @type {string} */
+	var _msg = "";
 	if(typeof msg === "string"){
 		if(window["msgs"] && msg && window["msgs"][msg]){
-			ele.innerText = window["msgs"][msg];
+			_msg = window["msgs"][msg];
 		}else{
-			ele.innerText = msg;
+			_msg = msg;
 		}
 	}else if(msg){
-		ele.innerText = JSON.stringify(msg);
+		_msg = JSON.stringify(msg);
 	}
-	document.getElementById("spanInfo").style.display = "none";
-	if(msg){
-		ele.style.display = "block";
-	}else{
-		ele.style.display = "none";
-	}
+	showMessage(MessageType.ERROR, _msg);
 }
 /**
  * @param {string=} msg
  */
 function showInfo(msg){
-	/** @type {Element} */
-	var ele = document.getElementById("spanInfo");
+	/** @type {string|undefined} */
+	var _msg = msg;
 	if(window["msgs"] && msg && window["msgs"][msg]){
-		ele.innerText = window["msgs"][msg];
-	}else{
-		ele.innerText = msg;
+		_msg = window["msgs"][msg];
 	}
-	document.getElementById("spanError").style.display = "none";
-	if(msg){
-		ele.style.display = "block";
-	}else{
-		ele.style.display = "none";
-	}
+	showMessage(MessageType.INFO, _msg);
 }
 /**
  * @param {string} msg
  */
 function showNotify(msg){
-	/** @type {Element} */
-	var ele = document.getElementById("spanNotify");
-	if(window["msgs"] && msg && window["msgs"][msg]){
-		ele.innerText = window["msgs"][msg];
-	}else{
-		ele.innerText = msg;
-	}
-	if(msg){
-		if(g_hdlNotify){
-			clearTimeout(g_hdlNotify);
-			g_hdlNotify = 0;
-		}
-		ele.style.top = ((document.documentElement.scrollTop || document.body.scrollTop) + 20) + "px";
-		ele.style.display = "";
-		g_hdlNotify = setTimeout(function(){
-			ele.style.display = "none";
-			g_hdlNotify = 0;
-		}, 3000);
-	}
+	showInfo(msg);
+	g_hdlMessage = setTimeout(function(){
+		g_hdlMessage = 0;
+		hideMessage();
+	}, 3000);
 }
+
 /**
  * @param {Event} evt
  * @param {function(boolean)} func
@@ -134,7 +169,7 @@ function saveKeyData(keyWords){
 	if(!g_storage.isReady()){
 		return;
 	}
-	if(document.getElementById("chkSaveKey").checked){
+	if(getElement("#chkSaveKey").checked){
 		fetchLocalStorageAuth(function(a_lskdat){
 			/** @type {string} */
 			var a_kw = "";
@@ -149,6 +184,7 @@ function saveKeyData(keyWords){
 		g_storage.saveDriveData("key_words", null, true);
 	}
 }
+
 /**
  * Event called from html
  */
@@ -200,6 +236,9 @@ function fetchLocalStorageAuth(func){
 	ajax.send(formData);
 }
 
+/**
+ * Called from main.js
+ */
 function loadSettings(){
 	/** @type {?string} */
 	var lang = g_storage.getLanguage();
@@ -217,7 +256,7 @@ function loadSettings(){
 	}
 	changeLanguage(lang);
 
-	document.getElementById("txtRelay").value = g_storage.getRelayUrl();
+	getElement("#txtRelay").value = g_storage.getRelayUrl();
 
 	/**
 	 * Settings of drive
@@ -226,7 +265,7 @@ function loadSettings(){
 	 */
 	var drv = g_storage.getDrive(true);
 	/** @type {Element} */
-	var sel = document.getElementById("selDrive");
+	var sel = getElement("#selDrive");
 	/** @type {Object<string, string>} */
 	var uparams  = getQueryParameters();
 	for(var ii in g_DRIVES){
@@ -248,14 +287,15 @@ function loadSettings(){
 	}
 
 	if(g_storage.isReady()){
-		document.getElementById("divSkipLogin").style.display = "block";
-		document.getElementById("divSaveKey").style.display = "block";
 		if(g_storage.isSkipLogin()){
-			document.getElementById("chkSkipLogin").checked = true;
+			getElement("#chkSkipLogin").checked = true;
 		}
 		if(g_storage.getDriveData("key_words")){
-			document.getElementById("chkSaveKey").checked = true;
+			getElement("#chkSaveKey").checked = true;
 		}
+	}else{
+		hideElement("#divSkipLogin");
+		hideElement("#divSaveKey");
 	}
 
 	// Load drive
@@ -271,27 +311,24 @@ function loadSettings(){
  */
 function showSettings(evt){
 	/** @type {Element} */
-	var div = document.getElementById("divSet");
+	var div = getElement("#divSet");
 	/** @type {Element} */
-	var sel = document.getElementById("selDrive");
+	var sel = getElement("#selDrive");
 	/** @type {Element} */
-	var btn = nextElement(sel, "input");
+	var btn = getElement("btnLogout", div, "button.iid");
+
 	if(evt){
 		sel.disabled = true;
-		btn.style.display = "";
-		div.setAttribute("cancelAll", "1");
-		showInputPassword();
-		document.getElementById("divHeader").style.display = "";
-		document.getElementById("tblst").style.display = "";
-		document.getElementById("tblQueue").style.display = "";
-		document.getElementById("divAction").style.display = "";
-		document.getElementById("divHistory").style.display = "";
+		showElement(btn);
+		hideElement(".zb-nav-tools");
+		hideElement("#divMain");
 	}else{
 		sel.disabled = false;
-		btn.style.display = "none";
+		hideElement(btn);
 	}
-	div.style.display = "block";
+	showElement(div);
 }
+
 /**
  * @param {string} lang
  */
@@ -335,21 +372,33 @@ function changeLanguage(lang){
  */
 function applyLanguage(msgs){
 	// Patch message
-	msgs["spanConfNotice"] = msgs["spanConfNotice"].replace("{0}", g_CONFILE);
+	msgs["lblConfNotice"] = msgs["lblConfNotice"].replace("{0}", g_CONFILE);
 	/**
 	 * Set text for all elements
 	 *
-	 * @type {!NodeList<!Element>}
+	 * @type {Array<Element>}
 	 */
-	var eles = document.getElementsByTagName("*");
-	for(var ii=0; ii<eles.length; ii++){
+	var eles = getElementsByAttribute("*");
+	/** @type {number} */
+	var ii = 0;
+	for(ii=0; ii<eles.length; ii++){
 		/** @type {Element} */
 		var ele = eles[ii];
 		/** @type {?string} */
 		var word = null;
-		if(ele.hasAttribute("wordid")){
-			word = msgs[ele.getAttribute("wordid")];
+		if(ele.hasAttribute("iid")){
+			word = msgs[ele.getAttribute("iid")];
+			if(word){
+				ele.innerText = word;
+			}
 		}
+		if(!word && ele.hasAttribute("vid")){
+			word = msgs[ele.getAttribute("vid")];
+			if(word){
+				ele.value = word;
+			}
+		}
+
 		if(!word && ele.id){
 			word = msgs[ele.id];
 		}
@@ -373,18 +422,21 @@ function applyLanguage(msgs){
 	 *
 	 * @type {Element}
 	 */
-	var sel = document.getElementById("seLang");
-	for(var ii in g_LANGUAGES){
+	var sel = getElement("#seLang");
+	/** @type {string} */
+	var jj = "";
+	for(jj in g_LANGUAGES){
 		/** @type {Element} */
 		var opt = document.createElement("option");
-		opt.value = ii;
-		opt.innerText = g_LANGUAGES[ii];
-		if(ii == msgs["lang"]){
+		opt.value = jj;
+		opt.innerText = g_LANGUAGES[jj];
+		if(jj == msgs["lang"]){
 			opt.selected = true;
 		}
 		sel.appendChild(opt);
 	}
 }
+
 /**
  * @param {string} drvnm
  */
@@ -408,6 +460,12 @@ function loadDrive(drvnm){
 			g_storage.saveAllData();
 		}
 
+		// Set image of drive
+		/** @type {Element} */
+		var a_img = getElement("img", findParent("div", getElement("#spanQuota")));
+		a_img.src = "img/"+drvnm+".png";
+		a_img.alt = drv.getName();
+
 		// Get configuration file.
 		g_drive.searchItems({
 			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
@@ -415,7 +473,7 @@ function loadDrive(drvnm){
 				if(b_err){
 					showError(JSON.stringify(b_err));
 				}else if(b_dats.length == 0){
-					showInputPassword(true, true);
+					showInputPassword(true);
 				}else{
 					downloadConfile(b_dats[0]._id);
 				}
@@ -429,18 +487,18 @@ function loadDrive(drvnm){
  */
 function saveSettings(){
 	/** @type {Element} */
-	var sel = document.getElementById("selDrive");
+	var sel = getElement("#selDrive");
 	/** @type {boolean} */
 	var needLoad = false;
 	if(!sel.disabled){
-		needLoad = g_storage.setDrive(document.getElementById("selDrive").value);
+		needLoad = g_storage.setDrive(sel.value);
 	}
-	g_storage.setSkipLogin(document.getElementById("chkSkipLogin").checked);
-	g_storage.setRelayUrl(document.getElementById("txtRelay").value);
-	changeLanguage(document.getElementById("seLang").value);
+	g_storage.setSkipLogin(getElement("#chkSkipLogin").checked);
+	g_storage.setRelayUrl(getElement("#txtRelay").value);
+	changeLanguage(getElement("#seLang").value);
 	if(needLoad){
 		g_storage.clearSession();
-		loadDrive(document.getElementById("selDrive").value);
+		loadDrive(sel.value);
 	}else{
 		g_storage.saveAllData();
 	}
@@ -448,86 +506,71 @@ function saveSettings(){
 }
 /**
  * Event called from html
- *
- * @param {Event|boolean=} all
  */
-function hideSettings(all){
+function hideSettings(){
 	/** @type {Element} */
-	var div = document.getElementById("divSet");
-	/** @type {boolean} */
-	var ccall = false;
-	if(all && typeof all === "boolean"){
-		ccall = true;
-	}else if(div.getAttribute("cancelAll") == "1"){
-		ccall = true;
+	var sel = getElement("#selDrive");
+	hideElement("#divSet");
+	if(sel.disabled){
+		showElement(".zb-nav-tools");
+		showElement("#divMain");
 	}
-	if(ccall){
-		document.getElementById("divPwd").style.display = "";
-		document.getElementById("divHeader").style.display = "block";
-		document.getElementById("tblst").style.display = "block";
-		document.getElementById("tblQueue").style.display = "block";
-		document.getElementById("divAction").style.display = "block";
-		/** @type {Element} */
-		var divH = document.getElementById("divHistory");
-		if(divH.getElementsByTagName("a")[0].innerText){
-			divH.style.display = "block";
-		}
-		div.removeAttribute("cancelAll");
-	}
-	div.style.display = "";
 }
+
 /**
  * @param {Event|boolean=} addroot
  * @param {boolean=} firstep
  */
 function showAddRoot(addroot, firstep){
 	/** @type {Element} */
-	var div = document.getElementById("divPwd");
+	var div = getElement("#divPwd");
 	/** @type {string} */
 	var disp = "none";
 	if(addroot){
 		div.setAttribute("addroot", "1");
-		disp = "block";
+		disp = "";
 	}else{
 		div.removeAttribute("addroot");
 	}
-	/** @type {!NodeList<!Element>} */
-	var eles = div.getElementsByTagName("*");
-	for(var ii=0; ii<eles.length; ii++){
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("*", div);
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<eles.length; i++){
 		/** @type {Element} */
-		var ele = eles[ii];
+		var ele = eles[i];
 		if(ele.classList.contains("addroot")){
 			ele.style.display = disp;
 		}else if(ele.classList.contains("firstep")){
 			if(disp != "none" && firstep){
-				ele.style.display = "block";
+				showElement(ele);
 			}else{
-				ele.style.display = "none";
+				hideElement(ele);
 			}
 		}else if(ele.classList.contains("chgroot")){
 			if(disp == "none"){
-				ele.style.display = "block";
+				showElement(ele);
 			}else{
-				ele.style.display = "none";
+				hideElement(ele);
 			}
 		}
 		if(ele.type == "password"){
 			ele.value = "";
 		}
 	}
-	clearKeyf("#lblKeyFile");
+	clearKeyf();
 }
 /**
  * @param {Event} evt
  */
 function deleteRoot(evt){
-	if(!confirm(window["msgs"]["delConfirm"])){
+	if(!window.confirm(window["msgs"]["delConfirm"])){
 		return;
 	}
 	showInfo("deleting");
 
 	/** @type {Element} */
-	var sel = document.getElementById("selRoot");
+	var sel = getElement("#selRoot");
 	/** @type {string} */
 	var root = sel.value;
 	/** @type {number} */
@@ -543,8 +586,8 @@ function deleteRoot(evt){
 		if(rootidx == g_rootidx){
 			window.location.reload();
 		}else{
-			/** @type {!NodeList<!Element>} */
-			var a_eles = sel.getElementsByTagName("option");
+			/** @type {Array<Element>} */
+			var a_eles = getElementsByAttribute("option", sel);
 			/** @type {number} */
 			var a_i = 0;
 			for(a_i=0; a_i<a_eles.length; a_i++){
@@ -555,7 +598,6 @@ function deleteRoot(evt){
 					break;
 				}
 			}
-			showInfo();
 			showNotify("delrootDone");
 		}
 	};
@@ -604,47 +646,59 @@ function deleteRoot(evt){
 		reload();
 	}
 }
+
 /**
- * @param {boolean=} addroot
- * @param {boolean=} firstep
+ * @param {Event|boolean=} firstep
  */
-function showInputPassword(addroot, firstep){
-	/** @type {Element} */
-	var div = document.getElementById("divPwd");
-	showAddRoot(addroot, firstep);
-	div.style.display = "block";
-	showInfo();
-}
-/**
- * Event called from html
- */
-function hideSetPwd(){
-	if(document.getElementById("divSet").getAttribute("cancelAll") == "1"){
-		hideSettings(true);
+function showInputPassword(firstep){
+	if(firstep){
+		if(typeof firstep === "boolean"){
+			showAddRoot(true, true);
+		}else{
+			hideElement(".zb-nav-tools");
+			hideElement("#divMain");
+		}
 	}else{
-		document.getElementById("divPwd").style.display = "";
+		showAddRoot();
 	}
-}
-/**
- * Event called from html
- */
-function moreKeyf(){
-	/** @type {EventTarget} */
-	var ele = getElement();
-	/** @type {Element} */
-	var inp = ele.previousElementSibling.cloneNode();
-	inp.value = "";
-	ele.parentElement.insertBefore(inp, ele);
+	showElement("#divPwd");
+	hideMessage();
 }
 /**
  * Event called from html
  *
- * @param {Event|string} evt
+ * @param {Event=} evt
  */
-function clearKeyf(evt){
-	/** @type {!NodeList<!Element>} */
-	var eles = getElement(evt).parentElement.getElementsByTagName("input");
-	for(var i=eles.length-1; i>0; i--){
+function hideSetPwd(evt){
+	hideElement("#divPwd");
+	if(evt && g_paths.length > 0){
+		showElement(".zb-nav-tools");
+		showElement("#divMain");
+	}
+}
+
+/**
+ * Event called from html
+ */
+function moreKeyf(){
+	/** @type {Element} */
+	var div = nextElement(findParent("div"));
+	/** @type {Element} */
+	var inp = div.children[0].cloneNode(true);
+	inp.value = "";
+	div.appendChild(inp);
+}
+/**
+ * Event called from html
+ */
+function clearKeyf(){
+	/** @type {Element} */
+	var div = getElement("#divfKey");
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("file", div, "input.type");
+	/** @type {number} */
+	var i = 0;
+	for(i=eles.length-1; i>0; i--){
 		eles[i].remove();
 	}
 	eles[0].value = "";
@@ -656,17 +710,21 @@ function setPassword(){
 	showInfo("loading");
 
 	/** @type {boolean} */
-	var addroot = document.getElementById("divPwd").hasAttribute("addroot");
+	var addroot = getElement("#divPwd").hasAttribute("addroot");
 	/** @type {string} */
-	var pwdKey = document.getElementById("pwdKey").value;
-	/** @type {!NodeList<!Element>} */
-	var eles = document.getElementById("divfKey").getElementsByTagName("input");
+	var pwdKey = getElement("#pwdKey").value;
+	/** @type {Array<Element>} */
+	var eles = getElementsByAttribute("input", getElement("#divfKey"));
 	/** @type {Array<File>} */
 	var fKey = new Array();
-	for(var i=0; i<eles.length; i++){
+	/** @type {number} */
+	var i = 0;
+	/** @type {number} */
+	var j = 0;
+	for(i=0; i<eles.length; i++){
 		/** @type {Array<File>} */
 		var a_fs = eles[i].files;
-		for(var j=0; j<a_fs.length; j++){
+		for(j=0; j<a_fs.length; j++){
 			fKey.push(a_fs[j]);
 		}
 	}
@@ -676,14 +734,14 @@ function setPassword(){
 	}
 	if(addroot){
 		/** @type {string} */
-		var pwdKeyRe = document.getElementById("pwdKeyRe").value;
+		var pwdKeyRe = getElement("#pwdKeyRe").value;
 		if(pwdKey || pwdKeyRe){
 			if(pwdKey != pwdKeyRe){
 				showError("diffPwd");
 				return;
 			}
 		}
-		if(!document.getElementById("txtRoot").value){
+		if(!getElement("#txtRoot").value){
 			showError("noRoot");
 			return;
 		}
@@ -695,16 +753,16 @@ function setPassword(){
 		words = CryptoJS.enc.Utf8.parse(pwdKey);
 	}
 	if(fKey.length > 0){
-		/** @type {number} */
-		var i = 0;
 		/** @type {FileReader} */
 		var reader = new FileReader();
 		/** @type {Hasher} */
 		var hash = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA512, "zb12");
+		i = 0;
 		reader.doread = function(){
 			reader.readAsArrayBuffer(fKey[i].slice(0, 1023));
 			i++;
 		}
+		/** @type function(Event) */
 		reader.onload = function(a_evt){
 			hash.update(new CryptoJS.lib.WordArray.init(a_evt.target.result));
 			if(i < fKey.length){
@@ -736,9 +794,9 @@ function checkPassword(keyWords, addroot){
 	if(addroot){
 		/** @type {Object<string, (string|boolean)>} */
 		var conf = {
-			"root": document.getElementById("txtRoot").value,
+			"root": getElement("#txtRoot").value,
 		};
-		if(document.getElementById("chkEncryFname").checked){
+		if(getElement("#chkEncryFname").checked){
 			conf["encfname"] = true;
 		}
 		/** @type {boolean} */
@@ -764,7 +822,7 @@ function checkPassword(keyWords, addroot){
 		uploadConfile(g_conf);
 	}else{
 		/** @type {string} */
-		var a_root = document.getElementById("selRoot").value;
+		var a_root = getElement("#selRoot").value;
 		/** @type {number} */
 		var a_rootidx = -1;
 		g_conf.forEach(/** function(Object<string,(boolean|string)>, number) */(function(b_ele, b_idx){
@@ -779,7 +837,7 @@ function checkPassword(keyWords, addroot){
 			rkeys = /** @type {WordArray} */(cryptoRKeys(false, g_conf[g_rootidx]["iv"].slice(hmac.length), keyWords));
 			g_keycfg = zbCreateCfg(rkeys);
 			checkRootFolder();
-		}else if(isVisible(document.getElementById("divPwd"))){
+		}else if(isVisible(getElement("#divPwd"))){
 			showError("pwdError");
 		}else{
 			showInputPassword();
@@ -810,6 +868,7 @@ function cryptoRKeys(encFlg, rkeys, keyWords){
 		return dat;
 	}
 }
+
 /**
  * @param {Array<Object<string, (string|boolean)>>} conf
  * @param {(function())=} func
@@ -854,7 +913,7 @@ function downloadConfile(fid){
 		/** @type {?string} */
 		var a_root = g_storage.getDriveData("root");
 		/** @type {Element} */
-		var a_sel = document.getElementById("selRoot");
+		var a_sel = getElement("#selRoot");
 		a_sel.innerHTML = "";
 		g_conf.forEach(/** function(Object<string,(boolean|string)>, number) */(function(b_ele, b_idx){
 			/** @type {boolean} */
@@ -917,7 +976,7 @@ function downloadConfile(fid){
  */
 function appendRootItem(_conf, _selected, _sel){
 	/** @type {Element|undefined} */
-	var sel = _sel || document.getElementById("selRoot");
+	var sel = _sel || getElement("#selRoot");
 	/** @type {Element} */
 	var opt = document.createElement("option");
 	opt.value = _conf["root"];
@@ -931,7 +990,7 @@ function appendRootItem(_conf, _selected, _sel){
  * Event called from html
  */
 function dropLoacalDb(){
-	if(!confirm(window["msgs"]["dropConfirm"])){
+	if(!window.confirm(window["msgs"]["dropConfirm"])){
 		return;
 	}
 	g_storage.dropIdxDb(function(a_err){
