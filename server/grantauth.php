@@ -175,7 +175,7 @@ $redirectUri = REDIRECT_URI;
 $ourl = getallheaders()["Origin"];
 if($ourl == "http://localhost:10801"){
 	$localhost = true;
-	$redirectUri = $ourl . "/";
+	$redirectUri = $ourl . "/src/";
 }else{
 	$ourl = getBaseUrl(REDIRECT_URI);
 }

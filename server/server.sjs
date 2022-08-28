@@ -76,7 +76,10 @@ function responseFile(a_req, a_res){
 	if(a_i > 0){
 		a_url = a_url.substring(0, a_i);
 	}
-	a_url = a_url.slice(1) || "index.html";
+	a_url = a_url.slice(1);
+	if(!a_url || a_url.slice(-1) == "/"){
+		a_url = a_url.concat("index.html");
+	}
 	/** @type {string} */
 	var a_fpath = lib["path"].join(__dirname, "../".concat(a_url));
 	lib["fs"].stat(a_fpath, /** function(string, fs.Stats) */function(b_err, b_stats){

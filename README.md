@@ -1,4 +1,4 @@
-<div align="center"><img src="https://zboris12.github.io/zgayard/src/logo.png" title="zgayard"></div>
+<div align="center"><img src="https://zboris12.github.io/zgayard/src/img/logo.png" title="zgayard"></div>
 
 # zgayard
 Create a safety yard in your online storage. [Let's go!](https://zboris12.github.io/zgayard/src/)  

@@ -61,7 +61,7 @@ nav {
 nav > div {
 	@apply relative flex items-start gap-2;
 }
-div.zb-nav-icon > img {
+div.zb-nav-icon > a > img {
 	@apply w-8 h-8;
 }
 span.zb-nav-title {
@@ -460,7 +460,7 @@ div.zb-queue > ul.zb-history > li > div:last-of-type {
 	@apply text-center text-sm mt-3;
 }
 #divTos > img {
-	@apply mr-1 inline-block;
+	@apply mt-1 w-auto h-auto inline-block;
 }
 #divTos > a {
 	@apply align-top;

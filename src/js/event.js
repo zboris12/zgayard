@@ -372,6 +372,7 @@ window.addEventListener("load", function(){
 				}
 			}
 			if(!a_t){
+				g_touchPoSt = null;
 				return;
 			}
 			
@@ -381,11 +382,11 @@ window.addEventListener("load", function(){
 			var a_moveY = a_t.screenY - g_touchPoSt._y;
 			if(a_moveY < 10 && a_moveY > -10){
 				if(a_moveX > 50){
-					/* slide left to right means change to next */
-					clickNext();
-				}else if(a_moveX < -50){
-					/* slide right to left means change to previous */
+					/* slide left to right means change to previous */
 					clickPrevious();
+				}else if(a_moveX < -50){
+					/* slide right to left means change to next */
+					clickNext();
 				}
 			}
 			g_touchPoSt = null;
@@ -400,17 +401,27 @@ window.addEventListener("load", function(){
 	ele.addEventListener("ended", function(){
 		clickItem(findParent("div").getAttribute("uid"), 2, true);
 	});
-	screen.orientation.addEventListener("change", function(a_evt){
-		if(a_evt.currentTarget.type == "landscape-primary"){
-			/** @type {Element} */
-			var a_div = getElement("#diViewer");
-			if(isVisible(getElement("video", a_div))){
-				findParent("div", a_div, undefined, true).requestFullscreen();
-			}
-		}else if(document["fullscreen"]){
-			document.exitFullscreen();
-		}
-	});
+	// screen.orientation.addEventListener("change", function(a_evt){
+		// if(a_evt.currentTarget.type == "landscape-primary"){
+			// /** @type {Element} */
+			// var a_div = getElement("#diViewer");
+			// /** @type {Element} */
+			// var a_vdo = getElement("video", a_div);
+			// if(isVisible(a_vdo) && !a_vdo.ended){
+				// /** @type {boolean} */
+				// var a_flg = !a_vdo.paused;
+				// if(a_flg){
+					// a_vdo.pause();
+				// }
+				// findParent("div", a_div, undefined, true).requestFullscreen();
+				// if(a_flg){
+					// a_vdo.play();
+				// }
+			// }
+		// }else if(document["fullscreen"]){
+			// document.exitFullscreen();
+		// }
+	// });
 	document.addEventListener("fullscreenchange", function(a_evt){
 		if(document["fullscreen"]){
 			getElement("#diViewer").classList.add("full");
