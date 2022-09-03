@@ -28,8 +28,8 @@ function createTransfer(keycfg, drv){
 	var tfr = new ZbTransfer(keycfg, /** @type {function():boolean} */(function(){
 		return self.canceled;
 	}), /** @type {function(WorkerStepInfo)} */(function(a_spinf){
-		if(a_spinf._type == StepInfoType.DONE){
-			a_spinf._token = drv.getToken();
+		if(a_spinf.type == StepInfoType.DONE){
+			a_spinf.gtoken = drv.getToken();
 		}
 		self.postMessage(a_spinf);
 	}));
@@ -41,17 +41,17 @@ function createTransfer(keycfg, drv){
  */
 function work(wkinf){
 	/** @type {WorkerInfoType} */
-	var wtype = wkinf._type;
-	var cominf = /** @type {WorkerCommonInfo} */(wkinf._cominf);
+	var wtyp = wkinf.type;
+	var cinf = /** @type {WorkerCommonInfo} */(wkinf.cominf);
 	var keycfg = /** @type {CipherParams} */({
-		"iv": CryptoJS.enc.Base64url.parse(cominf._iv),
-		"key": CryptoJS.enc.Base64url.parse(cominf._key),
+		"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
+		"key": CryptoJS.enc.Base64url.parse(cinf.key),
 	});
 	/** @type {WorkerStepInfo} */
 	var stepinf = {
-		_type: StepInfoType.BEGIN,
-		_wtype: wtype,
-		_size: 0,
+		type: StepInfoType.BEGIN,
+		wtype: wtyp,
+		size: 0,
 	};
 	self.postMessage(stepinf);
 
@@ -62,34 +62,34 @@ function work(wkinf){
 			console.error("IndexedDB is not supported in your browser settings.");
 		}
 		/** @type {ZbDriveDefine} */
-		var a_drvdef = g_DRIVES[cominf._drvnm];
+		var a_drvdef = g_DRIVES[cinf.drvid];
 		if(a_drvdef){
 			/** @type {ZbDrive} */
 			var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL);
-			a_drv.presetToken(cominf._token);
+			a_drv.presetToken(cinf.gtoken);
 
-			switch(wtype){
+			switch(wtyp){
 			case WorkerInfoType.DOWNLOAD:
-				var a_downinf = /** @type {WorkerDownloadInfo} */(wkinf._downinf);
+				var a_downinf = /** @type {WorkerDownloadInfo} */(wkinf.downinf);
 				/** @type {ZbTransfer} */
 				var a_tfr1 = createTransfer(keycfg, a_drv);
-				a_tfr1.downloadFile(a_drv, a_downinf._targetId);
+				a_tfr1.downloadFile(a_drv, a_downinf.targetId);
 				break;
 			case WorkerInfoType.UPLOAD:
-				var a_upinf = /** @type {WorkerUploadInfo} */(wkinf._upinf);
+				var a_upinf = /** @type {WorkerUploadInfo} */(wkinf.upinf);
 				/** @type {ZbTransfer} */
 				var a_tfr2 = createTransfer(keycfg, a_drv);
-				a_tfr2.uploadFile(a_drv, a_upinf._fname, a_upinf._file, a_upinf._parentId);
+				a_tfr2.uploadFile(a_drv, a_upinf.fname, a_upinf.file, a_upinf.ptid);
 				break;
 			}
 
 		}else{
 			/** @type {WorkerStepInfo} */
 			var a_stepinf = {
-				_type: StepInfoType.DONE,
-				_wtype: wtype,
-				_size: 0,
-				_err: "Drive's name is invalid.",
+				type: StepInfoType.DONE,
+				wtype: wtyp,
+				size: 0,
+				errr: "Drive's name is invalid.",
 			};
 			self.postMessage(a_stepinf);
 		}
@@ -98,7 +98,7 @@ function work(wkinf){
 
 self.addEventListener("message", function(evt){
 	var wkinf = /** @type {WorkerInfo} */(evt.data);
-	switch(wkinf._type){
+	switch(wkinf.type){
 	case WorkerInfoType.DOWNLOAD:
 	case WorkerInfoType.UPLOAD:
 		work(wkinf);

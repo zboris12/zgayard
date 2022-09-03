@@ -366,21 +366,17 @@ function ZbIdxDbDrive(_storage, _authUrl){
 			_total: 0,
 			_used: 0,
 		};
-		this.operateDatas(function(a_store){
+		this.operateItems(function(a_store){
 			/** @type {IDBRequest} */
-			var a_req = a_store.getAllKeys();
+			var a_req = a_store.getAll();
 			/**
 			 * @param {Event} b_evt
 			 */
 			a_req.onsuccess = function(b_evt){
-				b_evt.target.result.forEach(function(c_ele){
-					/** @type {number} */
-					var c_i = c_ele.indexOf(":");
-					/** @type {string} */
-					var c_inf = c_ele.substring(c_i + 1);
-					/** @type {number} */
-					var c_j = c_inf.indexOf("_");
-					dat._used += parseInt(c_inf.substring(c_j + 1), 10);
+				b_evt.target.result.forEach(function(c_ele, c_idx){
+					if(c_ele["type"] == ZbDrive.ITMTYP_FILE){
+						dat._used += parseInt(c_ele["size"], 10);
+					}
 				});
 			};
 		}, function(){
@@ -1007,7 +1003,7 @@ function ZbIdxDbDrive(_storage, _authUrl){
 								idx = c_i;
 							}
 						}
-					}else if(c_i < 0){
+					}else if(!parentId && c_i < 0){
 						c_i = parseInt(c_ele, 10);
 						if(c_i > idx){
 							idx = c_i;

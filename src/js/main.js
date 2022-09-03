@@ -55,10 +55,12 @@ function showModal(typ, func){
 }
 /**
  * Call from html event.
+ *
+ * @param {Event} evt
  */
-function hideModal(){
+function hideModal(evt){
 	/** @type {Element} */
-	var div = findParent("zb-modal", getElement(), "div.class");
+	var div = findParent("zb-modal", getElement(evt), "div.class");
 	if(div){
 		if(div.onhide){
 			div.onhide();
@@ -69,12 +71,14 @@ function hideModal(){
 }
 /**
  * Call from html event.
+ *
+ * @param {Event} evt
  */
-function okModal(){
+function okModal(evt){
 	/** @type {function(boolean)} */
 	var func = function(a_ret){
 		if(a_ret){
-			hideModal();
+			hideModal(evt);
 		}
 	};
 	/** @type {string} */
@@ -187,6 +191,21 @@ function onbody(){
  * A function.
  */
 function checkRootFolder(){
+	/** @type {Array<Element>} */
+	var uls = [getHeaderUl("#divMain"), getElement("ul", "#divHistory")];
+	uls.forEach(function(a_ul){
+		/** @type {number} */
+		var a_i = 0;
+		/** @type {Array<Element>} */
+		var a_eles = getElementsByAttribute("li", a_ul);
+		for(a_i = 0; a_i < a_eles.length; a_i++){
+			if(!a_eles[a_i].classList.contains("template")){
+				a_eles[a_i].remove();
+			}
+		}
+	});
+	showMenuHistory(false);
+
 	hideSetPwd();
 	showElement(".zb-nav-tools");
 	showElement("#divMain");
@@ -674,9 +693,13 @@ function addItem(ul, itm){
  * @param {number=} chkd 1 means set to true, -1 means set to false
  */
 function switchChecked(l, chkd){
-	if(chkd != 1 && chkd != -1){
-		/** @type {Element} */
-		var chk = getElement("checkbox", l, "input.type");
+	/** @type {Element} */
+	var chk = getElement("checkbox", l, "input.type");
+	if(chkd == 1){
+		chk.checked = true;
+	}else if(chkd == -1){
+		chk.checked = false;
+	}else{
 		chk.checked = !chk.checked;
 		if(chk.checked){
 			chkd = 1;
@@ -852,11 +875,20 @@ function showDropdown(evt){
 	var li = findParent("li", btn);
 	/** @type {Element} */
 	var menu = getElement("#ulIteMenu");
-	if(!menu.hasAttribute("ofwid")){
-		menu.setAttribute("ofwid", menu.offsetWidth);
+	/** @type {number} */
+	var mwid = 0;
+	if(menu.hasAttribute("ofwid")){
+		mwid = parseInt(menu.getAttribute("ofwid"), 10);
+	}else{
+		//showElement(menu);
+		//To fix the problem of some browser can't show menu properly.
+		// Such as Kiwi Browser for Android.
+		menu.style.display = "block";
+		mwid = menu.offsetWidth;
+		menu.setAttribute("ofwid", mwid);
 	}
-	if(rect.right + menu.getAttribute("ofwid") > document.body.offsetWidth){
-		menu.style.left = (rect.left - menu.getAttribute("ofwid")) + "px";
+	if(rect.right + mwid > document.body.offsetWidth){
+		menu.style.left = (rect.left - mwid) + "px";
 	}else{
 		menu.style.left = rect.right + "px";
 	}
@@ -1409,10 +1441,11 @@ function clickNext(){
 }
 /**
  * Call from html event.
+ * @param {Event} evt
  */
-function exitViewer(){
+function exitViewer(evt){
 	endVideoStream(getElement("#diViewer"));
-	hideModal();
+	hideModal(evt);
 }
 /**
  * Event called from html
@@ -1568,7 +1601,11 @@ function clickRecent(evt, next){
 	/** @type {function()} */
 	var getDrvFld = function(){
 		if(!pnt){
-			showInfo();
+			showInfo("cantPlayRecent");
+			return;
+		}else if(pnt == g_paths[0]._id){
+			paths.unshift(g_paths[0]);
+			gotoPlay();
 			return;
 		}
 		g_drive.getItem({
@@ -1579,18 +1616,13 @@ function clickRecent(evt, next){
 				if(!a_err){
 					a_dat._name = decryptFname(a_dat._name);
 					paths.unshift(a_dat);
-					if(a_dat._parentId == g_paths[0]._id){
-						paths.unshift(g_paths[0]);
-						gotoPlay();
+					if(a_dat._parentId == g_paths[0]._parentId){
+						// The recent file is not in this root folder.
+						pnt = undefined;
 					}else{
-						if(a_dat._parentId == g_paths[0]._parentId){
-							// The recent file is not in this root folder.
-							pnt = undefined;
-						}else{
-							pnt = a_dat._parentId;
-						}
-						getDrvFld();
+						pnt = a_dat._parentId;
 					}
+					getDrvFld();
 				}
 			},
 		});
@@ -1604,7 +1636,7 @@ function clickRecent(evt, next){
 		/** @type {Array<Element>} */
 		var a_eles = getElementsByAttribute("li", a_ulPath);
 		for(a_i = 0; a_i < a_eles.length; a_i++){
-			if(!a_eles[a_i].hasAttribute("template")){
+			if(!a_eles[a_i].classList.contains("template")){
 				a_eles[a_i].remove();
 			}
 		}
@@ -1613,6 +1645,7 @@ function clickRecent(evt, next){
 		}
 		g_paths = paths;
 		listFolder(true, false, undefined,  /** @type {function(Array<DriveItem>)} */(function(b_arr){
+			hideMessage();
 			/** @type {number} */
 			var b_i = 0;
 			for(b_i = 0; b_i < b_arr.length; b_i++){

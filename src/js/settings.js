@@ -486,6 +486,10 @@ function loadDrive(drvnm){
  * Event called from html
  */
 function saveSettings(){
+	if(!getElement("#chkAgreeTos").checked){
+		showError("noAgreeTos");
+		return;
+	}
 	/** @type {Element} */
 	var sel = getElement("#selDrive");
 	/** @type {boolean} */
@@ -524,11 +528,11 @@ function hideSettings(){
 function showAddRoot(addroot, firstep){
 	/** @type {Element} */
 	var div = getElement("#divPwd");
-	/** @type {string} */
-	var disp = "none";
+	/** @type {boolean} */
+	var dispAdd = false;
 	if(addroot){
 		div.setAttribute("addroot", "1");
-		disp = "";
+		dispAdd = true;
 	}else{
 		div.removeAttribute("addroot");
 	}
@@ -540,15 +544,19 @@ function showAddRoot(addroot, firstep){
 		/** @type {Element} */
 		var ele = eles[i];
 		if(ele.classList.contains("addroot")){
-			ele.style.display = disp;
+			if(dispAdd){
+				showElement(ele);
+			}else{
+				hideElement(ele);
+			}
 		}else if(ele.classList.contains("firstep")){
-			if(disp != "none" && firstep){
+			if(dispAdd && firstep){
 				showElement(ele);
 			}else{
 				hideElement(ele);
 			}
 		}else if(ele.classList.contains("chgroot")){
-			if(disp == "none"){
+			if(!dispAdd){
 				showElement(ele);
 			}else{
 				hideElement(ele);
@@ -655,6 +663,7 @@ function showInputPassword(firstep){
 		if(typeof firstep === "boolean"){
 			showAddRoot(true, true);
 		}else{
+			showAddRoot();
 			hideElement(".zb-nav-tools");
 			hideElement("#divMain");
 		}

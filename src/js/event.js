@@ -244,7 +244,11 @@ window.addEventListener("load", function(){
 		}
 	}
 
-	eles = getElementsByAttribute("button", getElement("#divSet"));
+	ele = getElement("#divSet");
+	// getElement("lnkTos", ele, "a.iid").addEventListener("click", function(a_evt){
+		// a_evt.stopPropagation();
+	// });
+	eles = getElementsByAttribute("button", ele);
 	for(i=0; i<eles.length; i++){
 		ele = eles[i];
 		switch(ele.getAttribute("iid")){

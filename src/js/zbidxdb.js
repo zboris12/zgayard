@@ -536,7 +536,8 @@ this.saveRecent = function(pif, pos, func){
  */
 this.getRecent = function(){
 	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
-	if(lst && this.recentIdx < 0){
+	this.recentIdx = -1;
+	if(lst){
 		/** @type {number} */
 		var i = 0;
 		for(i=0; i<lst.length; i++){

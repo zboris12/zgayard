@@ -130,8 +130,8 @@ function cancel(evt){
 		var li = findParent("li", ele);
 		/** @type {WorkerInfo} */
 		var wkinf = {
-			_type: WorkerInfoType.CANCEL,
-			_rowIdx: getIntAttr(li, "rowIdx"),
+			type: WorkerInfoType.CANCEL,
+			rowIdx: getIntAttr(li, "rowIdx"),
 		};
 		g_worker.postMessage(wkinf);
 	}else{
@@ -323,6 +323,28 @@ function getTargetLi(idx, ul){
 }
 
 /**
+ * @param {WorkerInfoType} tpy
+ * @param {boolean=} beginFlg
+ */
+function animQbutton(tpy, beginFlg){
+	/** @type {number} */
+	var idx = 0;
+	if(tpy == WorkerInfoType.DOWNLOAD){
+		idx = 1;
+	}else if(tpy != WorkerInfoType.UPLOAD){
+		return;
+	}
+
+	/** @type {Element} */
+	var ele = getElementsByAttribute("svg", ".zb-qbutton")[idx];
+	if(beginFlg){
+		ele.classList.add("pulse");
+	}else{
+		ele.classList.remove("pulse");
+	}
+}
+
+/**
  * @param {Element} li
  * @param {WorkerStepInfo} spinf
  * @return {Element} The span of icon
@@ -334,15 +356,18 @@ function setProgressInfo(li, spinf){
 	var eles = getElementsByAttribute("span", li);
 	/** @type {string} */
 	var per = "";
-	switch(spinf._type){
+	switch(spinf.type){
 	case StepInfoType.BEGIN:
 		per = "0%";
+		animQbutton(spinf.wtype, true);
 		break;
 	case StepInfoType.INPROGRESS:
-		per = Math.round(spinf._pos * 100 / spinf._size) + "%";
+		per = Math.round(spinf.posn * 100 / spinf.size) + "%";
 		break;
 	case StepInfoType.DONE:
 		per = "100%";
+	case StepInfoType.CANCELED:
+		animQbutton(spinf.wtype);
 		break;
 	}
 	/** @type {number} */
@@ -355,50 +380,50 @@ function setProgressInfo(li, spinf){
 			iconSpan = sp;
 			break;
 		case "percent":
-			switch(spinf._type){
+			switch(spinf.type){
 			case StepInfoType.BEGIN:
 			case StepInfoType.INPROGRESS:
 				sp.innerText = per;
 				break;
 			case StepInfoType.DONE:
-				if(!spinf._err){
+				if(!spinf.errr){
 					sp.innerText = per;
 				}
 				break;
 			}
 			break;
 		case "elTime":
-			switch(spinf._type){
+			switch(spinf.type){
 			case StepInfoType.INPROGRESS:
 			case StepInfoType.DONE:
 			case StepInfoType.CANCELED:
-				sp.innerText = getElapsedTime(/** @type {number} */(spinf._begin));
+				sp.innerText = getElapsedTime(/** @type {number} */(spinf.begin));
 				break;
 			}
 			break;
 		case "esTime":
-			switch(spinf._type){
+			switch(spinf.type){
 			case StepInfoType.INPROGRESS:
-				sp.innerText = getTimeDisp(Math.round((spinf._size - spinf._pos) / spinf._speed));
+				sp.innerText = getTimeDisp(Math.round((spinf.size - spinf.posn) / spinf.spd));
 				break;
 			}
 			break;
 		case "speed":
-			switch(spinf._type){
+			switch(spinf.type){
 			case StepInfoType.INPROGRESS:
-				sp.innerText = getSizeDisp(/** @type {number} */(spinf._speed)) + "/s";
+				sp.innerText = getSizeDisp(/** @type {number} */(spinf.spd)) + "/s";
 				break;
 			case StepInfoType.DONE:
 			case StepInfoType.CANCELED:
-				if(!spinf._err){
+				if(!spinf.errr){
 					li.classList.add("done");
-					sp.innerText = window["msgs"]["avspeed"].replace("{0}", getSizeDisp(spinf._pos * 1000 / (Date.now() - spinf._begin)));
+					sp.innerText = window["msgs"]["avspeed"].replace("{0}", getSizeDisp(spinf.posn * 1000 / (Date.now() - spinf.begin)));
 				}
 				break;
 			}
 			break;
 		case "cancel":
-			switch(spinf._type){
+			switch(spinf.type){
 			case StepInfoType.BEGIN:
 				showElement(sp);
 				break;
@@ -407,9 +432,9 @@ function setProgressInfo(li, spinf){
 				/** @type {Element} */
 				var svg = getElement("svg", sp);
 				svg.removeChild(svg.firstElementChild);
-				if(spinf._err || spinf._type == StepInfoType.CANCELED){
+				if(spinf.errr || spinf.type == StepInfoType.CANCELED){
 					setSvgImage(sp, "multi");
-					addQbFinished(spinf._err ? 3 : 2);
+					addQbFinished(spinf.errr ? 3 : 2);
 				}else{
 					setSvgImage(sp, "chkbox", undefined,"#10B981");
 					addQbFinished(1);
@@ -422,15 +447,15 @@ function setProgressInfo(li, spinf){
 			/** @type {Element} */
 			var div = findParent("div", sp);
 			if(div && div.classList.contains("zb-progressbar")){
-				switch(spinf._type){
+				switch(spinf.type){
 				case StepInfoType.BEGIN:
 				case StepInfoType.INPROGRESS:
 					sp.style.width = per;
 					break;
 				case StepInfoType.DONE:
-					if(spinf._err){
+					if(spinf.errr){
 						li.classList.add("error");
-						div.innerText = spinf._err;
+						div.innerText = spinf.errr;
 					}else{
 						sp.style.width = per;
 					}
@@ -448,9 +473,9 @@ function setProgressInfo(li, spinf){
  * @return {boolean} single progress is finished or not.
  */
 function handleProgress(spinf, ul){
-	var rowIdx = /** @type {number} */(spinf._rowIdx);
+	var r = /** @type {number} */(spinf.rowIdx);
 	/** @type {Element} */
-	var li = getTargetLi(rowIdx, ul);
+	var li = getTargetLi(r, ul);
 	return handleLiProgress(li, spinf);
 }
 /**
@@ -461,24 +486,24 @@ function handleProgress(spinf, ul){
 function handleLiProgress(li, spinf){
 	/** @type {boolean} */
 	var ret = false;
-	switch(spinf._type){
+	switch(spinf.type){
 	case StepInfoType.BEGIN:
 	case StepInfoType.INPROGRESS:
 		setProgressInfo(li, spinf);
 		break;
 	case StepInfoType.DONE:
-		if(spinf._finished && g_worker){
+		if(spinf.fined && g_worker){
 			terminateWorker();
 		}
 		/** @type {Element} */
 		var sp = setProgressInfo(li, spinf);
-		if(!spinf._err){
-			if(spinf._wtype == WorkerInfoType.UPLOAD){
-				addQuotaUsed(spinf._size);
-			}else if(spinf._wtype == WorkerInfoType.DOWNLOAD && spinf._blob){
+		if(!spinf.errr){
+			if(spinf.wtype == WorkerInfoType.UPLOAD){
+				addQuotaUsed(spinf.size);
+			}else if(spinf.wtype == WorkerInfoType.DOWNLOAD && spinf.blob){
 				 /** @type {string} */
 				var fnm = getElement("label", sp).innerText;
-				downloadBlob(spinf._blob, fnm, getElement("#lnkDown"));
+				downloadBlob(spinf.blob, fnm, getElement("#lnkDown"));
 			}
 		}
 		if(window.gc){
@@ -487,7 +512,7 @@ function handleLiProgress(li, spinf){
 		ret = true;
 		break;
 	case StepInfoType.CANCELED:
-		if(spinf._finished && g_worker){
+		if(spinf.fined && g_worker){
 			terminateWorker();
 		}
 		setProgressInfo(li, spinf);
@@ -523,11 +548,11 @@ function addWorkerQueue(wkinf){
 	if(!g_worker){
 		g_worker = new Worker(WORKER_PATH+"worker.js");
 		/** @type {WorkerCommonInfo} */
-		g_worker.cominf = {
-			_token: g_drive.getToken(),
-			_iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
-			_key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
-			_drvnm: g_drive.getId(),
+		g_worker.cinf = {
+			gtoken: g_drive.getToken(),
+			iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
+			key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
+			drvid: g_drive.getId(),
 		};
 
 		g_worker.addEventListener("message", function(a_evt){
@@ -535,8 +560,8 @@ function addWorkerQueue(wkinf){
 			handleProgress(a_spinf);
 		});
 	}
-	wkinf._cominf = g_worker.cominf;
-	if(wkinf._type == WorkerInfoType.UPLOAD && !g_worker.hasUpd){
+	wkinf.cominf = g_worker.cinf;
+	if(wkinf.type == WorkerInfoType.UPLOAD && !g_worker.hasUpd){
 		g_worker.hasUpd = true;
 	}
 	g_worker.postMessage(wkinf);
@@ -560,7 +585,7 @@ function doDownUp(li, func){
 			return false;
 		}
 	}), /** @type {function(WorkerStepInfo)} */(function(b_spinf){
-		b_spinf._rowIdx = idx;
+		b_spinf.rowIdx = idx;
 		if(handleLiProgress(li, b_spinf)){
 			func();
 		}
@@ -583,10 +608,10 @@ function download(files){
 		var li = addQueueRow(ul, files[i]._name, true);
 		if(USE_WORKER){
 			addWorkerQueue({
-				_type: WorkerInfoType.DOWNLOAD,
-				_rowIdx: getIntAttr(li, "rowIdx"),
-				_downinf: {
-					_targetId: files[i]._id,
+				type: WorkerInfoType.DOWNLOAD,
+				rowIdx: getIntAttr(li, "rowIdx"),
+				downinf: {
+					targetId: files[i]._id,
 				},
 			});
 		}else{
@@ -662,23 +687,23 @@ function upload(files){
 		findFolderId(basefld, a_ele._fpath, function(b_err, b_fnm, b_ptid){
 			if(b_err){
 				handleProgress({
-					_type: StepInfoType.DONE,
-					_wtype: WorkerInfoType.UPLOAD,
-					_rowIdx: a_ele._idx,
-					_size: 0,
-					_err: JSON.stringify(b_err),
+					type: StepInfoType.DONE,
+					wtype: WorkerInfoType.UPLOAD,
+					rowIdx: a_ele._idx,
+					size: 0,
+					errr: JSON.stringify(b_err),
 				}, ul);
 				return;
 			}
 
 			if(USE_WORKER){
 				addWorkerQueue({
-					_type: WorkerInfoType.UPLOAD,
-					_rowIdx: a_ele._idx,
-					_upinf: {
-						_fname: b_fnm,
-						_file: a_ele._file,
-						_parentId: /** @type {string} */(b_ptid),
+					type: WorkerInfoType.UPLOAD,
+					rowIdx: a_ele._idx,
+					upinf: {
+						fname: b_fnm,
+						file: a_ele._file,
+						ptid: /** @type {string} */(b_ptid),
 					},
 				});
 				a_idx++;

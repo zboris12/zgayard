@@ -53,9 +53,9 @@ function ZbGoogleDrive(_storage, _authUrl){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files");
 		/** @type {string} */
-		var ptid = opt._parentid ? opt._parentid : "root";
+		var prtid = opt._parentid ? opt._parentid : "root";
 		/** @type {string} */
-		var cond = "'"+ptid+"' in parents";
+		var cond = "'"+prtid+"' in parents";
 		if(opt._fname){
 			cond = cond.concat(" and name = '"+opt._fname+"'");
 		}
@@ -115,12 +115,12 @@ function ZbGoogleDrive(_storage, _authUrl){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files");
 		/** @type {string} */
-		var ptid = opt._parentid ? opt._parentid : "root";
+		var prtid = opt._parentid ? opt._parentid : "root";
 		/** @type {Object<string, *>} */
 		var dat = {
 			"mimeType": "application/vnd.google-apps.folder",
 			"name": opt._folder,
-			"parents": [ptid],
+			"parents": [prtid],
 		};
 
 		this._processRequest(upath, "POST", 200, /** @type {DriveBaseOption} */(opt), headers, JSON.stringify(dat), /** @type {function(DriveJsonRet)} */(function(a_res){

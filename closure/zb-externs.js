@@ -57,55 +57,55 @@ function VDStreamWrapper(){
 /**
  * @typedef
  * {{
- *    _type: WorkerInfoType,
- *    _palcnt: (number|undefined),
- *    _rowIdx: (number|undefined),
- *    _cominf: (WorkerCommonInfo|undefined),
- *    _downinf: (WorkerDownloadInfo|undefined),
- *    _upinf: (WorkerUploadInfo|undefined),
+ *    type: WorkerInfoType,
+ *    palcnt: (number|undefined),
+ *    rowIdx: (number|undefined),
+ *    cominf: (WorkerCommonInfo|undefined),
+ *    downinf: (WorkerDownloadInfo|undefined),
+ *    upinf: (WorkerUploadInfo|undefined),
  * }}
  */
 var WorkerInfo;
 /**
  * @typedef
  * {{
- *    _token: string,
- *    _iv: string,
- *    _key: string,
- *    _drvnm: string,
+ *    gtoken: string,
+ *    iv: string,
+ *    key: string,
+ *    drvid: string,
  * }}
  */
 var WorkerCommonInfo;
 /**
  * @typedef
  * {{
- *    _fname: string,
- *    _file: File,
- *    _parentId: string,
+ *    fname: string,
+ *    file: File,
+ *    ptid: string,
  * }}
  */
 var WorkerUploadInfo;
 /**
  * @typedef
  * {{
- *    _targetId: string,
+ *    targetId: string,
  * }}
  */
 var WorkerDownloadInfo;
 /**
  * @typedef
  * {{
- *    _type: StepInfoType,
- *    _wtype: WorkerInfoType,
- *    _rowIdx: (number|undefined),
- *    _begin: (number|undefined),
- *    _speed: (number|undefined),
- *    _pos: (number|undefined),
- *    _size: number,
- *    _blob: (!Blob|undefined),
- *    _err: (string|undefined),
- *    _token: (string|undefined),
- *    _finished: (boolean|undefined),
+ *    type: StepInfoType,
+ *    wtype: WorkerInfoType,
+ *    rowIdx: (number|undefined),
+ *    begin: (number|undefined),
+ *    spd: (number|undefined),
+ *    posn: (number|undefined),
+ *    size: number,
+ *    blob: (!Blob|undefined),
+ *    errr: (string|undefined),
+ *    gtoken: (string|undefined),
+ *    fined: (boolean|undefined),
  * }}
  */
 var WorkerStepInfo;

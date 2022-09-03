@@ -27,9 +27,9 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 	this.startTransfer = function(){
 		/** @type {WorkerStepInfo} */
 		var stepinf = {
-			_type: StepInfoType.BEGIN,
-			_wtype: this.wktype,
-			_size: this.reader.getSize(),
+			type: StepInfoType.BEGIN,
+			wtype: this.wktype,
+			size: this.reader.getSize(),
 		};
 		this.sendStepInfo(stepinf);
 		/** @type {ZbCrypto} */
@@ -43,12 +43,12 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		cypt.onstep = function(){
 			/** @type {WorkerStepInfo} */
 			var a_stepinf = {
-				_type: StepInfoType.INPROGRESS,
-				_wtype: this.wktype,
-				_begin: this.begintime,
-				_speed: cypt.calSpeed(),
-				_pos: this.reader.getPos(),
-				_size: this.reader.getSize(),
+				type: StepInfoType.INPROGRESS,
+				wtype: this.wktype,
+				begin: this.begintime,
+				spd: cypt.calSpeed(),
+				posn: this.reader.getPos(),
+				size: this.reader.getSize(),
 			};
 
 			this.sendStepInfo(a_stepinf);
@@ -62,18 +62,18 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		cypt.onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_canceled){
 			/** @type {WorkerStepInfo} */
 			var a_stepinf = {
-				_type: StepInfoType.DONE,
-				_wtype: this.wktype,
-				_begin: this.begintime,
-				_pos: this.reader.getPos(),
-				_size: this.writer.getTotalSize(),
+				type: StepInfoType.DONE,
+				wtype: this.wktype,
+				begin: this.begintime,
+				posn: this.reader.getPos(),
+				size: this.writer.getTotalSize(),
 			};
 			if(a_err){
-				a_stepinf._err = a_err.message || a_err.restxt;
+				a_stepinf.errr = a_err.message || a_err.restxt;
 			}else if(a_canceled){
-				a_stepinf._type = StepInfoType.CANCELED;
+				a_stepinf.type = StepInfoType.CANCELED;
 			}else if(this.writer.getBufferBlob){
-				a_stepinf._blob = this.writer.getBufferBlob();
+				a_stepinf.blob = this.writer.getBufferBlob();
 			}
 			this.sendStepInfo(a_stepinf);
 		}.bind(this));

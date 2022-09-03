@@ -11,6 +11,9 @@ window["msgs"] = {
 	"btnOk": "OK",
 	"spanDrive": "Drive Settings",
 	"lblConfNotice": "A configuration file named of '{0}' will be saved in your drive's root directory. Do NOT delete it or you will be unable to decrypt your files forever.",
+	"lblReadTos": "Please read the ",
+	"lblReadTos2": ".",
+	"lblAgreeTos": "I agree the Terms of Service and Privacy Policy.",
 	"lblRootNotice": "Input a root folder for encrypted files.",
 	"lblRoot": "Folder: ",
 	"spanAddRoot": "Add a new root folder.",
@@ -56,8 +59,10 @@ window["msgs"] = {
 	"noFiles": "File to upload is not specified.",
 
 	"spanHistory": "Recent Played Video",
+	"cantPlayRecent": "Can NOT play the recent viewed file, because it is not in this root folder.",
 
 
+	"noAgreeTos": "Before using this service, you must agree the Terms of Service and Privacy Policy.",
 	"lsFailed": "Failed to get authorization of local storage.",
 	"loading": "Loading......",
 	"unkDrive": "Unknown drive type.",

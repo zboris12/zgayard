@@ -368,6 +368,9 @@ div.zb-qbutton.error > div {
 div.zb-qbutton > div > svg {
 	@apply inline-block;
 }
+.pulse {
+	@apply animate-pulse;
+}
 
 div.zb-progressbar {
 	@apply bg-gray-200 rounded-full h-2.5;
