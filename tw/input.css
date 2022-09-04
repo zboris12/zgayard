@@ -92,7 +92,7 @@ div.zb-nav-tools > button {
 	@apply md:hidden bg-gray-200 p-2 rounded-md;
 }
 div.zb-nav-menu {
-	@apply absolute top-10 left-0 right-0 w-full overflow-hidden max-h-screen bg-white rounded-md border z-30 ease-in-out duration-500;
+	@apply absolute top-10 left-0 right-0 w-full overflow-hidden bg-white rounded-md border z-30 max-h-screen ease-in-out duration-500;
 	transition-property: max-height;
 }
 div.zb-nav-menu > ul {
@@ -208,7 +208,8 @@ ul.zb-main-menu {
 	@apply hidden md:inline-flex space-x-2 mb-2 items-center text-sm font-semibold;
 }
 ul.zb-main-menu.pop {
-	@apply block absolute top-full right-0 mb-0 bg-gray-200 p-2 rounded-md shadow overflow-hidden z-30;
+	@apply block absolute top-full right-0 mb-0 bg-gray-200 p-2 rounded-md shadow overflow-hidden z-30 max-h-screen ease-in-out duration-500;
+	transition-property: max-height;
 }
 ul.zb-main-menu > li {
 	@apply px-2 xl:px-4 py-2 cursor-pointer text-gray-800 rounded-md hover:bg-gray-200;
@@ -223,7 +224,8 @@ ul.zb-main-menu > li > span > svg {
 	@apply w-4 h-4 inline-block transition-transform ease-in-out;
 }
 #ulIteMenu {
-	@apply right-auto;
+	@apply right-auto max-h-screen ease-in-out duration-500;
+	transition-property: max-height;
 }
 div.zb-main-header {
 	@apply relative grid grid-cols-10 border-b-2 border-blue-500;
@@ -286,6 +288,9 @@ ul.zb-main-list > li > div:nth-of-type(2) {
 }
 ul.zb-main-list > li > div:nth-of-type(3) {
 	@apply hidden md:block col-span-2 text-center py-2 border-l-2 border-gray-200;
+}
+ul.zb-main-list > li > div:nth-of-type(3) > span {
+	@apply whitespace-nowrap;
 }
 ul.zb-main-list input {
 	@apply hidden;
@@ -446,17 +451,20 @@ div.zb-queue > ul.zb-task > li.error > span:last-of-type {
 div.zb-queue > ul.zb-history > li {
 	@apply pr-2;
 }
-div.zb-queue > ul.zb-history > li > div > span {
-	@apply cursor-pointer text-lg inline-block underline;
-}
 div.zb-queue > ul.zb-history > li > div:first-of-type {
-	@apply inline-block;
+	@apply table-row;
+}
+div.zb-queue > ul.zb-history > li > div:first-of-type > span {
+	@apply table-cell align-middle cursor-pointer;
 }
 div.zb-queue > ul.zb-history > li > div:first-of-type > span:first-of-type {
-	@apply mr-1 text-red-700 align-top;
+	@apply pr-1 text-red-700;
 }
-div.zb-queue > ul.zb-history > li > div:last-of-type {
-	@apply float-right text-blue-700;
+div.zb-queue > ul.zb-history > li > div:first-of-type > span:nth-of-type(2) {
+	@apply w-full text-lg underline;
+}
+div.zb-queue > ul.zb-history > li > div:first-of-type > span:last-of-type {
+	@apply pl-1 text-blue-700;
 }
 
 #divTos {

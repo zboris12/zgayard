@@ -44,9 +44,8 @@ function addMenuButtonEvent(mtyp){
 	if(!menuInfo){
 		return;
 	}
-	if(menuInfo._menu.style.display){
-		menuInfo._menu.style.maxHeight = "0px";
-	}
+	menuInfo._menu.style.display = "none";
+	menuInfo._menu.style.maxHeight = "0px";
 	if(menuInfo._button){
 		menuInfo._button.addEventListener("click", /** @type {function(Event)} */(function(a_evt){
 			/** @type {MenuType} */
@@ -68,14 +67,14 @@ function switchMenu(evt, mtyp){
 		if(menuInfo._menu.style.maxHeight){
 			if(evt.buttonKey == mtyp){
 				showElement(menuInfo._menu);
-				menuInfo._menu.style.paddingTop = "";
-				menuInfo._menu.style.paddingBottom = "";
 				if(menuInfo._button){
 					hideElement(menuInfo._button.children[0]);
 					showElement(menuInfo._button.children[1]);
 				}
 				window.setTimeout(function(){
 					menuInfo._menu.style.maxHeight = "";
+					menuInfo._menu.style.paddingTop = "";
+					menuInfo._menu.style.paddingBottom = "";
 				}, 50);
 			}
 		}else{
@@ -87,7 +86,6 @@ function switchMenu(evt, mtyp){
 		return;
 	}else if(!(evt.buttonKey == mtyp && !menuInfo._button)){
 		// Do not hide menu if there is no switch button when need show menu such as item menu.
-		menuInfo._menu.style.paddingTop = "0px";
 		menuInfo._menu.style.paddingBottom = "0px";
 		menuInfo._menu.style.maxHeight = "0px";
 		window.setTimeout(function(){
@@ -95,6 +93,7 @@ function switchMenu(evt, mtyp){
 				showElement(menuInfo._button.children[0]);
 				hideElement(menuInfo._button.children[1]);
 			}
+			menuInfo._menu.style.paddingTop = "0px";
 			hideElement(menuInfo._menu);
 		}, 500);
 	}
@@ -199,7 +198,7 @@ function clickMainMenu(evt){
 	}
 }
 
-window.addEventListener("load", function(){
+window.addEventListener("load", function(evt){
 	/**
 	 * "input file multiple" is not supported in Android, so we need to add "input file" manually.
 	 *
@@ -213,7 +212,7 @@ window.addEventListener("load", function(){
 	var ele = getElement("#divMessage");
 	/** @type {Array<Element>} */
 	var eles = getElementsByAttribute("span", ele);
-	eles[eles.length - 1].children[0].addEventListener("click", function(evt){
+	eles[eles.length - 1].children[0].addEventListener("click", function(a_evt){
 		showMessage(MessageType.NONE);
 	});
 

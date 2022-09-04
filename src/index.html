@@ -68,7 +68,7 @@
 					<svg style="display: none;"><use xlink:href="#multi"></use></svg>
 				</button>
 			</div>
-			<div class="zb-nav-menu" style="display: none;">
+			<div class="zb-nav-menu">
 				<ul>
 					<li>
 						<span><svg><use xlink:href="#gt"></use></svg><label iid="menuGeneral">General Settings</label></span>
@@ -285,7 +285,7 @@
 					<svg><use xlink:href="#settings"></use></svg>
 					<svg style="display: none;"><use xlink:href="#multi"></use></svg>
 				</button>
-				<ul class="zb-main-menu pop" style="display:none;">
+				<ul class="zb-main-menu pop">
 					<li><span><label iid="menuNewFldr"></label><svg><use xlink:href="#gt"></use></svg></span></li>
 					<li><span><label iid="menuUpload"></label><svg><use xlink:href="#gt"></use></svg></span></li>
 					<li><span><label iid="menuMovefs"></label><svg><use xlink:href="#gt"></use></svg></span></li>
@@ -337,7 +337,7 @@
 				</div>
 			</li>
 		</ul>
-		<ul id="ulIteMenu" class="zb-main-menu pop" style="left:-10000px; display: none; max-height: 0px;">
+		<ul id="ulIteMenu" class="zb-main-menu pop" style="left:-10000px;">
 			<li><span><label iid="menuDownload"></label></span></li>
 			<li><span><label iid="menuRename"></label></span></li>
 			<li><span><label iid="menuMove"></label><svg><use xlink:href="#gt"></use></svg></span></li>
@@ -427,8 +427,11 @@
 		</div>
 		<ul class="zb-history">
 			<li class="template">
-				<div><span name="delete"><svg><use xlink:href="#delete"></use></svg></span><span name="file">template</span></div>
-				<div><span name="next"><svg><use xlink:href="#next"></use></svg></span></div>
+				<div>
+					<span name="delete"><svg><use xlink:href="#delete"></use></svg></span>
+					<span name="file">template</span>
+					<span name="next"><svg><use xlink:href="#next"></use></svg></span>
+				</div>
 			</li>
 		</ul>
 	</div>
