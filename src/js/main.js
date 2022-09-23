@@ -1234,8 +1234,9 @@ function deleteItems(uid){
 				opt._fid = arr[idx]._id;
 				g_drive.delete(opt);
 			}else{
-				listFolder(true);
-				showNotify("delDone");
+				listFolder(true, false, undefined, function(){
+					showNotify("delDone");
+				});
 			}
 		},
 		/** @type {string} */
@@ -1256,6 +1257,8 @@ function newFolder(func){
 		}
 		return;
 	}
+	/** @type {boolean} */
+	var finto = getElement("#chkFInto").checked;
 	/** @type {DriveNewFolderOption} */
 	var opt = {
 		/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
@@ -1268,10 +1271,21 @@ function newFolder(func){
 				return;
 			}
 			a_dat._name = fldnm;
-			addItem(getListUl("#divMain"), a_dat);
-			showNotify("flDone");
-			if(func){
+			if(finto){
+				/** @type {function(Array<DriveItem>)|undefined} */
+				var a_func = undefined;
+				if(func){
+					a_func = function(b_itms){
+						func(true);
+						hideMessage();
+					};
+				}
+				g_paths.push(a_dat);
+				listFolder(false, false, undefined, a_func);
+			}else if(func){
+				addItem(getListUl("#divMain"), a_dat);
 				func(true);
+				showNotify("flDone");
 			}
 		},
 		/** @type {string} */

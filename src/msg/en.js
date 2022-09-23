@@ -34,6 +34,7 @@ window["msgs"] = {
 	"lblUpfs": "Files",
 	"lblUpfld": "Folder",
 	"lblNewFldr": "Folder",
+	"lblFldrInto": "Enter into the new folder.",
 	"menuUpload": "Upload",
 	"menuMovefs": "Move Files",
 	"menuNewFldr": "New Folder",

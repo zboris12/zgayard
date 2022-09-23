@@ -250,7 +250,7 @@ div.zb-main-header > div > button {
 }
 
 ul.zb-main-list {
-	@apply divide-y-2 divide-gray-200 overflow-x-auto w-full;
+	@apply divide-y-2 divide-gray-200 overflow-auto w-full max-h-screen;
 }
 ul.zb-main-list > li {
 	@apply grid grid-cols-10 font-semibold;
