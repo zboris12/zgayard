@@ -1,6 +1,14 @@
 /**
  * @typedef
  * {{
+ *    _clientId: string,
+ *    _clientSecret: string,
+ * }}
+ */
+var DriveExtraInfo;
+/**
+ * @typedef
+ * {{
  *    _tag: string,
  *    _name: string,
  *    _value: string,

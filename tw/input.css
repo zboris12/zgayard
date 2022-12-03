@@ -106,7 +106,7 @@ div.zb-nav-menu > ul > li > span {
 }
 
 div.zb-settings {
-	@apply max-w-lg mx-auto bg-white rounded-lg shadow-xl overflow-hidden p-6;
+	@apply max-w-2xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden p-6;
 }
 div.zb-settings > span {
 	@apply block text-2xl font-bold text-center mb-2 border-b border-blue-300;

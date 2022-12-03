@@ -4,6 +4,9 @@ window["msgs"] = {
 	"menuHistory": "Recent Viewed",
 	"spanGeneral": "General Settings",
 	"lblDrive": "Online Storage: ",
+	"lblOwnSecret": "Use my own client id and secret",
+	"lblClientId": "Client ID",
+	"lblClientSecret": "Client Secret",
 	"lblSkipLogin": "Keep login status",
 	"lblRelay": "Relay url: ",
 	"btnLogout": "Logout",
@@ -62,8 +65,8 @@ window["msgs"] = {
 	"spanHistory": "Recent Played Video",
 	"cantPlayRecent": "Can NOT play the recent viewed file, because it is not in this root folder.",
 
-
 	"noAgreeTos": "Before using this service, you must agree the Terms of Service and Privacy Policy.",
+	"noClientIdS": "Own client id and secret must be specified, or uncheck the using own client id and secret.",
 	"lsFailed": "Failed to get authorization of local storage.",
 	"loading": "Loading......",
 	"unkDrive": "Unknown drive type.",

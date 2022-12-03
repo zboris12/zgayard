@@ -42,6 +42,8 @@ this.clearSession = function(all){
 			/** @type {?string} */
 			var drvnm = window.sessionStorage.getItem("drive");
 			/** @type {?string} */
+			var drvex = window.sessionStorage.getItem("drive_extra");
+			/** @type {?string} */
 			var flg = window.sessionStorage.getItem("skipLogin");
 			window.sessionStorage.clear();
 			if(lang){
@@ -52,6 +54,9 @@ this.clearSession = function(all){
 			}
 			if(drvnm && !all){
 				window.sessionStorage.setItem("drive", drvnm);
+			}
+			if(drvex && !all){
+				window.sessionStorage.setItem("drive_extra", drvex);
 			}
 			if(flg && !all){
 				window.sessionStorage.setItem("skipLogin", flg);
@@ -143,6 +148,8 @@ this.restoreFromSession = function(){
 	/** @type {?string} */
 	var drv = this.getSessionData("drive");
 	/** @type {?string} */
+	var dext = this.getSessionData("drive_extra");
+	/** @type {?string} */
 	var flg = this.getSessionData("skipLogin");
 	this.sesdat = new Object();
 	if(lang){
@@ -156,6 +163,10 @@ this.restoreFromSession = function(){
 	if(drv){
 		this.sesdat.drive = drv;
 		this.setDrive(drv);
+	}
+	if(dext){
+		this.sesdat.driveExtra = dext;
+		this.setDriveExInfo(dext);
 	}
 	if(flg){
 		this.setSkipLogin(flg);
@@ -254,6 +265,50 @@ this.getRelayUrl = function(){
  */
 this.setRelayUrl = function(rurl){
 	return this.setSettingData("relay_url", rurl);
+};
+
+/**
+ * @public
+ * @return {?DriveExtraInfo}
+ */
+this.getDriveExInfo = function(){
+	/** @type {Array<string>} */
+	var exarr = null;
+	var exdat = /** @type {?string} */(this.getDriveData("extra_info"));
+	if(!exdat && this.sesdat && this.sesdat.driveExtra){
+		exdat = this.sesdat.driveExtra;
+	}
+	if(exdat){
+		exarr = /** @type {Array<string>} */(JSON.parse(exdat));
+	}
+	if(exarr && exarr.length == 2){
+		return {
+			_clientId: exarr[0],
+			_clientSecret: exarr[1],
+		};
+	}else{
+		return null;
+	}
+};
+/**
+ * @public
+ * @param {?DriveExtraInfo|string} dext
+ */
+this.setDriveExInfo = function(dext){
+	if(dext){
+		/** @type {string} */
+		var exdat = "";
+		if(typeof dext === "string"){
+			exdat = dext;
+		}else{
+			exdat = JSON.stringify([dext._clientId, dext._clientSecret]);
+		}
+		this.setSessionData("drive_extra", exdat);
+		this.saveDriveData("extra_info", exdat);
+	}else{
+		this.removeSessionData("drive_extra");
+		this.saveDriveData("extra_info", null);
+	}
 };
 
 /**
@@ -444,7 +499,7 @@ this.saveDriveData = function(key, data, func){
 			this.datas[drvnm] = new Object();
 		}
 		this.datas[drvnm][key] = data;
-	}else if(this.datas[drvnm]){
+	}else if(this.datas[drvnm] && this.datas[drvnm][key]){
 		delete this.datas[drvnm][key];
 	}else{
 		if(func && func instanceof Function){

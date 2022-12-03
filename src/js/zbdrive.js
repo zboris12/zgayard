@@ -221,6 +221,13 @@ ZbDrive.prototype.login = function(func, reuseToken){
 		opt.refreshToken = this.storage.getDriveData("refresh_token");
 	}
 
+	/** @type {?DriveExtraInfo} */
+	var dext = this.storage.getDriveExInfo();
+	if(dext){
+		opt.clientId = dext._clientId;
+		opt.clientSecret = dext._clientSecret;
+	}
+
 	if(opt.code || opt.refreshToken){
 		if(uparams && uparams["state"]){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
@@ -232,6 +239,10 @@ ZbDrive.prototype.login = function(func, reuseToken){
 		}
 		this.authorize(opt, function(a_ret){
 			if(a_ret && a_ret["token_type"] && a_ret["access_token"]){
+				if(dext && a_ret["client_secret_enc"]){
+					dext._clientSecret = a_ret["client_secret_enc"];
+					this.storage.setDriveExInfo(dext);
+				}
 				this.setAccessToken(a_ret["token_type"], a_ret["access_token"]);
 				if(canSkipLogin && opt.code && a_ret["refresh_token"]){
 					this.storage.saveDriveData("refresh_token", a_ret["refresh_token"]);
@@ -252,6 +263,10 @@ ZbDrive.prototype.login = function(func, reuseToken){
 		}
 		this.authorize(opt, function(a_ret){
 			if(a_ret && a_ret["url"]){
+				if(dext && a_ret["client_secret_enc"]){
+					dext._clientSecret = a_ret["client_secret_enc"];
+					this.storage.setDriveExInfo(dext);
+				}
 				if(a_ret["state"]){
 					if(!this.storage.setSessionData("login_state", a_ret["state"])){
 						a_ret["state"] = this.getId();

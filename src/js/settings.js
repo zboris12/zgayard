@@ -264,6 +264,13 @@ function loadSettings(){
 	 * @type {?string}
 	 */
 	var drv = g_storage.getDrive(true);
+	/** @type {?DriveExtraInfo} */
+	var dext = g_storage.getDriveExInfo();
+	if(dext){
+		getElement("#chkOwnSecret").click();
+		getElement("#txtClientId").value = dext._clientId;
+		getElement("#txtClientSecret").value = dext._clientSecret;
+	}
 	/** @type {Element} */
 	var sel = getElement("#selDrive");
 	/** @type {Object<string, string>} */
@@ -490,6 +497,18 @@ function saveSettings(){
 		showError("noAgreeTos");
 		return;
 	}
+	/** @type {string} */
+	var clientId = "";
+	/** @type {string} */
+	var clientSecret = "";
+	if(getElement("#chkOwnSecret").checked){
+		clientId = getElement("#txtClientId").value;
+		clientSecret = getElement("#txtClientSecret").value;
+		if(!clientId || !clientSecret){
+			showError("noClientIdS");
+			return;
+		}
+	}
 	/** @type {Element} */
 	var sel = getElement("#selDrive");
 	/** @type {boolean} */
@@ -497,6 +516,15 @@ function saveSettings(){
 	if(!sel.disabled){
 		needLoad = g_storage.setDrive(sel.value);
 	}
+	/** @type {?DriveExtraInfo} */
+	var dext = null;
+	if(getElement("#chkOwnSecret").checked){
+		dext = {
+			_clientId: clientId,
+			_clientSecret: clientSecret,
+		};
+	}
+	g_storage.setDriveExInfo(dext);
 	g_storage.setSkipLogin(getElement("#chkSkipLogin").checked);
 	g_storage.setRelayUrl(getElement("#txtRelay").value);
 	changeLanguage(getElement("#seLang").value);

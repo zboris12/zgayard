@@ -65,7 +65,6 @@ function cryptData($data, $encrypt=true){
 	}
 	return $dataOut;
 }
-
 function getDriveAuth($infs){
 	global $localhost;
 	global $redirectUri;
@@ -77,13 +76,46 @@ function getDriveAuth($infs){
 	if(isset($action) && strcasecmp($action, "logout") == 0){
 		$result = array();
 	}else{
+		$csc = getPostValue("client_secret");
+		$cscenc = null;
+		if(isset($csc)){
+			if($localhost){
+				$stdout = fopen("php://stdout", "w");
+				fwrite($stdout, "Using customized client informations.\n");
+			}
+			if(strlen($csc) > 4 && substr($csc, 0, 2) == "zB"){
+				$cscenc = substr($csc, 4, strlen($csc) - 4);
+				if(substr(hash_hmac(HMAC_METHOD, $cscenc, HMAC_KEY), -2) == substr($csc, 2, 2)){
+					if(isset($stdout)){
+						fwrite($stdout, "Decrypting client secret.\n");
+					}
+					$csc = cryptData($cscenc, false);
+				}else{
+					$cscenc = null;
+				}
+			}
+			if(isset($cscenc)){
+				$cscenc = null;
+			}else{
+				if(isset($stdout)){
+					fwrite($stdout, "Encrypting client secret.\n");
+				}
+				$cscenc = cryptData($csc);
+				$cscenc = "zB" . substr(hash_hmac(HMAC_METHOD, $cscenc, HMAC_KEY), -2) . $cscenc;
+			}
+			if(isset($stdout)){
+				fclose($stdout);
+			}
+		}else{
+			$csc = $infs["client_secret"];
+		}
 		$code = getPostValue("code");
 		$rftoken = getPostValue("refresh_token");
 		if(isset($code) || isset($rftoken)){
 			$base_url = $infs["token_url"];
 			$header = array("Content-Type: application/x-www-form-urlencoded");
 			$data["scope"] = $infs["token_scope"];
-			$data["client_secret"] = getPostValue("client_secret", $infs["client_secret"]);
+			$data["client_secret"] = $csc;
 			if(isset($code)){
 				$data["code"] = $code;
 				$data["grant_type"] = "authorization_code";
@@ -137,6 +169,9 @@ function getDriveAuth($infs){
 	}
 
 	$result["logout"] = $infs["logout_url"];
+	if(isset($cscenc)){
+		$result["client_secret_enc"] = $cscenc;
+	}
 	return $result;
 }
 function getOnedriveAuth(){

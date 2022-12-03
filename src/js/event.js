@@ -243,6 +243,21 @@ window.addEventListener("load", function(evt){
 		}
 	}
 
+	getElement("#chkOwnSecret").addEventListener("click", function(a_evt){
+		var a_chk = /** @type {Element} */(a_evt.target || a_evt.srcElement);
+		/** @type {Array<Element>} */
+		var a_divs = getElementsByAttribute(".ownsecret", "#divSet");
+		/** @type {number} */
+		var a_j = 0;
+		for(a_j=0; a_j<a_divs.length; a_j++){
+			if(a_chk.checked){
+				showElement(a_divs[a_j]);
+			}else{
+				hideElement(a_divs[a_j]);
+			}
+		}
+	});
+
 	ele = getElement("#divSet");
 	// getElement("lnkTos", ele, "a.iid").addEventListener("click", function(a_evt){
 		// a_evt.stopPropagation();
