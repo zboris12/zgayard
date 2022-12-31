@@ -443,7 +443,10 @@ module.exports = function(lib, relay){
 	 */
 	function responseFile(a_req, a_res){
 		/** @type {string} */
-		var a_url = a_req.url;
+		var a_url = lib["path"].join("/", a_req.url);
+		if(lib["path"].sep == lib["path"].win32.sep){
+			a_url = a_url.replaceAll(lib["path"].sep, "/");
+		}
 		/** @type {number} */
 		var a_i = a_url.indexOf("?");
 		if(a_i > 0){
