@@ -201,7 +201,8 @@ div.zb-modal > div > div {
 }
 
 #divMain {
-	@apply md:w-11/12 mx-auto bg-white rounded-lg shadow-xl overflow-x-hidden overflow-y-auto px-6 py-3;
+	@apply md:w-11/12 mx-auto bg-white rounded-lg shadow-xl overflow-x-hidden overflow-y-auto px-6 py-3 flex flex-col;
+	height: calc(100vh - 48px);
 }
 
 ul.zb-main-menu {
@@ -250,7 +251,7 @@ div.zb-main-header > div > button {
 }
 
 ul.zb-main-list {
-	@apply divide-y-2 divide-gray-200 overflow-auto w-full max-h-screen;
+	@apply divide-y-2 divide-gray-200 overflow-auto w-full grow;
 }
 ul.zb-main-list > li {
 	@apply grid grid-cols-10 font-semibold;

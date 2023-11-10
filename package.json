@@ -4,7 +4,8 @@
   "private": false,
   "scripts": {
     "dev": "tailwindcss -i ./tw/input.css -o ./src/index.css --watch",
-    "build": "tailwindcss -i ./tw/input.css -o ./src/index.css --minify"
+    "build": "tailwindcss -i ./tw/input.css -o ./src/index.css --minify",
+    "test": "node server/server.sjs"
   },
   "dependencies": {
   },
