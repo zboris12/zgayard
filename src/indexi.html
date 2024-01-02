@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> zgayard - Create a safety yard in your online storage </title>
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" type="text/css" href="index.css" />
+<script src="vendor/crypto-js.js" type="text/javascript"></script>
+<script src="vendor/videostream.js" type="text/javascript"></script>
+<script src="index.js" type="text/javascript"></script>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display: none;">
+<symbol viewBox="0 0 24 24" id="plus" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+<symbol viewBox="0 0 24 24" id="minus" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+<symbol viewBox="0 0 24 24" id="multi" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></symbol>
+<symbol viewBox="0 0 24 24" id="cplus" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM12 8v8m-4-4h8"/></symbol>
+<symbol viewBox="0 0 24 24" id="cminus" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM8 12h8"/></symbol>
+<symbol viewBox="0 0 24 24" id="cmulti" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM15 9l-6 6m0-6l6 6"/></symbol>
+<symbol viewBox="0 0 24 24" id="folder" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+<symbol viewBox="0 0 24 24" id="file" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M16 13H8M16 17H8M10 9H8"/></symbol>
+<symbol viewBox="0 0 24 24" id="image" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M20.4 14.5L16 10 4 20"/></symbol>
+<symbol viewBox="0 0 24 24" id="video" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></symbol>
+<symbol viewBox="0 0 24 24" id="edit" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon></symbol>
+<symbol viewBox="0 0 24 24" id="delete" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></symbol>
+<symbol viewBox="0 0 24 24" id="previous" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></symbol>
+<symbol viewBox="0 0 24 24" id="next" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></symbol>
+<symbol viewBox="0 0 24 24" id="chkbox" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></symbol>
+<symbol viewBox="0 0 24 24" id="nochk" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></symbol>
+<symbol viewBox="0 0 24 24" id="upload" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2-2.4-3.5-4.4-3.5h-1.2c-.7-3-3.2-5.2-6.2-5.6-3-.3-5.9 1.3-7.3 4-1.2 2.5-1 6.5.5 8.8m8.7-1.6V21"/><path d="M16 16l-4-4-4 4"/></symbol>
+<symbol viewBox="0 0 24 24" id="download" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15c.7-1.2 1-2.5.7-3.9-.6-2-2.4-3.5-4.4-3.5h-1.2c-.7-3-3.2-5.2-6.2-5.6-3-.3-5.9 1.3-7.3 4-1.2 2.5-1 6.5.5 8.8M12 19.8V12M16 17l-4 4-4-4"/></symbol>
+<symbol viewBox="0 0 24 24" id="drop" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol viewBox="0 0 24 24" id="gt" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></symbol>
+<symbol viewBox="0 0 24 24" id="disable" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></symbol>
+<symbol viewBox="0 0 24 24" id="settings" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></symbol>
+<symbol viewBox="0 0 24 24" id="arrowup" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M5 12l7-7 7 7"/></symbol>
+<symbol viewBox="0 0 24 24" id="arrowdown" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M5 12l7 7 7-7"/></symbol>
+<symbol viewBox="0 0 24 24" id="max" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.8 3.8l16.4 16.4M20.2 3.8L3.8 20.2M15 3h6v6M9 3H3v6M15 21h6v-6M9 21H3v-6"/></symbol>
+</svg>
+
+	<div id="divMessage" class="zb-notice" style="display: none; opacity: 0;">
+		<span></span><span></span>
+		<span><svg><use xlink:href="#multi"></use></svg></span>
+	</div>
+
+	<!-- Start Nav -->
+	<nav>
+		<div>
+			<div class="zb-nav-icon">
+				<a href="https://zboris12.github.io/zgayard/" alt="zgayard"><img src="img/logo.png" /></a>
+			</div>
+			<span class="zb-nav-title">
+				<a href="https://zboris12.github.io/zgayard/">zgayard</a>
+			</span>
+			<div class="zb-nav-tools" style="display: none;">
+				<ul>
+					<li><span iid="menuGeneral">General Settings</span></li>
+					<li><span iid="menuDrive">Drive Settings</span></li>
+					<li style="display: none;"><span iid="menuHistory">Recent videos</span></li>
+				</ul>
+				<div>
+					<img src="img/googledrive.png" />
+					<span id="spanQuota">Free Space: 2,322Mb</span>
+				</div>
+				<button type="button">
+					<svg><use xlink:href="#settings"></use></svg>
+					<svg style="display: none;"><use xlink:href="#multi"></use></svg>
+				</button>
+			</div>
+			<div class="zb-nav-menu">
+				<ul>
+					<li>
+						<span><svg><use xlink:href="#gt"></use></svg><label iid="menuGeneral">General Settings</label></span>
+					</li>
+					<li>
+						<span><svg><use xlink:href="#gt"></use></svg><label iid="menuDrive">Drive Settings</label></span>
+					</li>
+					<li style="display: none;">
+						<span><svg><use xlink:href="#gt"></use></svg><label iid="menuHistory">Recent videos</label></span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+	<!-- End Nav -->
+
+	<div id="divSet" class="zb-settings" style="display: none;">
+		<span iid="spanGeneral">Settings</span>
+		<div>
+			<div>
+				<label class="notice bold"><span class="text-black font-normal" iid="lblReadTos"></span><a href="../tp.html" target="_blank" iid="lnkTos"></a><span class="text-black font-normal" iid="lblReadTos2"></span></label>
+			</div>
+			<div>
+				<span class="blank"></span>
+				<div class="checkbox">
+					<input type="checkbox" id="chkAgreeTos">
+					<label iid="lblAgreeTos"></label>
+				</div>
+			</div>
+			<div>
+				<label>Language</label>
+				<div>
+					<select id="seLang"></select>
+					<div>
+						<svg><use xlink:href="#drop"></use></svg>
+					</div>
+				</div>
+			</div>
+			<div>
+				<label iid="lblDrive">Drive</label>
+				<div>
+					<select id="selDrive"></select>
+					<div>
+						<svg><use xlink:href="#drop"></use></svg>
+					</div>
+				</div>
+			</div>
+			<div>
+				<span class="blank"></span>
+				<div class="checkbox">
+					<input type="checkbox" id="chkOwnSecret">
+					<label iid="lblOwnSecret"></label>
+				</div>
+			</div>
+			<div class="ownsecret" style="display: none;">
+				<label iid="lblClientId">ClientId</label>
+				<div>
+					<input type="text" id="txtClientId" />
+				</div>
+			</div>
+			<div class="ownsecret" style="display: none;">
+				<label iid="lblClientSecret">ClientSecret</label>
+				<div>
+					<input type="password" id="txtClientSecret" />
+				</div>
+			</div>
+			<div id="divSkipLogin">
+				<span class="blank"></span>
+				<div class="checkbox">
+					<input type="checkbox" id="chkSkipLogin">
+					<label iid="lblSkipLogin"></label>
+				</div>
+			</div>
+			<div style="display: none;">
+				<label iid="lblRelay">Relay</label>
+				<div>
+					<input type="text" id="txtRelay" placeholder="https://www.zgayard.com/relay" />
+				</div>
+			</div>
+		</div>
+		<div>
+			<button type="button" class="zb-ok" iid="btnOk"></button>
+			<button type="button" class="zb-cancel" iid="btnCancel"></button>
+			<button type="button" class="zb-ok-purple" iid="btnLogout"></button>
+		</div>
+	</div>
+
+	<div id="divPwd" class="zb-settings" style="display: none;">
+		<span iid="spanDrive">Drive Settings</span>
+		<div>
+			<div class="firstep">
+				<label iid="lblConfNotice" class="notice bold"></label>
+			</div>
+			<div class="addroot">
+				<label iid="lblRootNotice" class="notice"></label>
+			</div>
+			<div class="addroot">
+				<label iid="lblRoot"></label>
+				<div>
+					<input type="text" id="txtRoot" />
+				</div>
+			</div>
+			<div class="chgroot">
+				<label iid="lblRoot"></label>
+				<div>
+					<div class="button">
+						<span tid="spanAddRoot"><svg><use xlink:href="#plus"></use></svg></span>
+						<span tid="spanDeleteRoot"><svg><use xlink:href="#multi"></use></svg></span>
+					</div>
+					<div>
+						<select id="selRoot"></select>
+						<div>
+							<svg><use xlink:href="#drop"></use></svg>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="addroot">
+				<span class="blank"></span>
+				<div class="checkbox">
+					<input type="checkbox" id="chkEncryFname">
+					<label iid="lblEncryFname"></label>
+				</div>
+			</div>
+			<div>
+				<label iid="lblKeyPwd"></label>
+				<div>
+					<input type="password" id="pwdKey" />
+				</div>
+			</div>
+			<div class="addroot">
+				<label iid="lblKeyPwdRe"></label>
+				<div>
+					<input type="password" id="pwdKeyRe" />
+				</div>
+			</div>
+			<div class="addroot">
+				<label iid="lblKeyNotice" class="notice"></label>
+			</div>
+			<div id="divfKey">
+				<label iid="lblKeyFile"></label>
+				<div>
+					<div class="button">
+						<span tid="spanMoreKey"><svg><use xlink:href="#plus"></use></svg></span>
+						<span tid="spanClearKey"><svg><use xlink:href="#multi"></use></svg></span>
+					</div>
+					<div>
+						<input type="file" multiple />
+					</div>
+				</div>
+			</div>
+			<div class="addroot">
+				<label iid="lblPwdNotice" class="notice bold"></label>
+			</div>
+			<div id="divSaveKey">
+				<span class="blank"></span>
+				<div class="checkbox">
+					<input type="checkbox" id="chkSaveKey">
+					<label iid="lblSaveKey"></label>
+				</div>
+			</div>
+		</div>
+		<div>
+			<button type="button" class="zb-ok" iid="btnOk"></button>
+			<button type="button" class="zb-cancel" iid="btnCancel"></button>
+			<button type="button" class="zb-ok-purple" iid="btnDropDb"></button>
+		</div>
+	</div>
+
+	<div id="divModal" class="zb-modal" style="display:none;">
+		<div>
+			<div>
+				<div class="zb-settings">
+					<span id="spanModal"></span>
+					<div>
+						<div type="upload">
+							<label iid="lblUpfs"></label>
+							<div>
+								<input type="file" id="upfiles" multiple />
+							</div>
+						</div>
+						<div type="upload">
+							<label iid="lblUpfld"></label>
+							<div>
+								<input type="file" id="upfolder" webkitdirectory />
+							</div>
+						</div>
+						<div type="new">
+							<label iid="lblNewFldr"></label>
+							<div>
+								<input type="text" id="fldnm" placeholder="folder name" />
+							</div>
+						</div>
+						<div type="new">
+							<span class="blank"></span>
+							<div class="checkbox">
+								<input type="checkbox" id="chkFInto" checked>
+								<label iid="lblFldrInto"></label>
+							</div>
+						</div>
+						<div type="selfldr" class="zb-main-header">
+							<ul>
+								<li class="template"><span>template</span>
+									<svg><use xlink:href="#gt"></use></svg>
+								</li>
+							</ul>
+						</div>
+						<div type="selfldr">
+							<ul class="zb-main-list">
+								<li class="template">
+									<div>
+										<span name="fnm">template</span>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div>
+						<button type="button" class="zb-ok" iid="btnOk"></button>
+						<button type="button" class="zb-cancel" iid="btnCancel"></button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="divMain" style="display:none;">
+		<div class="zb-main-header">
+			<ul>
+				<li class="template"><span>template</span>
+					<svg><use xlink:href="#gt"></use></svg>
+				</li>
+			</ul>
+			<div>
+				<ul class="zb-main-menu">
+					<li><span><label iid="menuNewFldr"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+					<li><span><label iid="menuUpload"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+				</ul>
+				<button type="button">
+					<svg><use xlink:href="#settings"></use></svg>
+					<svg style="display: none;"><use xlink:href="#multi"></use></svg>
+				</button>
+				<ul class="zb-main-menu pop">
+					<li><span><label iid="menuNewFldr"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+					<li><span><label iid="menuUpload"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+					<li><span><label iid="menuMovefs"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+					<li><span><label iid="menuDownfs"></label></span></li>
+					<li><span><label iid="menuDelfs"></label></span></li>
+				</ul>
+			</div>
+		</div>
+		<ul class="zb-main-list">
+			<li class="header" >
+				<div>
+					<input type="checkbox" />
+					<span iid="spanName"></span>
+					<span id="chkAll" style="display: none;">
+						<svg><use xlink:href="#nochk"></use></svg>
+					</span>
+					<span name="chkbox" style="display: none;">
+						<svg><use xlink:href="#chkbox"></use></svg>
+					</span>
+				</div>
+				<div>
+					<span iid="spanSize"></span>
+				</div>
+				<div>
+					<span iid="spanTms"></span>
+				</div>
+			</li>
+			<li class="template">
+				<div>
+					<input type="checkbox" />
+					<span name="fnm">template</span>
+					<span name="icon"><svg></svg></span>
+					<span name="chkbox">
+						<svg><use xlink:href="#chkbox"></use></svg>
+					</span>
+					<span name="edit">
+						<svg><use xlink:href="#edit"></use></svg>
+					</span>
+					<div>
+						<span name="size"></span>
+						<span name="tms"></span>
+					</div>
+				</div>
+				<div>
+					<span name="size"></span>
+				</div>
+				<div>
+					<span name="tms"></span>
+				</div>
+			</li>
+		</ul>
+		<ul id="ulIteMenu" class="zb-main-menu pop" style="left:-10000px;">
+			<li><span><label iid="menuDownload"></label></span></li>
+			<li><span><label iid="menuRename"></label></span></li>
+			<li><span><label iid="menuMove"></label><svg><use xlink:href="#gt"></use></svg></span></li>
+			<li><span><label iid="menuDelete"></label></span></li>
+		</ul>
+		<div id="divInpName" style="display:none;">
+			<input type="text" />
+			<span>
+				<svg><use xlink:href="#chkbox"></use></svg>
+			</span>
+		</div>
+	</div>
+
+	<div class="zb-modal" style="display:none;">
+		<div>
+			<div>
+				<div class="zb-viewer">
+					<div>
+						<span name="title"></span>
+						<div>
+							<span name="fullscreen"><svg><use xlink:href="#max"></use></svg></span>
+							<span name="close"><svg><use xlink:href="#cmulti"></use></svg></span>
+						</div>
+					</div>
+					<div>
+						<div id="diViewer">
+							<span>Sorry, we can't show this file to you.</span>
+							<button>Download</button>
+							<img />
+							<video controls playsinline></video>
+						</div>
+						<div>
+							<span name="previous"><svg><use xlink:href="#previous"></use></svg></span>
+						</div>
+						<div>
+							<span name="next"><svg><use xlink:href="#next"></use></svg></span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="zb-qbutton" style="display:none;">
+		<div>
+			<svg><use xlink:href="#arrowup"></use></svg><svg><use xlink:href="#arrowdown"></use></svg>
+		</div>
+	</div>
+
+	<div id="divQueue" class="zb-queue" style="top: 100%;">
+		<a id="lnkDown" href="#" download="" style="display: none;" target="_blank">dummy</a>
+		<div>
+			<span iid="spanTask"></span>
+			<span name="close">
+				<svg><use xlink:href="#cminus"></use></svg>
+			</span>
+		</div>
+		<ul class="zb-task">
+			<li class="template">
+				<span name="icon"><svg></svg><label>template</label></span>
+				<span name="percent"></span>
+				<div class="zb-progressbar">
+					<span></span>
+				</div>
+				<div>
+					<label></label>
+					<span name="elTime">--:--</span>
+				</div>
+				<div>
+					<label></label>
+					<span name="esTime">--:--</span>
+				</div>
+				<div>
+					<span name="speed"></span>
+				</div>
+				<span name="cancel" style="display:none;"><svg><use xlink:href="#disable"></use></svg></span>
+			</li>
+		</ul>
+	</div>
+
+	<div id="divHistory" class="zb-queue" style="top: 100%;">
+		<div>
+			<span iid="spanHistory"></span>
+			<span name="close">
+				<svg><use xlink:href="#cminus"></use></svg>
+			</span>
+		</div>
+		<ul class="zb-history">
+			<li class="template">
+				<div>
+					<span name="delete"><svg><use xlink:href="#delete"></use></svg></span>
+					<span name="file">template</span>
+					<span name="next"><svg><use xlink:href="#next"></use></svg></span>
+				</div>
+			</li>
+		</ul>
+	</div>
+
+	<div id="divTos">
+		<a href="../tp.html" target="_blank" iid="lnkTos">Terms of Service & Privacy Policy</a>
+		<br /><img src="img/zblogo.png" />
+	</div>
+</body>
+</html>
