@@ -197,16 +197,6 @@ function ZbOneDrive(_storage, _authUrl){
 				"Cache-Control": "no-cache",
 				"Pragma": "no-cache",
 			},
-			_doneFunc: function(a_ajax){
-				var a_res = this.getAjaxJsonRet(a_ajax);
-				/** @type {string} */
-				var a_url = "";
-				if(a_res._status >= 200 && a_res._status <= 299){
-					var a_retdat = JSON.parse(a_res._restext);
-					a_url = a_retdat["uploadUrl"];
-				}
-				func(a_url, a_res);
-			}.bind(this),
 		};
 
 		if(opt._fldrId){
@@ -227,7 +217,17 @@ function ZbOneDrive(_storage, _authUrl){
 			"item": item,
 		});
 
-		this.sendAjax(uopt);
+		this.sendAjax(uopt).then(function(a_resp){
+			this.getAjaxJsonRet(a_resp, function(b_res){
+				/** @type {string} */
+				var b_url = "";
+				if(a_resp.ok){
+					var b_retdat = JSON.parse(b_res._restext);
+					b_url = b_retdat["uploadUrl"];
+				}
+				func(b_url, b_res);
+			}.bind(this));
+		}.bind(this));
 	};
 
 	/**

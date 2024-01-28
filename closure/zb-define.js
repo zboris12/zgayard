@@ -161,8 +161,7 @@ var DriveJsonRet;
  *    _utype: (string|undefined),
  *    _utoken: (string|undefined),
  *    _auth: (string|undefined),
- *    _data: (ArrayBuffer|ArrayBufferView|Blob|Document|FormData|null|string|undefined),
- *    _doneFunc: (function(XMLHttpRequest)|undefined),
+ *    _data: (ArrayBuffer|DataView|Blob|FormData|null|string|undefined),
  *    _retry: (boolean|undefined),
  * }}
  */

@@ -106,6 +106,7 @@ ZbDrive.prototype.setRelayUrl = function(rurl){
 /**
  * @public
  * @param {DriveAjaxOption} opt
+ * @return {Promise<Response>}
  *
  * https://docs.microsoft.com/zh-cn/onedrive/developer/rest-api/api/driveitem_createuploadsession
  *  opt: {
@@ -116,53 +117,47 @@ ZbDrive.prototype.setRelayUrl = function(rurl){
  *    (optional)_auth: "xxxxxxxx",    //If "auth" is specified then "utype" and "utoken" will be ignored.
  *    (optional)_headers: {"Content-Type": "text/html"},
  *    (optional)_data: Object,
- *    (optional)_doneFunc: function(result){},
  *    (optional)_retry: false, // Is retry after InvalidAuthenticationToken or not.
  *  }
  */
-ZbDrive.prototype.sendAjax = function(opt){
+ZbDrive.prototype.sendAjax = async function(opt){
 	/** @type {string} */
 	var method = "POST";
 	/** @type {string} */
 	var url = this.getAjaxBaseUrl().concat(encodeURI(opt._upath));
-	/** @type {XMLHttpRequest} */
-	var ajax = new XMLHttpRequest();
-
- 	if(opt && opt._method){
-		method = opt._method;
-	}
-	ajax.open(method, url, true); //非同期
+	/** @type {Headers} */
+	var headers = new Headers();
 	if(opt && opt._auth){
-		ajax.setRequestHeader("Authorization", opt._auth);
+		headers.append("Authorization", opt._auth);
 	}else if(opt && opt._utoken){
 		/** @type {string} */
 		var utype = "Bearer";
 		if(opt && opt._utype){
 			utype = opt._utype;
 		}
-		ajax.setRequestHeader("Authorization", utype+" "+opt._utoken);
+		headers.append("Authorization", utype+" "+opt._utoken);
 	}else{
-		ajax.setRequestHeader("Authorization", /** @type {string} */(this.accessToken));
+		headers.append("Authorization", /** @type {string} */(this.accessToken));
 	}
 	if(opt && opt._headers){
 		for(var key in opt._headers){
-			ajax.setRequestHeader(key, opt._headers[key]);
+			headers.append(key, opt._headers[key]);
 		}
 	}
-	if(opt && opt._doneFunc){
-		ajax.onload = function(a_evt){
-			/** @type {XMLHttpRequest} */
-			var a_x = a_evt.target;
-			if (a_x.readyState == 4){
-				if(a_x.status == 401 && this.storage.isSkipLogin() && !opt._retry){
-					this.retryAjaxWithLogin(opt);
-				}else{
-					opt._doneFunc(a_x);
-				}
-			}
-		}.bind(this);
+	if(opt && opt._method){
+		method = opt._method;
 	}
-	ajax.send(opt._data);
+
+	/** @type {Response} */
+	var resp = await fetch(url, {
+		"method": method,
+		"body": opt._data,
+		"headers": headers,
+	});
+	if(resp.status == 401 && this.storage.isSkipLogin() && !opt._retry){
+		resp = await this.retryAjaxWithLogin(opt);
+	}
+	return resp;
 };
 
 /**
@@ -185,15 +180,14 @@ ZbDrive.prototype.getToken = function(){
 };
 /**
  * @public
- * @param {function(string=)} func function(a_errmsg){}
  * @param {boolean=} reuseToken
+ * @return {Promise<string?>}
  */
-ZbDrive.prototype.login = function(func, reuseToken){
+ZbDrive.prototype.login = async function(reuseToken){
 	if(reuseToken){
 		this.accessToken = this.storage.getSessionData("access_token");
 		if(this.accessToken){
-			func();
-			return;
+			return null;
 		}
 	}
 
@@ -209,12 +203,10 @@ ZbDrive.prototype.login = function(func, reuseToken){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				func("Unauthorized access to this url.");
-				return;
+				return "Unauthorized access to this url.";
 			}
 		}
-		func();
-		return;
+		return null;
 	}else if(uparams && uparams["code"]){
 		opt.code = uparams["code"];
 	}else if(canSkipLogin){
@@ -228,60 +220,59 @@ ZbDrive.prototype.login = function(func, reuseToken){
 		opt.clientSecret = dext._clientSecret;
 	}
 
+	var authObj = null;
 	if(opt.code || opt.refreshToken){
 		if(uparams && uparams["state"]){
 			if(this.storage.checkSessionData("login_state", uparams["state"])){
 				this.storage.removeSessionData("login_state");
 			}else{
-				func("Unauthorized access to this url.");
-				return;
+				return "Unauthorized access to this url.";
 			}
 		}
-		this.authorize(opt, function(a_ret){
-			if(a_ret && a_ret["token_type"] && a_ret["access_token"]){
-				if(dext && a_ret["client_secret_enc"]){
-					dext._clientSecret = a_ret["client_secret_enc"];
-					this.storage.setDriveExInfo(dext);
-				}
-				this.setAccessToken(a_ret["token_type"], a_ret["access_token"]);
-				if(canSkipLogin && opt.code && a_ret["refresh_token"]){
-					this.storage.saveDriveData("refresh_token", a_ret["refresh_token"]);
-				}
-				if(a_ret["logout"]){
-					this.storage.setSessionData("logout_url", a_ret["logout"]);
-				}
-				func();
-			}else if(a_ret && a_ret["error"]){
-				func("["+a_ret["error"]+"] "+a_ret["error_description"]);
-			}else{
-				func("Unknown error occured when doing authorization.");
+		authObj = await this.authorize(opt);
+		if(authObj && authObj["token_type"] && authObj["access_token"]){
+			if(dext && authObj["client_secret_enc"]){
+				dext._clientSecret = authObj["client_secret_enc"];
+				this.storage.setDriveExInfo(dext);
 			}
-		}.bind(this));
+			this.setAccessToken(authObj["token_type"], authObj["access_token"]);
+			if(canSkipLogin && opt.code && authObj["refresh_token"]){
+				this.storage.saveDriveData("refresh_token", authObj["refresh_token"]);
+			}
+			if(authObj["logout"]){
+				this.storage.setSessionData("logout_url", authObj["logout"]);
+			}
+			return null;
+		}else if(authObj && authObj["error"]){
+			return "["+authObj["error"]+"] "+authObj["error_description"];
+		}else{
+			return "Unknown error occured when doing authorization.";
+		}
 	}else{
 		if(canSkipLogin){
 			opt.needCode = true;
 		}
-		this.authorize(opt, function(a_ret){
-			if(a_ret && a_ret["url"]){
-				if(dext && a_ret["client_secret_enc"]){
-					dext._clientSecret = a_ret["client_secret_enc"];
-					this.storage.setDriveExInfo(dext);
-				}
-				if(a_ret["state"]){
-					if(!this.storage.setSessionData("login_state", a_ret["state"])){
-						a_ret["state"] = this.getId();
-					}
-				}
-				if(a_ret["logout"]){
-					this.storage.setSessionData("logout_url", a_ret["logout"]);
-				}
-				window.location.href = a_ret["url"].concat("&state=".concat(encodeURIComponent(a_ret["state"])));
-			}else if(a_ret && a_ret["error"]){
-				func("["+a_ret["error"]+"] "+a_ret["error_description"]);
-			}else{
-				func("Unknown error occured when doing authorization.");
+		authObj = await this.authorize(opt);
+		if(authObj && authObj["url"]){
+			if(dext && authObj["client_secret_enc"]){
+				dext._clientSecret = authObj["client_secret_enc"];
+				this.storage.setDriveExInfo(dext);
 			}
-		}.bind(this));
+			if(authObj["state"]){
+				if(!this.storage.setSessionData("login_state", authObj["state"])){
+					authObj["state"] = this.getId();
+				}
+			}
+			if(authObj["logout"]){
+				this.storage.setSessionData("logout_url", authObj["logout"]);
+			}
+			window.location.href = authObj["url"].concat("&state=".concat(encodeURIComponent(authObj["state"])));
+			return "redirect";
+		}else if(authObj && authObj["error"]){
+			return "["+authObj["error"]+"] "+authObj["error_description"];
+		}else{
+			return "Unknown error occured when doing authorization.";
+		}
 	}
 };
 /**
@@ -480,10 +471,10 @@ ZbDrive.prototype.prepareReader = function(opt, func){};
 
 /**
  * @public
- * @param {XMLHttpRequest} ajax
+ * @param {Headers} headers
  * @param {string=} auth
  */
-ZbDrive.prototype.setReadReqHeader = function(ajax, auth){
+ZbDrive.prototype.setReadReqHeader = function(headers, auth){
 	//Defaut to do nothing
 };
 
@@ -506,14 +497,16 @@ ZbDrive.prototype.isSkipLogin = function(){
 
 /**
  * @protected
- * @param {XMLHttpRequest} ajax
- * @return {DriveJsonRet}
+ * @param {Response} resp
+ * @param {function(DriveJsonRet)} func
  */
-ZbDrive.prototype.getAjaxJsonRet = function(ajax){
-	return {
-		_status: ajax.status, 
-		_restext: ajax.responseText,
-	};
+ZbDrive.prototype.getAjaxJsonRet = function(resp, func){
+	resp.text().then(function(resptext){
+		func({
+			_status: resp.status,
+			_restext: resptext,
+		});
+	});
 };
 
 /**
@@ -523,7 +516,7 @@ ZbDrive.prototype.getAjaxJsonRet = function(ajax){
  * @param {number} okcd The ok status code. 0 means don't check status code
  * @param {DriveBaseOption} opt
  * @param {?Object<string, string>} hds
- * @param {ArrayBuffer|ArrayBufferView|Blob|Document|FormData|null|string|undefined} dat
+ * @param {ArrayBuffer|DataView|Blob|FormData|null|string|undefined} dat
  * @param {function(DriveJsonRet)} func
  */
 ZbDrive.prototype._processRequest = function(upath, md, okcd, opt, hds, dat, func){
@@ -531,12 +524,19 @@ ZbDrive.prototype._processRequest = function(upath, md, okcd, opt, hds, dat, fun
 	var opt2 = {
 		_upath: upath,
 		_method: md,
-		_doneFunc: function(a_ajax){
-			/** @type {DriveJsonRet} */
-			var a_dat = this.getAjaxJsonRet(a_ajax);
+	};
+	this.copyAuth(opt, opt2);
+	if(hds){
+		opt2._headers = hds;
+	}
+	if(dat){
+		opt2._data = dat;
+	}
+	this.sendAjax(opt2).then(function(resp){
+		this.getAjaxJsonRet(resp, function(a_dat){
 			/** @type {boolean} */
 			var a_err = false;
-			if(okcd && a_ajax.status != okcd){
+			if(okcd && resp.status != okcd){
 				a_err = true;
 			}
 			if(a_err){
@@ -548,16 +548,8 @@ ZbDrive.prototype._processRequest = function(upath, md, okcd, opt, hds, dat, fun
 			}else{
 				func(a_dat);
 			}
-		}.bind(this),
-	};
-	this.copyAuth(opt, opt2);
-	if(hds){
-		opt2._headers = hds;
-	}
-	if(dat){
-		opt2._data = dat;
-	}
-	this.sendAjax(opt2);
+		}.bind(this));
+	}.bind(this));
 };
 /**
  * @protected
@@ -620,7 +612,7 @@ ZbDrive.prototype.setAccessToken = function(type, token){
 /**
  * @private
  * @param {Object<string, (string)>} opt
- * @param {function(*)} func
+ * @return {Promise<*>}
  *
  * opt: {
  *   (optional)clientId: "xxxxx",
@@ -631,7 +623,7 @@ ZbDrive.prototype.setAccessToken = function(type, token){
  *   (optional)needCode: true,
  * }
  */
-ZbDrive.prototype.authorize = function(opt, func){
+ZbDrive.prototype.authorize = async function(opt){
 	if(!opt){
 		throw new Error("Options are not specified when auth onedrive.");
 	}
@@ -659,43 +651,42 @@ ZbDrive.prototype.authorize = function(opt, func){
 //		throw new Error("Code or refresh token must be specified when auth onedrive.");
 	}
 
-	/** @type {XMLHttpRequest} */
-	var ajax = new XMLHttpRequest();
-	ajax.open("POST", this.authUrl, true);
-	ajax.withCredentials = true;
-	ajax.onload = function(/** @type {Event} */a_evt){
-		var a_x = a_evt.target;
-		if (a_x.readyState == 4){
-			if(a_x.status == 200){
-				if(func){
-					func(JSON.parse(a_x.responseText));
-				}
-			}else{
-				throw new Error(a_x.responseText+" ("+a_x.status+")");
-			}
-		}
-	};
-	ajax.send(formData);
+	/** @type {Response} */
+	var resp = await fetch(this.authUrl, {
+		"method": "POST",
+		"body": formData,
+		"credentials": "include",
+	});
+	if(resp.status == 200){
+		var respObj = await resp.json();
+		return respObj;
+	}else{
+		/** @type {string} */
+		var resptext = await resp.text();
+		throw new Error(resptext+" ("+resp.status+")");
+	}
 };
 /**
  * @private
  * @param {DriveAjaxOption} _opt
+ * @return {Promise<Response>}
  */
-ZbDrive.prototype.retryAjaxWithLogin = function(_opt){
+ZbDrive.prototype.retryAjaxWithLogin = async function(_opt){
 	console.log("Retry to send ajax.");
 	if(_opt){
 		_opt._retry = true;
 	}else{
-		return;
+		return null;
 	}
-	this.login(/** @type {function(string=)} */(function(a_err){
-		if(a_err){
-			console.error(a_err);
-		}else{
-			_opt._auth = /** @type {string} */(this.accessToken);
-			this.sendAjax(_opt);
-		}
-	}.bind(this)));
+	/** @type {string?} */
+	var errmsg = await this.login();
+	if(errmsg){
+		console.error(errmsg);
+		return null;
+	}else{
+		_opt._auth = /** @type {string} */(this.accessToken);
+		return await this.sendAjax(_opt);
+	}
 };
 
 /**
@@ -1100,21 +1091,26 @@ function ZbDriveReader(_opt, _drv){
 		var pos1 = this.pos + size - 1;
 
 		/** @type {function()} */
-		var ajaxGet = function(){
-			/** @type {XMLHttpRequest} */
-			var ajax = new XMLHttpRequest();
+		var ajaxGet = async function(){
+			/** @type {string} */
+			var url = this.url;
+			/** @type {Headers} */
+			var headers = new Headers();
 			if(this.tryLevel >= 10){
-				ajax.open("GET", this.drive.getRelayUrl(), true);
-				ajax.setRequestHeader("Zb-Url", this.url);
-			}else{
-				ajax.open("GET", this.url, true);
+				url = this.drive.getRelayUrl();
+				headers.append("Zb-Url", this.url);
 			}
-			this.drive.setReadReqHeader(ajax, this.opt._auth);
+			this.drive.setReadReqHeader(headers, this.opt._auth);
 //			if(this.pos > 0 || pos1 < this.size - 1){
-				ajax.setRequestHeader("Range", "bytes="+this.pos+"-"+pos1);
+				headers.append("Range", "bytes="+this.pos+"-"+pos1);
 //			}
-			ajax.responseType = "arraybuffer";
-			ajax.onload = function(a_evt){
+
+			try{
+				/** @type {Response} */
+				var resp = await fetch(url, {
+					"method": "GET",
+					"headers": headers,
+				});
 				if(this.oldreading){
 					this.oldreading = 0;
 					if(this.reading){
@@ -1123,73 +1119,72 @@ function ZbDriveReader(_opt, _drv){
 					return;
 				}
 				this.reading = 0;
-				/** @type {XMLHttpRequest} */
-				var a_x = a_evt.target;
-				if (a_x.readyState == 4){
-					if(this.tryLevel < 10){
-						this.tryLevel = 1;
-					}else{
-						this.tryLevel =11;
-					}
-					if(a_x.status == 200 || a_x.status == 206){
-						if(this.retryAuth == 2){
-							this.retryAuth = 1;
-						}
-						/** @type {number} */
-						var a_l = parseInt(a_x.getResponseHeader("content-length"), 10);
-						if(a_l){
-							this.pos += a_l;
-						}else{
-							/** @type {number} */
-							var a_r = analyzeRangePos(a_x.getResponseHeader("content-range"));
-							if(a_r){
-								this.pos = a_r + 1;
-							}else{
-								this.pos = pos1 + 1;
-							}
-						}
-						if(a_x.status == 200 && this.pos < this.getSize()){
-							this.pos = this.getSize();
-						}else if(this.pos > this.getSize()){
-							this.pos = this.getSize();
-						}
-						if(this.onread){
-							this.onread(/** @type {ArrayBuffer} */(a_x.response), this);
-						}
-						a_x.response = null;
-					}else if(a_x.status == 401 && this.retryAuth == 1){
-						console.log("Retry auth.");
-						this.retryAuth = 2;
-						this.drive.login(/** @type {function(string=)} */(function(a_err){
-							if(a_err){
-								console.error(a_err);
-							}else{
-								if(this.opt._auth){
-									delete this.opt._auth;
-								}
-								ajaxGet();
-							}
-						}.bind(this)));
-					}else{
-						throw new Error(a_x.responseText+" ("+a_x.status+")");
-					}
+
+				if(this.tryLevel < 10){
+					this.tryLevel = 1;
+				}else{
+					this.tryLevel =11;
 				}
-			}.bind(this);
-			ajax.onerror = function(a_evt){
+				if(resp.status == 200 || resp.status == 206){
+					if(this.retryAuth == 2){
+						this.retryAuth = 1;
+					}
+					/** @type {number} */
+					var a_l = parseInt(resp.headers.get("content-length"), 10);
+					if(a_l){
+						this.pos += a_l;
+					}else{
+						/** @type {number} */
+						var a_r = analyzeRangePos(resp.headers.get("content-range"));
+						if(a_r){
+							this.pos = a_r + 1;
+						}else{
+							this.pos = pos1 + 1;
+						}
+					}
+					if(resp.status == 200 && this.pos < this.getSize()){
+						this.pos = this.getSize();
+					}else if(this.pos > this.getSize()){
+						this.pos = this.getSize();
+					}
+					if(this.onread){
+						/** @type {ArrayBuffer} */
+						var buf = await resp.arrayBuffer();
+						this.onread(buf, this);
+					}
+				}else if(resp.status == 401 && this.retryAuth == 1){
+					console.log("Retry auth.");
+					this.retryAuth = 2;
+					/** @type {string?} */
+					var errmsg = await this.drive.login();
+					if(errmsg){
+						console.error(errmsg);
+					}else{
+						if(this.opt._auth){
+							delete this.opt._auth;
+						}
+						await ajaxGet();
+					}
+				}else{
+					/** @type {string} */
+					var resptext = await resp.text();
+					throw new Error(resptext+" ("+resp.status+")");
+				}
+			}catch(err){
 				if(this.tryLevel == 0 && this.drive.getRelayUrl()){
 					this.tryLevel = 10;
-					ajaxGet();
+					await ajaxGet();
 				}else if(this.tryLevel == 1 || this.tryLevel == 11){
 					this.tryLevel++;
 					// retry for occasionally server failed
 					setTimeout(function(){
-						ajaxGet();
+						ajaxGet().then();
 					}, 500);
 				}
-			}.bind(this);
-			ajax.send();
+			}
+
 		}.bind(this);
 
-		ajaxGet();
+		ajaxGet().then();
 	};
 }

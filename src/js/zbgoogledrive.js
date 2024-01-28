@@ -184,18 +184,14 @@ function ZbGoogleDrive(_storage, _authUrl){
 					"Content-Type": "application/json; charset=UTF-8",
 				},
 				_data: JSON.stringify(a_dat),
-				_doneFunc: function(b_ajax){
-					/** @type {DriveJsonRet} */
-					var b_res = this.getAjaxJsonRet(b_ajax);
-					/** @type {string} */
-					var b_url = "";
-					if(b_res._status >= 200 && b_res._status <= 299){
-						b_url = b_ajax.getResponseHeader("location");
-					}
-					func(b_url, b_res);
-				}.bind(this),
 			};
-			this.sendAjax(a_uopt);
+			this.sendAjax(a_uopt).then(function(a_resp){
+				this.getAjaxJsonRet(a_resp, function(b_res){
+					/** @type {string} */
+					var b_url = a_resp.ok ? a_resp.headers.get("location") : "";
+					func(b_url, b_res);
+				}.bind(this));
+			}.bind(this));
 		}.bind(this));
 
 		/** @type {DriveSearchItemsOption} */
@@ -280,14 +276,14 @@ function ZbGoogleDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {XMLHttpRequest} ajax
+	 * @param {Headers} headers
 	 * @param {string=} auth
 	 */
-	this.setReadReqHeader = function(ajax, auth){
+	this.setReadReqHeader = function(headers, auth){
 		if(auth){
-			ajax.setRequestHeader("Authorization", auth);
+			headers.append("Authorization", auth);
 		}else{
-			ajax.setRequestHeader("Authorization", this.getToken());
+			headers.append("Authorization", this.getToken());
 		}
 	};
 

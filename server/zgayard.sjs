@@ -426,6 +426,7 @@ module.exports = function(lib, relay){
 		"ico": "image/x-icon",
 		"css": "text/css",
 		"json": "application/json",
+		"mp4": "video/mp4",
 		"*": "application/octet-stream",
 	};
 	/**
@@ -474,8 +475,48 @@ module.exports = function(lib, relay){
 				/** @type {string} */
 				var b_mtype = mimetypes[b_ext] || mimetypes["*"];
 				a_res.setHeader("content-type", b_mtype);
-				a_res.setHeader("content-length", b_stats.size);
-				lib["fs"].createReadStream(a_fpath).pipe(a_res);
+				// a_res.setHeader("Access-Control-Allow-Origin", "*");
+				// a_res.setHeader("Access-Control-Expose-Headers", "*");
+				a_res.setHeader("accept-ranges", "bytes");
+				var bst = 0;
+				var bed = 0;
+				if(a_req.headers["range"]){
+					var ranges = a_req.headers["range"].match(/bytes *= *(\d*) *- *(\d*)/);
+					if(Array.isArray(ranges)){
+						bst = parseInt(ranges[1], 10);
+						bed = parseInt(ranges[2], 10);
+						if(isNaN(bst)){
+							bst = 0;
+						}
+						if(isNaN(bed)){
+							if(bst > 0){
+								bed = b_stats.size - 1;
+							}else{
+								bed = 0;
+							}
+						}else if(bed >= b_stats.size){
+							if(bst > 0){
+								bed = b_stats.size - 1;
+							}else{
+								bed = 0;
+							}
+						}
+					}
+				}
+				if(bed > bst){
+				//Do resume
+					bed = Math.min(bed, bst + 511999);
+					a_res.setHeader("content-range", "bytes ".concat(bst).concat("-").concat(bed).concat("/").concat(b_stats.size));
+					a_res.setHeader("content-length", bed - bst + 1);
+					a_res.statusCode = 206;
+					var strm = lib["fs"].createReadStream(a_fpath, {"start": bst, "end": bed});
+					strm.pipe(a_res);
+
+				}else{
+				//Do new download
+					a_res.setHeader("content-length", b_stats.size);
+					lib["fs"].createReadStream(a_fpath).pipe(a_res);
+				}
 			}else{
 				response404(a_res, "Unexpected file type.");
 			}

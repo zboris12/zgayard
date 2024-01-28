@@ -339,11 +339,13 @@ function ZbIdxDbDrive(_storage, _authUrl){
 
 	/**
 	 * @override
-	 * @param {function(string=)} func function(a_errmsg){}
 	 * @param {boolean=} reuseToken
+	 * @return {Promise<string?>}
 	 */
-	this.login = function(func, reuseToken){
-		this.checkDb(func);
+	this.login = function(reuseToken){
+		return new Promise(function(resolve, reject){
+			this.checkDb(resolve);
+		});
 	};
 
 	/**

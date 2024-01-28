@@ -541,47 +541,6 @@ function charsReplace(fChars, tChars, str){
 }
 
 /**
- * Open an ajax connection.
- *
- * @param {string} url
- * @param {AjaxOption} opt
- * @return {XMLHttpRequest} An instance of ajax
- *
- * opt: {
- *   _method: "PUT",
- *   _headers: {"Content-Type": "text/html"},
- *   _doneFunc: function(a_status, a_restext){},
- * }
- */
-function openAjax(url, opt){
-	/** @type {string} */
-	var method = "POST";
-	/** @type {XMLHttpRequest} */
-	var ajax = new XMLHttpRequest();
- 	if(opt && opt._method){
-		method = opt._method;
-	}
-	ajax.open(method, url, true);
-	if(opt && opt._headers){
-		for(var key in opt._headers){
-			ajax.setRequestHeader(key, opt._headers[key]);
-		}
-	}
-	ajax.onload = function(/** Event */evt){
-		var x = evt.target;
-		if (x.readyState == 4){
-			if(x.status >= 200 && x.status <= 299){
-				if(opt && opt._doneFunc){
-					opt._doneFunc(x.status, x.responseText);
-				}
-			}else{
-				throw new Error(x.responseText+" ("+x.status+")");
-			}
-		}
-	};
-	return ajax;
-}
-/**
  * Analyze the current position from Content Range.
  *
  * @param {string|null} crng Content Range.

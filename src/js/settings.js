@@ -170,7 +170,7 @@ function saveKeyData(keyWords){
 		return;
 	}
 	if(getElement("#chkSaveKey").checked){
-		fetchLocalStorageAuth(function(a_lskdat){
+		fetchLocalStorageAuth().then(function(a_lskdat){
 			/** @type {string} */
 			var a_kw = "";
 			if(a_lskdat && a_lskdat["lsauth"]){
@@ -179,6 +179,8 @@ function saveKeyData(keyWords){
 				a_kw = a_dat.toString(CryptoJS.enc.Base64url);
 			}
 			g_storage.saveDriveData("key_words", a_kw, true);
+		}).catch(function(a_err){
+			showError(a_err);
 		});
 	}else{
 		g_storage.saveDriveData("key_words", null, true);
@@ -196,44 +198,39 @@ function logout(){
 /**
  * Get authorization of local storage
  *
- * @param {function(Object<string, (string|boolean)>)} func
+ * @return {Promise<null|Object<string, (string|boolean)>>}
  */
-function fetchLocalStorageAuth(func){
+async function fetchLocalStorageAuth(){
+	/** @type {null|Object<string, (string|boolean)>} */
+	var ret = null;
 	/** @type {FormData} */
 	var formData = new FormData();
 	formData.append("drive_type", "localstorage");
-	/** @type {XMLHttpRequest} */
-	var ajax = new XMLHttpRequest();
-	ajax.open("POST", g_AUTHURL, true);
-	ajax.withCredentials = true;
-	ajax.onload = function(a_evt){
-		/** @type {XMLHttpRequest} */
-		var a_x = a_evt.target;
-		if(a_x.readyState == 4){
-			/** @type {?Object<string, (string|boolean)>} */
-			var a_ret = null;
-			if(a_x.status == 200){
-				var a_resp = JSON.parse(a_x.responseText);
-				if(a_resp){
-					if(a_resp["error"]){
-						showError("["+a_resp["error"]+"] "+a_resp["error_description"]);
-					}else if(a_resp["lsauth"]){
-						a_ret = /** @type {Object<string, (string|boolean)>} */(a_resp);
-					}else{
-						showError("lsFailed");
-					}
-				}else{
-					showError("lsFailed");
-				}
+	/** @type {Response} */
+	var resp = await fetch(g_AUTHURL, {
+		"method": "POST",
+		"body": formData,
+		"credentials": "include",
+	});
+	if(resp.status == 200){
+		var respObj = await resp.json();
+		if(respObj){
+			if(respObj["error"]){
+				throw "["+respObj["error"]+"] "+respObj["error_description"];
+			}else if(respObj["lsauth"]){
+				ret = /** @type {Object<string, (string|boolean)>} */(respObj);
 			}else{
-				showError(a_x.responseText+" ("+a_x.status+")");
+				throw "lsFailed";
 			}
-			if(func){
-				func(a_ret);
-			}
+		}else{
+			throw "lsFailed";
 		}
-	};
-	ajax.send(formData);
+	}else{
+		/** @type {string} */
+		var resptext = await resp.text();
+		throw resptext+" ("+resp.status+")";
+	}
+	return ret;
 }
 
 /**
@@ -457,11 +454,13 @@ function loadDrive(drvnm){
 		showError("unkDrive");
 		return;
 	}
-	g_drive.login(/** @type {function(string=)} */(function(a_err){
+	g_drive.login(true).then(function(a_err){
 		if(a_err){
-			g_storage.clearLogInfo(function(){
-				showError(window["msgs"]["loginFailed"].replace("{0}", a_err));
-			});
+			if(a_err != "redirect"){
+				g_storage.clearLogInfo(function(){
+					showError(window["msgs"]["loginFailed"].replace("{0}", a_err));
+				});
+			}
 			return;
 		}else{
 			g_storage.saveAllData();
@@ -487,7 +486,7 @@ function loadDrive(drvnm){
 			},
 			_fname: g_CONFILE,
 		});
-	}), true);
+	});
 }
 /**
  * Event called from html
@@ -968,7 +967,7 @@ function downloadConfile(fid){
 			/** @type {?string} */
 			var a_kw = g_storage.getDriveData("key_words");
 			if(a_kw){
-				fetchLocalStorageAuth(function(b_lskdat){
+				fetchLocalStorageAuth().then(function(b_lskdat){
 					if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
 						/** @type {WordArray} */
 						var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64url.parse(a_kw), /** @type {string} */(b_lskdat["lsauth"]));
@@ -976,6 +975,8 @@ function downloadConfile(fid){
 					}else{
 						showInputPassword();
 					}
+				}).catch(function(b_err){
+					showError(b_err);
 				});
 			}else{
 				showInputPassword();
@@ -985,26 +986,6 @@ function downloadConfile(fid){
 			showInputPassword();
 		}
 	});
-/*	var ajax = openAjax("/".concat(g_CONFILE), {
-		_method: "GET",
-		_doneFunc: function(a_status, a_restext){
-			g_conf = JSON.parse(a_restext);
-			var a_kw = g_storage.getDriveData("key_words");
-			if(a_kw){
-				fetchLocalStorageAuth(function(b_lskdat){
-					if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
-						var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64url.parse(a_kw), b_lskdat["lsauth"]);
-						checkPassword(b_keywords);
-					}else{
-						showInputPassword();
-					}
-				});
-			}else{
-				showInputPassword();
-			}
-		},
-	});
-	ajax.send();*/
 }
 /**
  * @param {Object<string, (string|boolean)>} _conf
