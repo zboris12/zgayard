@@ -66,9 +66,9 @@ function ZBWriter(){
 	/**
 	 * @public
 	 * @param {number} fsize
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(fsize, cb){};
+	this.prepare = async function(fsize){};
 	/**
 	 * @public
 	 * @param {ArrayBuffer|Array<number>} buf
@@ -156,7 +156,7 @@ var DriveJsonRet;
  * @typedef
  * {{
  *    _method: (string|undefined),
- *    _headers: (Object<string, string>|undefined),
+ *    _headers: (Headers|undefined),
  *    _upath: string,
  *    _utype: (string|undefined),
  *    _utoken: (string|undefined),
@@ -195,7 +195,6 @@ var DriveInfo;
  *    _utype: (string|undefined),
  *    _utoken: (string|undefined),
  *    _auth: (string|undefined),
- *    _doneFunc: (function((boolean|DriveJsonRet), *=)|undefined),
  * }}
  */
 var DriveBaseOption;
@@ -208,17 +207,8 @@ var DriveBaseOption;
 /**
  * @typedef
  * {{
- *    _doneFunc: function((boolean|DriveJsonRet), DriveInfo=),
- * }}
- */
-var DriveGetDriveOption;
-/** @lends {DriveBaseOption} *///(DriveGetDriveOption);
-/**
- * @typedef
- * {{
  *    _fname: (string|undefined),
  *    _parentid: (string|undefined),
- *    _doneFunc: function((boolean|DriveJsonRet), Array<DriveItem>=),
  * }}
  */
 var DriveSearchItemsOption;
@@ -226,7 +216,6 @@ var DriveSearchItemsOption;
  * @typedef
  * {{
  *    _uid: string,
- *    _doneFunc: function((boolean|DriveJsonRet), DriveItem=),
  * }}
  */
 var DriveGetItemOption;
@@ -235,7 +224,6 @@ var DriveGetItemOption;
  * {{
  *    _folder: string,
  *    _parentid: (string|undefined),
- *    _doneFunc: function((boolean|DriveJsonRet), DriveItem=),
  * }}
  */
 var DriveNewFolderOption;
@@ -246,7 +234,6 @@ var DriveNewFolderOption;
  *    _newname: (string|undefined),
  *    _parentid: (string|undefined),
  *    _oldparentid: (string|undefined),
- *    _doneFunc: function((boolean|DriveJsonRet), number=),
  * }}
  */
 var DriveUpdateOption;

@@ -647,35 +647,27 @@ function deleteRoot(evt){
 		var delroot = function(a_fid){
 			/** @type {DriveUpdateOption} */
 			var a_opt = {
-				/** @type {function((boolean|DriveJsonRet))} */
-				_doneFunc: function(b_err){
-					if(b_err){
-						showError(b_err._restext);
-					}else{
-						editconf();
-					}
-				},
 				/** @type {string} */
 				_fid: a_fid,
 			};
-			g_drive.delete(a_opt);
+			g_drive.delete(a_opt).then(editconf).catch(function(a_err){
+				showError(a_err);
+			});
 		};
 
 		/** @type {DriveSearchItemsOption} */
 		var opt = {
-			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
-			_doneFunc: function(a_err, a_dats){
-				if(a_err){
-					console.error(a_err);
-				}else if(a_dats.length == 0){
-					editconf();
-				}else{
-					delroot(a_dats[0]._id);
-				}
-			},
 			_fname: /** @type {string} */(g_conf[rootidx]["root"]),
 		};
-		g_drive.searchItems(opt);
+		g_drive.searchItems(opt).then(function(a_dats){
+			if(a_dats.length == 0){
+				editconf();
+			}else{
+				delroot(a_dats[0]._id);
+			}
+		}).catch(function(a_err){
+			console.error(a_err);
+		});
 
 	}else{
 		reload();

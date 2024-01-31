@@ -21,35 +21,35 @@ function ZbGoogleDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {DriveGetDriveOption} opt
+	 * @param {DriveBaseOption} opt
+	 * @return {!Promise<DriveInfo>}
 	 */
-	this.getDrive = function(opt){
+	this.getDrive = async function(opt){
 		/** @type {string} */
 		var upath = this.getDrivePath("/about").concat(makeQueryString({
 			"fields": "storageQuota"
 		}));
-	
-		this._getData(upath, /** @type {DriveBaseOption} */(opt), /** @type {function(string)} */(function(a_restext){
-			if(opt && opt._doneFunc){
-				var a_dat2 = JSON.parse(a_restext);
-				var a_quota = a_dat2["storageQuota"];
-				/** @type {DriveInfo} */
-				var a_dat = {
-					_trash: /** @type {number} */(a_quota["usageInDriveTrash"]),
-					_total: /** @type {number} */(a_quota["limit"]),
-					_used: /** @type {number} */(a_quota["usage"]),
-				};
-				opt._doneFunc(false, a_dat);
-			}
-		}));
+
+		/** @type {string} */
+		var restext = await this._getData(upath, opt);
+		var dat2 = JSON.parse(restext);
+		var quota = dat2["storageQuota"];
+		/** @type {DriveInfo} */
+		var dat = {
+			_trash: /** @type {number} */(quota["usageInDriveTrash"]),
+			_total: /** @type {number} */(quota["limit"]),
+			_used: /** @type {number} */(quota["usage"]),
+		};
+		return dat;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveSearchItemsOption} opt
+	 * @return {!Promise<Array<DriveItem>>}
 	 */
-	this.searchItems = function(opt){
+	this.searchItems = async function(opt){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files");
 		/** @type {string} */
@@ -64,54 +64,53 @@ function ZbGoogleDrive(_storage, _authUrl){
 			"fields": "files(id,name,mimeType,parents,modifiedTime,size)",
 			"q": cond,
 		};
-		this._getData(upath.concat(makeQueryString(qry, true)), /** @type {DriveBaseOption} */(opt), /** @type {function(string)} */(function(a_restext){
-			if(opt && opt._doneFunc){
-				/** @type {Array<DriveItem>} */
-				var a_arr = [];
-				/** @type {*} */
-				var a_dat = JSON.parse(a_restext);
-				a_dat["files"].forEach(/** @type {function(Object<string, *>)} */(function(b_ele){
-					/** @type {DriveItem} */
-					var b_itm = this.makeReturnItem(b_ele);
-					a_arr.push(b_itm);
-				}), this);
-				opt._doneFunc(false, a_arr);
-			}
-		}.bind(this)));
+		/** @type {string} */
+		var restext = await this._getData(upath.concat(makeQueryString(qry, true)), /** @type {DriveBaseOption} */(opt));
+		/** @type {Array<DriveItem>} */
+		var arr = [];
+		/** @type {*} */
+		var dat = JSON.parse(restext);
+		dat["files"].forEach(/** @type {function(Object<string, *>)} */(function(b_ele){
+			/** @type {DriveItem} */
+			var b_itm = this.makeReturnItem(b_ele);
+			arr.push(b_itm);
+		}), this);
+		return arr;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveGetItemOption} opt
+	 * @return {!Promise<DriveItem>}
 	 */
-	this.getItem = function(opt){
+	this.getItem = async function(opt){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files/").concat(opt._uid);
 		/** @type {Object<string, string>} */
 		var qry = {
 			"fields": "id,name,mimeType,parents,modifiedTime,size"
 		};
-		this._getData(upath.concat(makeQueryString(qry, true)), /** @type {DriveBaseOption} */(opt), /** @type {function(string)} */(function(a_restext){
-			if(opt && opt._doneFunc){
-				/** @type {DriveItem} */
-				var a_itm = this.makeReturnItem(/** @type {Object<string, *>} */(JSON.parse(a_restext)));
-				opt._doneFunc(false, a_itm);
-			}
-		}.bind(this)));
+		/** @type {string} */
+		var restext = await this._getData(upath.concat(makeQueryString(qry, true)), /** @type {DriveBaseOption} */(opt));
+		/** @type {DriveItem} */
+		var itm = this.makeReturnItem(/** @type {Object<string, *>} */(JSON.parse(restext)));
+		return itm;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveNewFolderOption} opt
+	 * @return {!Promise<DriveItem>}
 	 */
-	this.newFolder = function(opt){
+	this.newFolder = async function(opt){
 		if(!(opt && opt._folder)){
 			throw new Error("Name of new folder is not specified.");
 		}
-		/** @type {Object<string, string>} */
-		var headers = {"Content-Type": "application/json;charset=UTF-8"};
+		/** @type {Headers} */
+		var headers = new Headers();
+		headers.append("Content-Type", "application/json;charset=UTF-8");
 		/** @type {string} */
 		var upath = this.getDrivePath("/files");
 		/** @type {string} */
@@ -123,29 +122,24 @@ function ZbGoogleDrive(_storage, _authUrl){
 			"parents": [prtid],
 		};
 
-		this._processRequest(upath, "POST", 200, /** @type {DriveBaseOption} */(opt), headers, JSON.stringify(dat), /** @type {function(DriveJsonRet)} */(function(a_res){
-			if(opt && opt._doneFunc){
-				/** @type {DriveItem} */
-				var a_dat = this.makeReturnItem(/** @type {Object<string, *>} */(JSON.parse(a_res._restext)));
-				opt._doneFunc(false, a_dat);
-			}
-		}.bind(this)));
+		/** @type {DriveJsonRet} */
+		var res = await this._processRequest(upath, "POST", 200, /** @type {DriveBaseOption} */(opt), headers, JSON.stringify(dat));
+		/** @type {DriveItem} */
+		var rdat = this.makeReturnItem(/** @type {Object<string, *>} */(JSON.parse(res._restext)));
+		return rdat;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveUpdateOption} opt
+	 * @return {!Promise<number>}
 	 */
-	this.delete = function(opt){
+	this.delete = async function(opt){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files/").concat(opt._fid);
-
-		this._processRequest(upath, "DELETE", 204, /** @type {DriveBaseOption} */(opt), null, null, /** @type {function(DriveJsonRet)} */(function(a_res){
-			if(opt && opt._doneFunc){
-				opt._doneFunc(false);
-			}
-		}));
+		await this._processRequest(upath, "DELETE", 204, /** @type {DriveBaseOption} */(opt), null, null);
+		return 0;
 	};
 
 	/**
@@ -153,66 +147,25 @@ function ZbGoogleDrive(_storage, _authUrl){
 	 * @public
 	 * @param {DriveWriterOption} opt
 	 * @param {number} upSize
-	 * @param {function(string, DriveJsonRet)} func
+	 * @return {!Promise<string>}
 	 */
-	this.prepareWriter = function(opt, upSize, func){
-		var initUploader = /** @type {function(string=)} */(function(a_fid){
-			/** @type {Object<string, *>} */
-			var a_dat = {};
-			/** @type {string} */
-			var a_mthd = "POST";
-			/** @type {string} */
-			var a_upath = "/files?uploadType=resumable";
-			if(a_fid){
-				a_mthd = "PATCH";
-				a_upath = "/files/"+a_fid+"?uploadType=resumable";
-			}else{
-				a_dat["name"] = opt._fnm;
-				if(opt._fldrId){
-					a_dat["parents"] = [opt._fldrId];
-				}
-			}
-
-			/** @type {DriveAjaxOption} */
-			var a_uopt = {
-				_upath: "/upload".concat(this.getDrivePath(a_upath)),
-				_method: a_mthd,
-				_auth: opt._auth,
-				_headers: {
-					"X-Upload-Content-Length": upSize,
-					"X-Upload-Content-Type": "application/octet-stream",
-					"Content-Type": "application/json; charset=UTF-8",
-				},
-				_data: JSON.stringify(a_dat),
-			};
-			this.sendAjax(a_uopt).then(function(a_resp){
-				this.getAjaxJsonRet(a_resp, function(b_res){
-					/** @type {string} */
-					var b_url = a_resp.ok ? a_resp.headers.get("location") : "";
-					func(b_url, b_res);
-				}.bind(this));
-			}.bind(this));
-		}.bind(this));
+	this.prepareWriter = async function(opt, upSize){
 
 		/** @type {DriveSearchItemsOption} */
 		var sopt = {
-			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
-			_doneFunc: function(a_err, a_dats){
-				if(a_err){
-					func("", /** @type {DriveJsonRet} */(a_err));
-				}else if(a_dats.length > 0){
-					initUploader(a_dats[0]._id);
-				}else{
-					initUploader();
-				}
-			},
 			_fname: opt._fnm,
 			_auth: opt._auth,
 		};
 		if(opt._fldrId){
 			sopt._parentid = opt._fldrId;
 		}
-		this.searchItems(sopt);
+		/** @type {Array<DriveItem>} */
+		var dats = await this.searchItems(sopt);
+		if(dats.length > 0){
+			return await this.initUploader(opt, upSize, dats[0]._id);
+		}else{
+			return await this.initUploader(opt, upSize);
+		}
 	};
 
 	/**
@@ -246,31 +199,27 @@ function ZbGoogleDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {DriveReaderOption} opt
-	 * @param {function(?DriveItem, DriveJsonRet)} func
+	 * @return {!Promise<DriveItem>}
 	 */
-	this.prepareReader = function(opt, func){
+	this.prepareReader = async function(opt){
 		/** @type {string} */
 		var upath = this.getDrivePath("/files/").concat(opt._id);
 		/** @type {DriveGetItemOption} */
 		var uopt = {
 			_uid: opt._id,
-			_doneFunc: /** @type {function((boolean|DriveJsonRet), DriveItem=)} */(function(a_err, a_itm){
-				/** @type {?DriveItem} */
-				var a_dat = null;
-				if(a_itm && !a_err){
-					a_dat = a_itm;
-					a_dat._id = this.getAjaxBaseUrl().concat(encodeURI(upath)).concat(makeQueryString({"alt": "media"}));
-					if(this.isSkipLogin()){
-						a_dat._type = "1";
-					}
-				}
-				func(a_dat, a_err);
-			}.bind(this)),
 		};
 		if(opt._auth){
 			uopt._auth = opt._auth;
 		}
-		this.getItem(uopt);
+		/** @type {DriveItem} */
+		var itm = await this.getItem(uopt);
+		if(itm){
+			itm._id = this.getAjaxBaseUrl().concat(encodeURI(upath)).concat(makeQueryString({"alt": "media"}));
+			if(this.isSkipLogin()){
+				itm._type = "1";
+			}
+		}
+		return itm;
 	};
 
 	/**
@@ -300,12 +249,14 @@ function ZbGoogleDrive(_storage, _authUrl){
 	 * @override
 	 * @protected
 	 * @param {DriveUpdateOption} opt
+	 * @return {!Promise<number>}
 	 */
-	this.updateProp = function(opt){
+	this.updateProp = async function(opt){
 		/** @type {boolean} */
 		var nodata = true;
-		/** @type {Object<string, string>} */
-		var headers = {"Content-Type": "application/json;charset=UTF-8"};
+		/** @type {Headers} */
+		var headers = new Headers();
+		headers.append("Content-Type", "application/json;charset=UTF-8");
 		/** @type {string} */
 		var upath = this.getDrivePath("/files/").concat(opt._fid);
 		if(opt._oldparentid && opt._parentid){
@@ -327,11 +278,55 @@ function ZbGoogleDrive(_storage, _authUrl){
 			throw new Error("No property to be updated.");
 		}
 
-		this._processRequest(upath, "PATCH", 200, /** @type {DriveBaseOption} */(opt), headers, JSON.stringify(dat), /** @type {function(DriveJsonRet)} */(function(a_res){
-			if(opt && opt._doneFunc){
-				opt._doneFunc(false);
+		await this._processRequest(upath, "PATCH", 200, /** @type {DriveBaseOption} */(opt), headers, JSON.stringify(dat));
+		return 0;
+	};
+
+	/**
+	 * @private
+	 * @param {DriveWriterOption} opt
+	 * @param {number} upSize
+	 * @param {string=} a_fid
+	 * @return {!Promise<string>}
+	 */
+	this.initUploader = async function(opt, upSize, a_fid){
+		/** @type {Object<string, *>} */
+		var a_dat = {};
+		/** @type {string} */
+		var a_mthd = "POST";
+		/** @type {string} */
+		var a_upath = "/files?uploadType=resumable";
+		if(a_fid){
+			a_mthd = "PATCH";
+			a_upath = "/files/"+a_fid+"?uploadType=resumable";
+		}else{
+			a_dat["name"] = opt._fnm;
+			if(opt._fldrId){
+				a_dat["parents"] = [opt._fldrId];
 			}
-		}));
+		}
+
+		/** @type {DriveAjaxOption} */
+		var a_uopt = {
+			_upath: "/upload".concat(this.getDrivePath(a_upath)),
+			_method: a_mthd,
+			_auth: opt._auth,
+			_headers: new Headers({
+				"X-Upload-Content-Length": upSize,
+				"X-Upload-Content-Type": "application/octet-stream",
+				"Content-Type": "application/json; charset=UTF-8",
+			}),
+			_data: JSON.stringify(a_dat),
+		};
+		/** @type {Response} */
+		var a_resp = await this.sendAjax(a_uopt);
+		if(a_resp.ok){
+			return a_resp.headers.get("location") || "";
+		}else{
+			/** @type {DriveJsonRet} */
+			var a_res = await this.getAjaxJsonRet(a_resp);
+			throw new Error(a_res._restext);
+		}
 	};
 
 	/**

@@ -773,16 +773,13 @@ function findFolderId(bsFldr, fpath, func){
 			var b_opt = {
 				_folder: a_fnm,
 				_parentid: fldr.getId(),
-				_doneFunc: /** @type {function((boolean|DriveJsonRet), DriveItem=)} */(function(c_err, c_itm){
-					if(c_err){
-						func(c_err, fnm);
-					}else{
-						c_itm._name = a_orifnm;
-						a_doNext(fldr.addChild(c_itm));
-					}
-				}),
 			};
-			g_drive.newFolder(b_opt);
+			g_drive.newFolder(b_opt).then(function(c_itm){
+				c_itm._name = a_orifnm;
+				a_doNext(fldr.addChild(c_itm));
+			}).catch(function(c_err){
+				func(/** @type {DriveJsonRet} */(c_err), fnm);
+			});
 			return;
 		}
 
@@ -797,19 +794,18 @@ function findFolderId(bsFldr, fpath, func){
 		var a_opt = {
 			_fname: a_fnm,
 			_parentid: fldr.getId(),
-			_doneFunc: /** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */(function(b_err, b_lst){
-				if(b_err){
-					func(b_err, fnm);
-				}else if(b_lst.length == 0){
-					newfld = true;
-					getFolderId(a_idx);
-				}else{
-					b_lst[0]._name = a_orifnm;
-					a_doNext(fldr.addChild(b_lst[0]));
-				}
-			}),
 		};
-		g_drive.searchItems(a_opt);
+		g_drive.searchItems(a_opt).then(function(b_lst){
+			if(b_lst.length == 0){
+				newfld = true;
+				getFolderId(a_idx);
+			}else{
+				b_lst[0]._name = a_orifnm;
+				a_doNext(fldr.addChild(b_lst[0]));
+			}
+		}).catch(function(b_err){
+			func(/** @type {DriveJsonRet} */(b_err), fnm);
+		});
 	};
 	getFolderId(0);
 }

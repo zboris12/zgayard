@@ -146,15 +146,12 @@ function ZBlobWriter(opt){
 	/**
 	 * @public
 	 * @param {number} fsize
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(fsize, cb){
+	this.prepare = async function(fsize){
 		this.fsize = fsize;
 		if(this.downEle && this.downEle.href != "#"){
 			window.URL.revokeObjectURL(this.downEle.href);
-		}
-		if(cb){
-			cb();
 		}
 	};
 	/**
@@ -483,8 +480,9 @@ function ZbCrypto(_info, _opts){
 	/**
 	 * @public
 	 * @param {number=} offset
+	 * @return {!Promise<void>}
 	 */
-	this.start = function(offset){
+	this.start = async function(offset){
 		if(offset){
 			if(this.encrypt){
 				throw new Error("Can NOT set offset for encryption.");
@@ -496,14 +494,13 @@ function ZbCrypto(_info, _opts){
 			}
 		}
 		this.reader.onread = this.onread.bind(this);
-		this.reader.prepare(offset, function(){
-			var sizeEnc = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
-			if(this.streamMode || !this.writer){
-				this.firstRead();
-			}else{
-				this.writer.prepare(sizeEnc, this.firstRead.bind(this));
-			}
-		}.bind(this));
+		await this.reader.prepare(offset);
+		/** @type {number} */
+		var sizeEnc = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
+		if(!(this.streamMode || !this.writer)){
+			await this.writer.prepare(sizeEnc);
+		}
+		this.firstRead();
 	};
 	/**
 	 * @public
@@ -759,7 +756,7 @@ function zbPipe(_reader, _writer, _stepFunc, _finalFunc){
 	};
 
 	_reader.prepare(0, function(){
-		_writer.prepare(_reader.getSize(), function(){
+		_writer.prepare(_reader.getSize()).then(function(){
 			_reader.read();
 		});
 	});

@@ -240,26 +240,15 @@ function IdxDbWriter(_opt, _drv){
 	/**
 	 * @public
 	 * @param {number} fsize
-	 * @param {function(DriveJsonRet)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(fsize, cb){
+	this.prepare = async function(fsize){
 		this.fsize = fsize;
 		this.data._name = this.opt._fnm;
 		if(this.opt._fldrId){
 			this.data._parentId = this.opt._fldrId;
 		}
-
-		this.drive.prepareWriter(this.opt, fsize, function(a_id, a_res){
-			if(a_id){
-				this.data._id = a_id;
-				if(cb){
-					cb(a_res);
-				}
-			}else{
-				console.error(a_res);
-				throw new Error(JSON.stringify(a_res));
-			}
-		}.bind(this));
+		this.data._id = await this.drive.prepareWriter(this.opt, fsize);
 	};
 
 	/**
@@ -340,7 +329,7 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @param {boolean=} reuseToken
-	 * @return {Promise<string?>}
+	 * @return {!Promise<string?>}
 	 */
 	this.login = function(reuseToken){
 		return new Promise(function(resolve, reject){
@@ -359,16 +348,17 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {DriveGetDriveOption} opt
+	 * @param {DriveBaseOption} opt
+	 * @return {!Promise<DriveInfo>}
 	 */
-	this.getDrive = function(opt){
+	this.getDrive = async function(opt){
 		/** @type {DriveInfo} */
 		var dat = {
 			_trash: 0,
 			_total: 0,
 			_used: 0,
 		};
-		this.operateItems(function(a_store){
+		await this.operateItems(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.getAll();
 			/**
@@ -381,38 +371,33 @@ function ZbIdxDbDrive(_storage, _authUrl){
 					}
 				});
 			};
-		}, function(){
-			if(opt && opt._doneFunc){
-				opt._doneFunc(false, dat);
-			}
 		});
+		return dat;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveSearchItemsOption} opt
+	 * @return {!Promise<Array<DriveItem>>}
 	 */
-	this.searchItems = function(opt){
-		if(opt && opt._doneFunc){
-			this._searchItems(opt._doneFunc, undefined, opt._parentid, opt._fname);
-		}
+	this.searchItems = async function(opt){
+		return await this._searchItems(undefined, opt._parentid, opt._fname);
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveGetItemOption} opt
+	 * @return {!Promise<?DriveItem>}
 	 */
-	this.getItem = function(opt){
-		if(opt && opt._doneFunc){
-			this._searchItems(function(a_ret, a_arr){
-				if(a_arr && a_arr.length > 0){
-					opt._doneFunc(a_ret, a_arr[0]);
-				}else{
-					opt._doneFunc(a_ret);
-				}
-			}, opt._uid);
+	this.getItem = async function(opt){
+		/** @type {Array<DriveItem>} */
+		var arr = await this._searchItems(opt._uid);
+		if(arr && arr.length > 0){
+			return arr[0];
+		}else{
+			return null;
 		}
 	};
 
@@ -420,8 +405,9 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {DriveNewFolderOption} opt
+	 * @return {!Promise<DriveItem>}
 	 */
-	this.newFolder = function(opt){
+	this.newFolder = async function(opt){
 		if(!(opt && opt._folder)){
 			throw new Error("Name of new folder is not specified.");
 		}
@@ -437,22 +423,18 @@ function ZbIdxDbDrive(_storage, _authUrl){
 			dat._parentId = opt._parentid;
 		}
 
-		this.fetchNextId(dat._parentId, function(a_id){
-			dat._id = a_id;
-			this.saveItem(dat, function(){
-				if(opt._doneFunc){
-					opt._doneFunc(false, dat);
-				}
-			});
-		}.bind(this));
+		dat._id = await this.fetchNextId(dat._parentId);
+		await this.saveItem(dat);
+		return dat;
 	};
 
 	/**
 	 * @override
 	 * @public
 	 * @param {DriveUpdateOption} opt
+	 * @return {!Promise<number>}
 	 */
-	this.delete = function(opt){
+	this.delete = async function(opt){
 		/** @type {Array<DriveItem>} */
 		var arr = [];
 		/** @type {number} */
@@ -520,7 +502,7 @@ function ZbIdxDbDrive(_storage, _authUrl){
 			};
 		};
 
-		this.operateItems(function(a_store){
+		await this.operateItems(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.getAll();
 			/**
@@ -535,17 +517,12 @@ function ZbIdxDbDrive(_storage, _authUrl){
 					});
 				});
 			};
+		});
 
-		}, function(){
-			markDelete(opt._fid);
-			this.operateItems(delItem, function(){
-				this.operateDatas(delData, function(){
-					if(opt && opt._doneFunc){
-						opt._doneFunc(false, delsz);
-					}
-				});
-			}.bind(this));
-		}.bind(this));
+		markDelete(opt._fid);
+		await this.operateItems(delItem);
+		await this.operateDatas(delData);
+		return delsz;
 	};
 
 	/**
@@ -563,22 +540,15 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @public
 	 * @param {DriveWriterOption} opt
 	 * @param {number} upSize
-	 * @param {function(string, DriveJsonRet)} func
+	 * @return {!Promise<string>}
 	 */
-	this.prepareWriter = function(opt, upSize, func){
-		if(func){
-			/** @type {string} */
-			var pid = "";
-			if(opt._fldrId){
-				pid = opt._fldrId;
-			}
-			this.fetchNextId(pid, function(a_id){
-				func(a_id, {
-					_status: 200,
-					_restext: "nothing",
-				});
-			});
+	this.prepareWriter = async function(opt, upSize){
+		/** @type {string} */
+		var pid = "";
+		if(opt._fldrId){
+			pid = opt._fldrId;
 		}
+		return await this.fetchNextId(pid);
 	};
 
 	/**
@@ -638,6 +608,7 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @override
 	 * @protected
 	 * @param {DriveUpdateOption} opt
+	 * @return {!Promise<number>}
 	 *
 	 * opt: {
 	 *   (required)_fid: "zzzz",
@@ -646,14 +617,13 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 *   (optional)_utype: "Bearer",
 	 *   (optional)_utoken: "xxxxxxxx",
 	 *   (optional)_auth: "xxxxxxxx",    //If "auth" is specified then "utype" and "utoken" will be ignored.
-	 *   (optional)_doneFunc: function(error){},
 	 * }
 	 */
-	this.updateProp = function(opt){
+	this.updateProp = async function(opt){
 		if(!(opt && opt._fid)){
 			throw new Error("fid is not specified.");
 		}
-		this.operateItems(function(a_store){
+		await this.operateItems(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.get(opt._fid);
 			/**
@@ -680,19 +650,16 @@ function ZbIdxDbDrive(_storage, _authUrl){
 				}
 			};
 
-		}, function(){
-			if(opt && opt._doneFunc){
-				opt._doneFunc(false);
-			}
 		});
+		return 0;
 	};
 
 	/**
 	 * @public
 	 * @param {DriveItem} itm
-	 * @param {function()=} func
+	 * @return {!Promise<void>}
 	 */
-	this.saveItem = function(itm, func){
+	this.saveItem = async function(itm){
 		itm._lastModifiedDateTime = this.getTimestamp();
 		/** @type {Object<string, string>} */
 		var itm2 = {
@@ -705,9 +672,9 @@ function ZbIdxDbDrive(_storage, _authUrl){
 		if(itm._parentId){
 			itm2["pid"] = itm._parentId;
 		}
-		this.operateItems(function(a_store){
+		await this.operateItems(function(a_store){
 			a_store.put(itm2);
-		}, func);
+		});
 	};
 
 	/**
@@ -716,26 +683,26 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @param {number} idx
 	 * @param {number} sz
 	 * @param {string} data
-	 * @param {function()=} func
+	 * @return {!Promise<void>}
 	 */
-	this.saveData = function(id, idx, sz, data, func){
-		this.operateDatas(function(a_store){
+	this.saveData = async function(id, idx, sz, data){
+		await this.operateDatas(function(a_store){
 			a_store.put({
 				"key": id + ":" + idx + "_" + sz,
 				"data": data,
 			});
-		}, func);
+		});
 	};
 
 	/**
 	 * @public
 	 * @param {string} id
-	 * @param {function(Array<IdxDbDataInfo>)=} func
+	 * @return {!Promise<Array<IdxDbDataInfo>>}
 	 */
-	this.fetchDataInfos = function(id, func){
+	this.fetchDataInfos = async function(id, func){
 		/** @type {Array<IdxDbDataInfo>} */
 		var arrs = [];
-		this.operateDatas(function(a_store){
+		await this.operateDatas(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.getAllKeys();
 			/**
@@ -757,25 +724,19 @@ function ZbIdxDbDrive(_storage, _authUrl){
 					}
 				});
 			};
-		}, function(){
-			if(func){
-				func(arrs);
-			}
 		});
+		return arrs;
 	};
 
 	/**
 	 * @public
 	 * @param {string} id
-	 * @param {function(string)=} func
+	 * @return {!Promise<string>}
 	 */
-	this.fetchData = function(id, func){
-		if(!func){
-			return;
-		}
+	this.fetchData = async function(id){
 		/** @type {string} */
 		var dat = "";
-		this.operateDatas(function(a_store){
+		await this.operateDatas(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.get(id);
 			/**
@@ -785,9 +746,8 @@ function ZbIdxDbDrive(_storage, _authUrl){
 				dat = b_evt.target.result["data"];
 			};
 
-		}, function(){
-			func(dat);
 		});
+		return dat;
 	};
 
 	/**
@@ -846,116 +806,113 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @private
 	 * @param {function(!IDBObjectStore)=} datafunc function(a_store){}
-	 * @param {function(string=)=} endfunc function(){}
+	 * @return {!Promise<void>}
 	 */
-	this.operateItems = function(datafunc, endfunc){
-		/** @type {IDBOpenDBRequest} */
-		var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
-		/**
-		 * @param {Event} a_evt
-		 */
-		request.onsuccess = function(a_evt){
-			/** @type {IDBDatabase} */
-			var a_db = a_evt.target.result;
-			/** @type {IDBTransaction} */
-			var a_trans = a_db.transaction(ZbIdxDbDrive.ITEMS_NAME, "readwrite");
+	this.operateItems = function(datafunc){
+		return new Promise(function(resolve, reject){
+			/** @type {IDBOpenDBRequest} */
+			var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
 			/**
-			 * @param {Event} b_evt
+			 * @param {Event} a_evt
 			 */
-			a_trans.oncomplete = function(b_evt){
-				a_db.close();
-				if(endfunc){
-					endfunc();
+			request.onsuccess = function(a_evt){
+				/** @type {IDBDatabase} */
+				var a_db = a_evt.target.result;
+				/** @type {IDBTransaction} */
+				var a_trans = a_db.transaction(ZbIdxDbDrive.ITEMS_NAME, "readwrite");
+				/**
+				 * @param {Event} b_evt
+				 */
+				a_trans.oncomplete = function(b_evt){
+					a_db.close();
+					resolve();
+				}.bind(this);
+				/** @type {!IDBObjectStore} */
+				var a_store = a_trans.objectStore(ZbIdxDbDrive.ITEMS_NAME);
+				if(datafunc){
+					datafunc(a_store);
 				}
 			}.bind(this);
-			/** @type {!IDBObjectStore} */
-			var a_store = a_trans.objectStore(ZbIdxDbDrive.ITEMS_NAME);
-			if(datafunc){
-				datafunc(a_store);
-			}
-		}.bind(this);
+		});
 	};
 
 	/**
 	 * @private
 	 * @param {function(!IDBObjectStore)=} datafunc function(a_store){}
-	 * @param {function(string=)=} endfunc function(){}
+	 * @return {!Promise<void>}
 	 */
-	this.operateDatas = function(datafunc, endfunc){
-		/** @type {IDBOpenDBRequest} */
-		var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
-		/**
-		 * @param {Event} a_evt
-		 */
-		request.onsuccess = function(a_evt){
-			/** @type {IDBDatabase} */
-			var a_db = a_evt.target.result;
-			/** @type {IDBTransaction} */
-			var a_trans = a_db.transaction(ZbIdxDbDrive.DATAS_NAME, "readwrite");
+	this.operateDatas = function(datafunc){
+		return new Promise(function(resolve, reject){
+			/** @type {IDBOpenDBRequest} */
+			var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
 			/**
-			 * @param {Event} b_evt
+			 * @param {Event} a_evt
 			 */
-			a_trans.oncomplete = function(b_evt){
-				a_db.close();
-				if(endfunc){
-					endfunc();
+			request.onsuccess = function(a_evt){
+				/** @type {IDBDatabase} */
+				var a_db = a_evt.target.result;
+				/** @type {IDBTransaction} */
+				var a_trans = a_db.transaction(ZbIdxDbDrive.DATAS_NAME, "readwrite");
+				/**
+				 * @param {Event} b_evt
+				 */
+				a_trans.oncomplete = function(b_evt){
+					a_db.close();
+					resolve();
+				}.bind(this);
+				/** @type {!IDBObjectStore} */
+				var a_store = a_trans.objectStore(ZbIdxDbDrive.DATAS_NAME);
+				if(datafunc){
+					datafunc(a_store);
 				}
 			}.bind(this);
-			/** @type {!IDBObjectStore} */
-			var a_store = a_trans.objectStore(ZbIdxDbDrive.DATAS_NAME);
-			if(datafunc){
-				datafunc(a_store);
-			}
-		}.bind(this);
+		}.bind(this));
 	};
 
 	/**
 	 * @private
-	 * @param {function((boolean|DriveJsonRet), Array<DriveItem>=)} _func
 	 * @param {string=} _uid
 	 * @param {string=} _parentid
 	 * @param {string=} _fname
+	 * @return {!Promise<Array<DriveItem>>}
 	 */
-	this._searchItems = function(_func, _uid, _parentid, _fname){
-		if(_func){
-			/** @type {Array<DriveItem>} */
-			var arr = [];
-			this.operateItems(function(a_store){
-				/** @type {IDBRequest} */
-				var a_req = a_store.getAll();
-				/**
-				 * @param {Event} b_evt
-				 */
-				a_req.onsuccess = function(b_evt){
-					b_evt.target.result.forEach(function(c_ele){
-						/** @type {boolean} */
-						var c_flg = true;
-						if(_uid){
-							c_flg = (_uid == c_ele["key"]);
-						}
-						if(c_flg && _parentid){
-							c_flg = (_parentid == c_ele["pid"]);
-						}
-						if(c_flg && _fname){
-							c_flg = (_fname == c_ele["name"]);
-						}
-						if(c_flg){
-							arr.push({
-								_id: c_ele["key"],
-								_name: c_ele["name"],
-								_size: c_ele["size"],
-								_lastModifiedDateTime: c_ele["tms"],
-								_type: c_ele["type"],
-								_parentId: c_ele["pid"],
-							});
-						}
-					});
-				};
-				
-			}, function(){
-				_func(false, arr);
-			});
-		}
+	this._searchItems = async function(_uid, _parentid, _fname){
+		/** @type {Array<DriveItem>} */
+		var arr = [];
+		await this.operateItems(function(a_store){
+			/** @type {IDBRequest} */
+			var a_req = a_store.getAll();
+			/**
+			 * @param {Event} b_evt
+			 */
+			a_req.onsuccess = function(b_evt){
+				b_evt.target.result.forEach(function(c_ele){
+					/** @type {boolean} */
+					var c_flg = true;
+					if(_uid){
+						c_flg = (_uid == c_ele["key"]);
+					}
+					if(c_flg && _parentid){
+						c_flg = (_parentid == c_ele["pid"]);
+					}
+					if(c_flg && _fname){
+						c_flg = (_fname == c_ele["name"]);
+					}
+					if(c_flg){
+						arr.push({
+							_id: c_ele["key"],
+							_name: c_ele["name"],
+							_size: c_ele["size"],
+							_lastModifiedDateTime: c_ele["tms"],
+							_type: c_ele["type"],
+							_parentId: c_ele["pid"],
+						});
+					}
+				});
+			};
+			
+		});
+		return arr;
 	};
 
 	/**
@@ -983,12 +940,12 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @private
 	 * @param {string} parentId
-	 * @param {function(string)} func function(a_id){}
+	 * @return {!Promise<string>}
 	 */
-	this.fetchNextId = function(parentId, func){
+	this.fetchNextId = async function(parentId){
 		/** @type {number} */
 		var idx = -1;
-		this.operateItems(function(a_store){
+		await this.operateItems(function(a_store){
 			/** @type {IDBRequest} */
 			var a_req = a_store.getAllKeys();
 			/**
@@ -1013,15 +970,13 @@ function ZbIdxDbDrive(_storage, _authUrl){
 					}
 				});
 			};
-			
-		}, function(){
-			idx++;
-			if(parentId){
-				func(idx + "_" + parentId);
-			}else{
-				func(idx.toString());
-			}
 		});
+		idx++;
+		if(parentId){
+			return idx + "_" + parentId;
+		}else{
+			return idx.toString();
+		}
 	};
 }
 

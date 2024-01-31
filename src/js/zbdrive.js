@@ -106,7 +106,7 @@ ZbDrive.prototype.setRelayUrl = function(rurl){
 /**
  * @public
  * @param {DriveAjaxOption} opt
- * @return {Promise<Response>}
+ * @return {!Promise<Response>}
  *
  * https://docs.microsoft.com/zh-cn/onedrive/developer/rest-api/api/driveitem_createuploadsession
  *  opt: {
@@ -140,8 +140,8 @@ ZbDrive.prototype.sendAjax = async function(opt){
 		headers.append("Authorization", /** @type {string} */(this.accessToken));
 	}
 	if(opt && opt._headers){
-		for(var key in opt._headers){
-			headers.append(key, opt._headers[key]);
+		for(var pair of opt._headers.entries()){
+			headers.append(pair[0], pair[1]);
 		}
 	}
 	if(opt && opt._method){
@@ -181,7 +181,7 @@ ZbDrive.prototype.getToken = function(){
 /**
  * @public
  * @param {boolean=} reuseToken
- * @return {Promise<string?>}
+ * @return {!Promise<string?>}
  */
 ZbDrive.prototype.login = async function(reuseToken){
 	if(reuseToken){
@@ -314,114 +314,109 @@ ZbDrive.prototype.logout = function(){
 /**
  * @abstract
  * @public
- * @param {DriveGetDriveOption} opt
- *
- * opt: {
- *   (required)_doneFunc: function(error, data){},
- * }
+ * @param {DriveBaseOption} opt
+ * @return {!Promise<DriveInfo>}
  */
-ZbDrive.prototype.getDrive = function(opt){};
+ZbDrive.prototype.getDrive = async function(opt){};
 /**
  * @abstract
  * @public
  * @param {DriveSearchItemsOption} opt
+ * @return {!Promise<Array<DriveItem>>}
  *
  * opt: {
  *   (required)_fname: "aaa.txt",
  *   (optional)_parentid: "xxxxxx",
- *   (required)_doneFunc: function(error, datas){},
  * }
  */
-ZbDrive.prototype.searchItems = function(opt){};
+ZbDrive.prototype.searchItems = async function(opt){};
 /**
  * @abstract
  * @public
  * @param {DriveGetItemOption} opt
+ * @return {!Promise<DriveItem>}
  *
  * opt: {
  *   (required)_uid: "xxxxxx",
- *   (required)_doneFunc: function(error, data){},
  * }
  */
-ZbDrive.prototype.getItem = function(opt){};
+ZbDrive.prototype.getItem = async function(opt){};
 /**
  * @abstract
  * @public
  * @param {DriveNewFolderOption} opt
+ * @return {!Promise<DriveItem>}
  *
  * opt: {
  *   (required)_folder: "zzzz",
  *   (optional)_parentid: "xxxxxx",
- *   (required)_doneFunc: function(error, folder){},
  * }
  */
-ZbDrive.prototype.newFolder = function(opt){};
+ZbDrive.prototype.newFolder = async function(opt){};
 
 /**
  * @public
  * @param {DriveUpdateOption} opt
+ * @return {!Promise<number>}
  *
  * opt: {
  *   (required)_fid: "zzzz",
  *   (required)_newname: "xxx.yyy",
- *   (required)_doneFunc: function(error){},
  * }
  */
-ZbDrive.prototype.rename = function(opt){
+ZbDrive.prototype.rename = async function(opt){
 	if(!(opt && opt._newname)){
 		throw new Error("newname is not specified.");
 	}
-	this.updateProp(opt);
+	return await this.updateProp(opt);
 };
 /**
  * @public
  * @param {DriveUpdateOption} opt
+ * @return {!Promise<number>}
  *
  * opt: {
  *   (required)_fid: "zzzz",
  *   (required)_parentid: "xxxxxx",
  *   (required)_oldparentid: "yyyyyy",
- *   (required)_doneFunc: function(error){},
  * }
  */
-ZbDrive.prototype.move = function(opt){
+ZbDrive.prototype.move = async function(opt){
 	if(!(opt && opt._parentid)){
 		throw new Error("parentid is not specified.");
 	}
 	if(!(opt && opt._oldparentid)){
 		throw new Error("oldparentid is not specified.");
 	}
-	this.updateProp(opt);
+	return await this.updateProp(opt);
 };
 
 /**
  * @abstract
  * @public
  * @param {DriveUpdateOption} opt
+ * @return {!Promise<number>}
  *
  * opt: {
  *   (required)_fid: "zzzz",
- *   (optional)_doneFunc: function(error){},
  * }
  */
-ZbDrive.prototype.delete = function(opt){};
+ZbDrive.prototype.delete = async function(opt){};
 
 /**
  * @abstract
  * @public
  * @param {DriveWriterOption} opt
  * @param {number} upSize
- * @param {function(string, DriveJsonRet)} func
+ * @return {!Promise<string>}
  *
  * opt = {
  *   _auth: "xxxxxxxxx",   // optional
  *   _fldrId: "xxxxxx",    // optional
  *   _fnm: "aaa.txt",      // required
  * }
- *
- * func = function(a_url, a_res){};
  */
-ZbDrive.prototype.prepareWriter = function(opt, upSize, func){};
+ZbDrive.prototype.prepareWriter = async function(opt, upSize){};
 
 /**
  * @abstract
@@ -498,15 +493,13 @@ ZbDrive.prototype.isSkipLogin = function(){
 /**
  * @protected
  * @param {Response} resp
- * @param {function(DriveJsonRet)} func
+ * @return {!Promise<DriveJsonRet>}
  */
-ZbDrive.prototype.getAjaxJsonRet = function(resp, func){
-	resp.text().then(function(resptext){
-		func({
-			_status: resp.status,
-			_restext: resptext,
-		});
-	});
+ZbDrive.prototype.getAjaxJsonRet = async function(resp){
+	return {
+		_status: resp.status,
+		_restext: await resp.text(),
+	};
 };
 
 /**
@@ -515,11 +508,11 @@ ZbDrive.prototype.getAjaxJsonRet = function(resp, func){
  * @param {string} md Method
  * @param {number} okcd The ok status code. 0 means don't check status code
  * @param {DriveBaseOption} opt
- * @param {?Object<string, string>} hds
+ * @param {Headers} hds
  * @param {ArrayBuffer|DataView|Blob|FormData|null|string|undefined} dat
- * @param {function(DriveJsonRet)} func
+ * @return {!Promise<DriveJsonRet>}
  */
-ZbDrive.prototype._processRequest = function(upath, md, okcd, opt, hds, dat, func){
+ZbDrive.prototype._processRequest = async function(upath, md, okcd, opt, hds, dat){
 	/** @type {DriveAjaxOption} */
 	var opt2 = {
 		_upath: upath,
@@ -532,35 +525,25 @@ ZbDrive.prototype._processRequest = function(upath, md, okcd, opt, hds, dat, fun
 	if(dat){
 		opt2._data = dat;
 	}
-	this.sendAjax(opt2).then(function(resp){
-		this.getAjaxJsonRet(resp, function(a_dat){
-			/** @type {boolean} */
-			var a_err = false;
-			if(okcd && resp.status != okcd){
-				a_err = true;
-			}
-			if(a_err){
-				if(opt && opt._doneFunc){
-					opt._doneFunc(a_dat);
-				}else{
-					throw new Error(JSON.stringify(a_dat));
-				}
-			}else{
-				func(a_dat);
-			}
-		}.bind(this));
-	}.bind(this));
+	/** @type {Response} */
+	var resp = await this.sendAjax(opt2);
+	/** @type {DriveJsonRet} */
+	var rdat = await this.getAjaxJsonRet(resp);
+	if(okcd && resp.status != okcd){
+		throw new Error(JSON.stringify(rdat));
+	}
+	return rdat;
 };
 /**
  * @protected
  * @param {string} upath
  * @param {DriveBaseOption} opt
- * @param {function(string)} func
+ * @return {!Promise<string>}
  */
-ZbDrive.prototype._getData = function(upath, opt, func){
-	this._processRequest(upath, "GET", 200, opt, null, null, /** @type {function(DriveJsonRet)} */(function(a_res){
-		func(a_res._restext);
-	}));
+ZbDrive.prototype._getData = async function(upath, opt){
+	/** @type {DriveJsonRet} */
+	var res = await this._processRequest(upath, "GET", 200, opt, null, null);
+	return res._restext;
 };
 /**
  * @protected
@@ -590,15 +573,16 @@ ZbDrive.prototype.getAjaxBaseUrl = function(){};
  * @abstract
  * @protected
  * @param {DriveUpdateOption} opt
+ * @return {!Promise<number>}
  *
  * opt: {
  *   (required)_fid: "zzzz",
- *   (required)_parentid: "xxxxxx",
- *   (required)_oldparentid: "yyyyyy",
- *   (required)_doneFunc: function(error){},
+ *   (optional)_parentid: "xxxxxx",    // for move
+ *   (optional)_oldparentid: "yyyyyy", // for move
+ *   (optional)_newname: "zzzzzz",     // for rename
  * }
  */
-ZbDrive.prototype.updateProp = function(opt){};
+ZbDrive.prototype.updateProp = async function(opt){};
 
 /**
  * @private
@@ -669,7 +653,7 @@ ZbDrive.prototype.authorize = async function(opt){
 /**
  * @private
  * @param {DriveAjaxOption} _opt
- * @return {Promise<Response>}
+ * @return {!Promise<Response>}
  */
 ZbDrive.prototype.retryAjaxWithLogin = async function(_opt){
 	console.log("Retry to send ajax.");
@@ -787,21 +771,11 @@ function ZbDriveWriter(_opt, _drv){
 	/**
 	 * @public
 	 * @param {number} fsize
-	 * @param {function(DriveJsonRet)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(fsize, cb){
+	this.prepare = async function(fsize){
 		this.upSize = fsize;
-		this.drive.prepareWriter(this.opt, fsize, function(a_url, a_res){
-			if(a_url){
-				this.upUrl = a_url;
-				if(cb){
-					cb(a_res);
-				}
-			}else{
-				console.error(a_res);
-				throw new Error(JSON.stringify(a_res));
-			}
-		}.bind(this));
+		this.upUrl = await this.drive.prepareWriter(this.opt, fsize);
 	};
 
 	/**

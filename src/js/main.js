@@ -287,22 +287,17 @@ function addQuotaUsed(sz, trashFlg){
  * @param {function()} func
  */
 function getDriveInfo(func){
-	g_drive.getDrive({
-		/** @type {function((boolean|DriveJsonRet), DriveInfo=)} */
-		_doneFunc: function(a_err, a_dat){
-			if(a_err){
-				showError(a_err);
-			}else{
-				/** @type {Element} */
-				var a_ele = getElement("#spanQuota");
-				a_ele.setAttribute("total", a_dat._total);
-				a_ele.setAttribute("trash", a_dat._trash);
-				addQuotaUsed(a_dat._used);
-				if(func){
-					func();
-				}
-			}
-		},
+	g_drive.getDrive({}).then(function(a_dat){
+		/** @type {Element} */
+		var a_ele = getElement("#spanQuota");
+		a_ele.setAttribute("total", a_dat._total);
+		a_ele.setAttribute("trash", a_dat._trash);
+		addQuotaUsed(a_dat._used);
+		if(func){
+			func();
+		}
+	}).catch(function(a_err){
+		showError(a_err);
 	});
 }
 /**
@@ -1109,21 +1104,17 @@ function admitRename(){
 			var fnm = encryptFname(txt.value);
 			/** @type {DriveUpdateOption} */
 			var opt = {
-				/** @type {function((boolean|DriveJsonRet))} */
-				_doneFunc: function(a_err){
-					if(a_err){
-						showError(a_err._restext);
-						return;
-					}
-					sp.innerText = txt.value;
-					showNotify("renDone");
-				},
 				/** @type {string} */
 				_fid: uid,
 				/** @type {string} */
 				_newname: fnm,
 			}
-			g_drive.rename(opt);
+			g_drive.rename(opt).then(function(){
+				sp.innerText = txt.value;
+				showNotify("renDone");
+			}).catch(function(a_err){
+				showError(a_err);
+			});
 		}
 	}
 	hideElement(div);
@@ -1170,22 +1161,6 @@ function moveToFolder(func){
 	var idx = 0;
 	/** @type {DriveUpdateOption} */
 	var opt = {
-		/** @type {function((boolean|DriveJsonRet))} */
-		_doneFunc: function(a_err){
-			if(a_err){
-				showError(a_err._restext);
-				return;
-			}
-			idx++;
-			if(idx < arr.length){
-				opt._fid = arr[idx]._id;
-				g_drive.move(opt);
-			}else{
-				listFolder(true, false, undefined, function(){
-					showNotify("moveDone");
-				});
-			}
-		},
 		/** @type {string} */
 		_fid: arr[idx]._id,
 		/** @type {string} */
@@ -1193,7 +1168,19 @@ function moveToFolder(func){
 		/** @type {string} */
 		_oldparentid: g_paths[g_paths.length - 1]._id,
 	}
-	g_drive.move(opt);
+	g_drive.move(opt).then(function(){
+		idx++;
+		if(idx < arr.length){
+			opt._fid = arr[idx]._id;
+			g_drive.move(opt);
+		}else{
+			listFolder(true, false, undefined, function(){
+				showNotify("moveDone");
+			});
+		}
+	}).catch(function(a_err){
+		showError(a_err);
+	});
 }
 /**
  * @param {string=} uid
@@ -1221,28 +1208,25 @@ function deleteItems(uid){
 	var idx = 0;
 	/** @type {DriveUpdateOption} */
 	var opt = {
-		/** @type {function((boolean|DriveJsonRet), number=)} */
-		_doneFunc: function(a_err, a_sz){
-			if(a_err){
-				showError(a_err._restext);
-				return;
-			}else if(a_sz){
-				addQuotaUsed(a_sz, true);
-			}
-			idx++;
-			if(idx < arr.length){
-				opt._fid = arr[idx]._id;
-				g_drive.delete(opt);
-			}else{
-				listFolder(true, false, undefined, function(){
-					showNotify("delDone");
-				});
-			}
-		},
 		/** @type {string} */
 		_fid: arr[idx]._id,
 	}
-	g_drive.delete(opt);
+	g_drive.delete(opt).then(function(a_sz){
+		if(a_sz){
+			addQuotaUsed(a_sz, true);
+		}
+		idx++;
+		if(idx < arr.length){
+			opt._fid = arr[idx]._id;
+			g_drive.delete(opt);
+		}else{
+			listFolder(true, false, undefined, function(){
+				showNotify("delDone");
+			});
+		}
+	}).catch(function(a_err){
+		showError(a_err);
+	});
 }
 /**
  * @param {function(boolean)=} func
@@ -1261,40 +1245,36 @@ function newFolder(func){
 	var finto = getElement("#chkFInto").checked;
 	/** @type {DriveNewFolderOption} */
 	var opt = {
-		/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-		_doneFunc: function(a_err, a_dat){
-			if(a_err){
-				showError(a_err._restext);
-				if(func){
-					func(false);
-				}
-				return;
-			}
-			a_dat._name = fldnm;
-			if(finto){
-				/** @type {function(Array<DriveItem>)|undefined} */
-				var a_func = undefined;
-				if(func){
-					a_func = function(b_itms){
-						func(true);
-						hideMessage();
-					};
-				}
-				g_paths.push(a_dat);
-				listFolder(false, false, undefined, a_func);
-			}else if(func){
-				addItem(getListUl("#divMain"), a_dat);
-				func(true);
-				showNotify("flDone");
-			}
-		},
 		/** @type {string} */
 		_folder: encryptFname(fldnm),
 	}
 	if(g_paths.length > 0){
 		opt._parentid = g_paths[g_paths.length - 1]._id;
 	}
-	g_drive.newFolder(opt);
+	g_drive.newFolder(opt).then(function(a_dat){
+		a_dat._name = fldnm;
+		if(finto){
+			/** @type {function(Array<DriveItem>)|undefined} */
+			var a_func = undefined;
+			if(func){
+				a_func = function(b_itms){
+					func(true);
+					hideMessage();
+				};
+			}
+			g_paths.push(a_dat);
+			listFolder(false, false, undefined, a_func);
+		}else if(func){
+			addItem(getListUl("#divMain"), a_dat);
+			func(true);
+			showNotify("flDone");
+		}
+	}).catch(function(a_err){
+		showError(a_err._restext);
+		if(func){
+			func(false);
+		}
+	});
 }
 /**
  * @param {boolean=} noFolder
