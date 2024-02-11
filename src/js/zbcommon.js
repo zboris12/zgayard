@@ -603,3 +603,15 @@ function getStringLength(str){
 	}
 	return sz;
 }
+
+/**
+ * Sleep milliseconds.
+ *
+ * @param {number} ms
+ * @return {!Promise<void>}
+ */
+function sleep(ms){
+	return new Promise(function(resolve, reject){
+		setTimeout(resolve, ms);
+	});
+}

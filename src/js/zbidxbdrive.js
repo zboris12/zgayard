@@ -63,32 +63,27 @@ function IdxDbReader(_opt, _drv){
 	if(_opt._bufSize){
 		this.bufSize = _opt._bufSize;
 	}
-	/** @public @type {?function(ArrayBuffer, *)} */
-	this.onread = null;
 
 	/**
 	 * @public
 	 * @param {number=} offset
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(offset, cb){
-		this.drive.prepareReader(this.opt, function(a_dat, a_res){
-			if(a_dat){
-				this.size = a_dat._size;
-				this.drive.fetchDataInfos(this.opt._id, function(b_arr){
-					this.dataInfos = b_arr;
-					this.dataInfos.sort(function(c_a, c_b){
-						return c_a._idx - c_b._idx;
-					});
-					this.checkOffset(offset);
-					if(cb){
-						cb();
-					}
-				}.bind(this));
-			}else{
-				throw new Error(a_res._restext+" ("+a_res._status+")");
-			}
-		}.bind(this));
+	this.prepare = async function(offset){
+		/** @type {?DriveItem} */
+		var dat = await this.drive.prepareReader(this.opt);
+		if(dat){
+			this.size = dat._size || 0;
+			/** @type {Array<IdxDbDataInfo>} */
+			var arr = await this.drive.fetchDataInfos(this.opt._id);
+			this.dataInfos = arr;
+			this.dataInfos.sort(function(c_a, c_b){
+				return c_a._idx - c_b._idx;
+			});
+			this.checkOffset(offset);
+		}else{
+			throw new Error("Failed to prepare reader.");
+		}
 	};
 
 	/**
@@ -119,17 +114,18 @@ function IdxDbReader(_opt, _drv){
 	/**
 	 * @public
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this.read = function(size){
+	this.read = async function(size){
 		if(this.curdat){
-			this.readData(size);
+			return await this.readData(size);
 		}else{
-			this.drive.fetchData(this.dataInfos[this.idx]._id, function(a_dat){
-				/** @type {WordArray} */
-				var a_words = CryptoJS.enc.Base64url.parse(a_dat);
-				this.curdat = wordArrayToBytes(a_words);
-				this.readData(size);
-			}.bind(this));
+			/** @type {string} */
+			var a_dat = await this.drive.fetchData(this.dataInfos[this.idx]._id);
+			/** @type {WordArray} */
+			var a_words = CryptoJS.enc.Base64url.parse(a_dat);
+			this.curdat = wordArrayToBytes(a_words);
+			return await this.readData(size);
 		}
 	};
 	/**
@@ -181,8 +177,9 @@ function IdxDbReader(_opt, _drv){
 	/**
 	 * @private
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this.readData = function(size){
+	this.readData = async function(size){
 		/** @type {number} */
 		var st = this.pos - this.stpos;
 		/** @type {number} */
@@ -202,9 +199,7 @@ function IdxDbReader(_opt, _drv){
 			this.idx++;
 			this.stpos = this.pos;
 		}
-		if(this.onread){
-			this.onread(dat.buffer, this);
-		}
+		return dat.buffer;
 	};
 }
 
@@ -254,9 +249,9 @@ function IdxDbWriter(_opt, _drv){
 	/**
 	 * @public
 	 * @param {ArrayBuffer|Array<number>} buf
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.write = function(buf, cb){
+	this.write = async function(buf){
 		// if(this.opt._fnm == g_CONFILE){
 			// /** @type {WordArray} */
 			// var a_words = new CryptoJS.lib.WordArray.init(buf);
@@ -273,30 +268,19 @@ function IdxDbWriter(_opt, _drv){
 		/** @type {string} */
 		var data = words.toString(CryptoJS.enc.Base64url);
 		this.ridx++;
-		this.drive.saveData(this.data._id, this.ridx, words.sigBytes, data, function(){
-			if(this.data._size >= this.fsize){
-				this.drive.saveItem(this.data, cb);
-			}else if(cb){
-				cb();
-			}
-		}.bind(this));
+		await this.drive.saveData(this.data._id, this.ridx, words.sigBytes, data);
+		if(this.data._size >= this.fsize){
+			await this.drive.saveItem(this.data);
+		}
 	};
 
 	/**
 	 * @public
-	 * @param {function((boolean|DriveJsonRet), DriveJsonRet=)=} cb
-	 *
-	 * cb: function(a_err, a_result){}
-	 * a_result: {_status: 999, _restext: "xxxxx"}
+	 * @return {!Promise<void>}
 	 */
-	this.cancel = function(cb){
-		this.drive.delete({
+	this.cancel = async function(){
+		await this.drive.delete({
 			_fid: this.data._id,
-			_doneFunc: function(a_ret){
-				if(cb){
-					cb(a_ret);
-				}
-			},
 		});
 	};
 	/**
@@ -340,8 +324,9 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
+	 * @return {!Promise<void>}
 	 */
-	this.logout = function(){
+	this.logout = async function(){
 		location.reload();
 	};
 
@@ -554,10 +539,10 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {XMLHttpRequest} ajax
-	 * @return {number} Next write postion.
+	 * @param {Response} resp
+	 * @return {!Promise<number>} Next write postion.
 	 */
-	this.getNextPosition = function(ajax){
+	this.getNextPosition = async function(resp){
 		return ZbDrvWrtPos.UNKNOWN;
 	};
 
@@ -565,9 +550,9 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {string} upurl
-	 * @param {function((boolean|DriveJsonRet), DriveJsonRet=)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.cancelUpload = function(upurl, cb){
+	this.cancelUpload = async function(upurl){
 		//TODO
 	};
 
@@ -584,14 +569,11 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {DriveReaderOption} opt
-	 * @param {function(?DriveItem, DriveJsonRet)} func
+	 * @return {!Promise<?DriveItem>}
 	 */
-	this.prepareReader = function(opt, func){
-		this.getItem({
+	this.prepareReader = async function(opt){
+		return await this.getItem({
 			_uid: opt._id,
-			_doneFunc: function(a_ret, a_itm){
-				func(a_itm, a_ret);
-			},
 		});
 	};
 

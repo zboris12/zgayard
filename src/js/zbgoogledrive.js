@@ -171,20 +171,20 @@ function ZbGoogleDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {XMLHttpRequest} ajax
-	 * @return {number} Next write postion.
+	 * @param {Response} resp
+	 * @return {!Promise<number>} Next write postion.
 	 */
-	this.getNextPosition = function(ajax){
+	this.getNextPosition = async function(resp){
 		/** @type {Array<number>} */
 		const okSts = [200, 201];
 		/** @type {Array<number>} */
 		const onwaySts = [308];
-		if(okSts.indexOf(ajax.status) >= 0){
+		if(okSts.indexOf(resp.status) >= 0){
 			return ZbDrvWrtPos.FINISHED;
-		}else if(onwaySts.indexOf(ajax.status) < 0){
+		}else if(onwaySts.indexOf(resp.status) < 0){
 			return ZbDrvWrtPos.ERROR;
 		}
-		var rng = /** @type {string} */(ajax.getResponseHeader("range")); // Sample: bytes=0-786431
+		var rng = /** @type {string} */(resp.headers.get("range")); // Sample: bytes=0-786431
 		if(rng){
 			/** @type {number} */
 			var i = rng.indexOf("-");
@@ -199,7 +199,7 @@ function ZbGoogleDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {DriveReaderOption} opt
-	 * @return {!Promise<DriveItem>}
+	 * @return {!Promise<?DriveItem>}
 	 */
 	this.prepareReader = async function(opt){
 		/** @type {string} */

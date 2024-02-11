@@ -277,8 +277,9 @@ ZbDrive.prototype.login = async function(reuseToken){
 };
 /**
  * @public
+ * @return {!Promise<void>}
  */
-ZbDrive.prototype.logout = function(){
+ZbDrive.prototype.logout = async function(){
 	this.accessToken = null;
 	this.storage.removeSessionData("access_token");
 	var lourl = /** @type {string} */(this.storage.getSessionData("logout_url"));
@@ -292,23 +293,20 @@ ZbDrive.prototype.logout = function(){
 	formData.append("drive_type", this.getId());
 	formData.append("action", "logout");
 
-	/** @type {XMLHttpRequest} */
-	var ajax = new XMLHttpRequest();
-	ajax.open("POST", this.authUrl, true);
-	ajax.withCredentials = true;
-	ajax.onload = function(a_evt){
-		/** @type {XMLHttpRequest} */
-		var a_x = a_evt.target;
-		if (a_x.readyState == 4){
-			if(a_x.status == 200){
-				var ret = JSON.parse(a_x.responseText);
-				if(ret && ret["logout"]){
-					window.location.href = ret["logout"];
-				}
-			}
+	/** @type {Response} */
+	var resp = await fetch(this.authUrl, {
+		"method": "POST",
+		"credentials": "include",
+		"body": formData,
+	});
+	if(resp.ok){
+		/** @type {string} */
+		var resptext = await resp.text();
+		var ret = JSON.parse(resptext);
+		if(ret && ret["logout"]){
+			window.location.href = ret["logout"];
 		}
-	};
-	ajax.send(formData);
+	}
 };
 
 /**
@@ -421,24 +419,22 @@ ZbDrive.prototype.prepareWriter = async function(opt, upSize){};
 /**
  * @abstract
  * @public
- * @param {XMLHttpRequest} ajax
- * @return {number} Next write postion.
+ * @param {Response} resp
+ * @return {!Promise<number>} Next write postion.
  *
  * If return value is ZbDrvWrtPos.FINISHED, it means write is finished.
  * If return value is ZbDrvWrtPos.ERROR, it means response status is invalid.
  * If return value is ZbDrvWrtPos.UNKNOWN, it means unknown next position.
  */
-ZbDrive.prototype.getNextPosition = function(ajax){};
+ZbDrive.prototype.getNextPosition = async function(resp){};
 
 /**
  * @public
  * @param {string} upurl
- * @param {function((boolean|DriveJsonRet), DriveJsonRet=)=} cb
+ * @return {!Promise<void>}
  */
-ZbDrive.prototype.cancelUpload = function(upurl, cb){
-	if(cb){
-		cb(false);
-	}
+ZbDrive.prototype.cancelUpload = async function(upurl){
+	return;
 };
 
 /**
@@ -454,7 +450,7 @@ ZbDrive.prototype.createWriter = function(opt){
  * @abstract
  * @public
  * @param {DriveReaderOption} opt
- * @param {function(?DriveItem, DriveJsonRet)} func Please set download url to _id of DriveItem
+ * @return {!Promise<?DriveItem>}
  *
  * _opt = {
  *   _auth: "xxxxxxxxx", // optional
@@ -462,7 +458,7 @@ ZbDrive.prototype.createWriter = function(opt){
  *   _bufSize: 999,      // optional
  * }
  */
-ZbDrive.prototype.prepareReader = function(opt, func){};
+ZbDrive.prototype.prepareReader = async function(opt){};
 
 /**
  * @public
@@ -781,9 +777,9 @@ function ZbDriveWriter(_opt, _drv){
 	/**
 	 * @public
 	 * @param {ArrayBuffer|Array<number>} buf
-	 * @param {function(string)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.write = function(buf, cb){
+	this.write = async function(buf){
 		/** @type {Uint8Array} */
 		var whole = null;
 		if(this.rebuf){
@@ -816,23 +812,29 @@ function ZbDriveWriter(_opt, _drv){
 
 		/** @type {number} */
 		var retryCnt = 0;
-		/** @type {function()} */
-		var ajaxPut = function(){
-			/** @type {XMLHttpRequest} */
-			var ajax = new XMLHttpRequest();
-			ajax.open("PUT", this.upUrl, true); //非同期
-//			ajax.setRequestHeader("Content-Length", bufblob.size);
-			ajax.setRequestHeader("Content-Range", range);
-			ajax.onload = function(a_evt){
-				bufblob = null;
-				/** @type {XMLHttpRequest} */
-				var a_x = a_evt.target;
-				if(a_x.readyState == 4){
+
+		/** @type {function():!Promise<void>} */
+		var ajaxPut = async function(){
+			/** @type {Headers} */
+			var headers = new Headers();
+			// headers.append("Content-Length", bufblob.size);
+			headers.append("Content-Range", range);
+			try{
+				/** @type {Response} */
+				var resp = await fetch(this.upUrl, {
+					"method": "PUT",
+					"headers": headers,
+					"body": bufblob,
+				});
+				/** @type {string} */
+				var resptext = "";
+				if(resp.ok){
 					/** @type {number} */
-					var a_npos = this.drive.getNextPosition(a_x);
+					var a_npos = await this.drive.getNextPosition(resp);
 					if(a_npos == ZbDrvWrtPos.ERROR){
 						buf = null;
-						throw new Error(a_x.responseText+" ("+a_x.status+")");
+						resptext = await resp.text();
+						throw new Error(resptext+" ("+resp.status+")");
 					}else if(a_npos != ZbDrvWrtPos.FINISHED && a_npos != ZbDrvWrtPos.UNKNOWN && a_npos < this.pos){
 						/** @type {number} */
 						var a_buflen = 0;
@@ -847,7 +849,7 @@ function ZbDriveWriter(_opt, _drv){
 							var a_buf = buf.slice(a_buflen);
 							buf = null;
 							if(this.pos >= this.upSize){
-								this.write(a_buf, cb);
+								await this.write(a_buf);
 								return;
 							}else{
 								this.rebuf = a_buf;
@@ -858,36 +860,31 @@ function ZbDriveWriter(_opt, _drv){
 							throw new Error("Can NOT continue to upload buffer.");
 						}
 					}
-					if(cb){
-						cb(a_x.responseText);
-					}
+				}else{
+					buf = null;
+					resptext = await resp.text();
+					throw new Error(resptext+" ("+resp.status+")");
 				}
-			}.bind(this);
-			ajax.onerror = function(a_evt){
+			}catch(err){
 				if(retryCnt < 1){
 					retryCnt++;
 					// retry for occasionally server failed
-					setTimeout(function(){
-						ajaxPut();
-					}, 500);
+					await sleep(500);
+					await ajaxPut();
 				}else{
 					buf = null;
 					bufblob = null;
 				}
-			};
-			ajax.send(bufblob);
+			}
 		}.bind(this);
-		ajaxPut();
+		await ajaxPut();
 	};
 	/**
 	 * @public
-	 * @param {function((boolean|DriveJsonRet), DriveJsonRet=)=} cb
-	 *
-	 * cb: function(a_err, a_result){}
-	 * a_result: {_status: 999, _restext: "xxxxx"}
+	 * @return {!Promise<void>}
 	 */
-	this.cancel = function(cb){
-		this.drive.cancelUpload(this.upUrl, cb);
+	this.cancel = async function(){
+		await this.drive.cancelUpload(this.upUrl);
 	};
 	/**
 	 * @public
@@ -948,9 +945,9 @@ function ZbDriveReader(_opt, _drv){
 	/**
 	 * @public
 	 * @param {number=} offset
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(offset, cb){
+	this.prepare = async function(offset){
 		if(this.prepared){
 			if(this.reading){
 				this.oldreading = this.reading;
@@ -966,38 +963,32 @@ function ZbDriveReader(_opt, _drv){
 			}else{
 				this.pos = 0;
 			}
-			if(cb){
-				cb();
-			}
 			return;
 		}
 
-		this.drive.prepareReader(this.opt, function(a_dat, a_res){
-			this.prepared = true;
-			if(a_dat){
-				this.size = a_dat._size;
-				this.url = a_dat._id;
-				this.name = a_dat._name;
-				if(a_dat._type == "1"){
-					this.retryAuth = 1;
-				}else{
-					this.retryAuth = 0;
-				}
-				if(offset){
-					if(offset >= this.getSize()){
-						throw new Error("offset can not be bigger than input size.");
-					}else{
-						this.pos = offset;
-					}
-				}
-				if(cb){
-					cb();
-				}
-
+		/** @type {?DriveItem} */
+		var dat = await this.drive.prepareReader(this.opt);
+		this.prepared = true;
+		if(dat){
+			this.size = dat._size || 0;
+			this.url = dat._id;
+			this.name = dat._name;
+			if(dat._type == "1"){
+				this.retryAuth = 1;
 			}else{
-				throw new Error(a_res._restext+" ("+a_res._status+")");
+				this.retryAuth = 0;
 			}
-		}.bind(this));
+			if(offset){
+				if(offset >= this.getSize()){
+					throw new Error("offset can not be bigger than input size.");
+				}else{
+					this.pos = offset;
+				}
+			}
+
+		}else{
+			throw new Error("Failed to prepare reader.");
+		}
 	};
 	/**
 	 * @public
@@ -1030,12 +1021,13 @@ function ZbDriveReader(_opt, _drv){
 	/**
 	 * @public
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this.read = function(size){
+	this.read = async function(size){
 		if(!size){
 			size = this.bufSize;
 		}
-		this._read(size);
+		return await this._read(size);
 	};
 	/**
 	 * @public
@@ -1047,10 +1039,11 @@ function ZbDriveReader(_opt, _drv){
 	/**
 	 * @private
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this._read = function(size){
+	this._read = async function(size){
 		if(size && this.reading){
-			return;
+			return null;
 		}else if(size){
 			this.reading = size;
 		}else if(this.reading){
@@ -1059,12 +1052,12 @@ function ZbDriveReader(_opt, _drv){
 			throw new Error("size must be specified.");
 		}
 		if(this.oldreading){
-			return;
+			return null;
 		}
 		/** @type {number} */
 		var pos1 = this.pos + size - 1;
 
-		/** @type {function()} */
+		/** @type {function():!Promise<ArrayBuffer>} */
 		var ajaxGet = async function(){
 			/** @type {string} */
 			var url = this.url;
@@ -1088,7 +1081,7 @@ function ZbDriveReader(_opt, _drv){
 				if(this.oldreading){
 					this.oldreading = 0;
 					if(this.reading){
-						this._read();
+						return await this._read();
 					}
 					return;
 				}
@@ -1121,11 +1114,9 @@ function ZbDriveReader(_opt, _drv){
 					}else if(this.pos > this.getSize()){
 						this.pos = this.getSize();
 					}
-					if(this.onread){
-						/** @type {ArrayBuffer} */
-						var buf = await resp.arrayBuffer();
-						this.onread(buf, this);
-					}
+					/** @type {ArrayBuffer} */
+					var buf = await resp.arrayBuffer();
+					return buf;
 				}else if(resp.status == 401 && this.retryAuth == 1){
 					console.log("Retry auth.");
 					this.retryAuth = 2;
@@ -1137,7 +1128,7 @@ function ZbDriveReader(_opt, _drv){
 						if(this.opt._auth){
 							delete this.opt._auth;
 						}
-						await ajaxGet();
+						return await ajaxGet();
 					}
 				}else{
 					/** @type {string} */
@@ -1147,18 +1138,17 @@ function ZbDriveReader(_opt, _drv){
 			}catch(err){
 				if(this.tryLevel == 0 && this.drive.getRelayUrl()){
 					this.tryLevel = 10;
-					await ajaxGet();
+					return await ajaxGet();
 				}else if(this.tryLevel == 1 || this.tryLevel == 11){
 					this.tryLevel++;
 					// retry for occasionally server failed
-					setTimeout(function(){
-						ajaxGet().then();
-					}, 500);
+					await sleep(500);
+					return await ajaxGet();
 				}
 			}
 
 		}.bind(this);
 
-		ajaxGet().then();
+		return await ajaxGet();
 	};
 }

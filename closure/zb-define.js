@@ -72,25 +72,23 @@ function ZBWriter(){
 	/**
 	 * @public
 	 * @param {ArrayBuffer|Array<number>} buf
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.write = function(buf, cb){};
+	this.write = async function(buf){};
 	/**
 	 * @public
-	 * @param {function(?,?=)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.cancel = function(cb){};
+	this.cancel = async function(){};
 }
 /** @interface */
 function ZBReader(){
-	/** @public @type {?function(ArrayBuffer, *)} */
-	this.onread;
 	/**
 	 * @public
 	 * @param {number=} offset
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(offset, cb){};
+	this.prepare = async function(offset){};
 	/**
 	 * @public
 	 * @return {number}
@@ -109,8 +107,9 @@ function ZBReader(){
 	/**
 	 * @public
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this.read = function(size){};
+	this.read = async function(size){};
 	/**
 	 * @public
 	 */

@@ -157,9 +157,9 @@ function ZBlobWriter(opt){
 	/**
 	 * @public
 	 * @param {ArrayBuffer|Array<number>} buf
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.write = function(buf, cb){
+	this.write = async function(buf){
 		if(Array.isArray(buf)){
 			if(this.arrbuf){
 				this.arrbuf = this.arrbuf.concat(buf);
@@ -173,19 +173,12 @@ function ZBlobWriter(opt){
 			this.arrbuf.push(buf);
 		}
 		buf = null;
-		if(cb){
-			cb();
-		}
 	};
 	/**
 	 * @public
-	 * @param {function(?,?=)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.cancel = function(cb){
-		if(cb){
-			cb(false, true);
-		}
-	};
+	this.cancel = async function(){};
 	// --- Implement interface methods End --- //
 
 	/**
@@ -293,9 +286,9 @@ function ZBlobReader(_opt){
 	/**
 	 * @public
 	 * @param {number=} offset
-	 * @param {function()=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.prepare = function(offset, cb){
+	this.prepare = async function(offset){
 		if(offset){
 			if(offset >= this.getSize()){
 				throw new Error("offset can not be bigger than input size.");
@@ -305,19 +298,6 @@ function ZBlobReader(_opt){
 		}
 
 		this.reader = new FileReader();
-		/**
-		 * @return {Event}
-		 */
-		this.reader.onload = function(a_evt){
-			/** @type {ArrayBuffer} */
-			var a_dat = a_evt.target.result;
-			if(this.onread){
-				this.onread(a_dat, this);
-			}
-		}.bind(this);
-		if(cb){
-			cb();
-		}
 	};
 	/**
 	 * @public
@@ -343,19 +323,27 @@ function ZBlobReader(_opt){
 	/**
 	 * @public
 	 * @param {number=} size
+	 * @return {!Promise<ArrayBuffer>}
 	 */
 	this.read = function(size){
-		if(this.reader.readyState == 1){
-			return;
-		}
-		/** @type {number} */
-		var pos1 = this.pos;
-		if(size){
-			this.pos += size;
-		}else{
-			this.pos += this.bufSize;
-		}
-		this.reader.readAsArrayBuffer(this.blob.slice(pos1, this.pos));
+		return new Promise(function(resolve, reject){
+			if(this.reader.readyState == 1){
+				return;
+			}
+			this.reader.onload = function(a_evt){
+				/** @type {ArrayBuffer} */
+				var a_dat = a_evt.target.result;
+				resolve(a_dat);
+			}.bind(this);
+			/** @type {number} */
+			var pos1 = this.pos;
+			if(size){
+				this.pos += size;
+			}else{
+				this.pos += this.bufSize;
+			}
+			this.reader.readAsArrayBuffer(this.blob.slice(pos1, this.pos));
+		}.bind(this));
 	};
 	/**
 	 * @public
@@ -575,7 +563,7 @@ function ZbCrypto(_info, _opts){
 	 * @param {ArrayBuffer} arrbuf
 	 * @param {*} evtgt
 	 */
-	this.onread = function(arrbuf, evtgt){
+	this.onread = async function(arrbuf, evtgt){
 		try{
 			/** @type {WordArray} */
 			var wdat = new CryptoJS.lib.WordArray.init(arrbuf);
@@ -619,21 +607,19 @@ function ZbCrypto(_info, _opts){
 					this.push(ret);
 				}else if(ret){
 					if(this.writer){
-						this.writer.write(ret, function(){
-							if(this.reader.isEnd()){
-								this.dofinal();
-							}else if(this.onstep){
-								if(this.onstep()){
-									this.reader.read();
-								}else{
-									this.writer.cancel(/** @type {function(?,?=)} */(function(a_err, a_result){
-										this.dofinal(a_err, a_result);
-									}).bind(this));
-								}
-							}else{
+						await this.writer.write(ret)
+						if(this.reader.isEnd()){
+							this.dofinal();
+						}else if(this.onstep){
+							if(this.onstep()){
 								this.reader.read();
+							}else{
+								await this.writer.cancel();
+								this.dofinal();
 							}
-						}.bind(this));
+						}else{
+							this.reader.read();
+						}
 					}
 				}else{
 					this.reader.read();
@@ -733,31 +719,29 @@ function ZbStreamWrapper(_info, _opts){
  * @param {ZBWriter} _writer
  * @param {(function():boolean)=} _stepFunc
  * @param {(function())=} _finalFunc
+ * @return {!Promise<void>}
  */
-function zbPipe(_reader, _writer, _stepFunc, _finalFunc){
+async function zbPipe(_reader, _writer, _stepFunc, _finalFunc){
 	/**
 	 * @param {ArrayBuffer} a_buf
 	 * @param {*} a_tgt
 	 */
-	_reader.onread = function(a_buf, a_tgt){
-		_writer.write(a_buf, function(){
-			if(_reader.isEnd()){
-				if(_finalFunc){
-					_finalFunc();
-				}
-			}else if(_stepFunc){
-				if(_stepFunc()){
-					_reader.read();
-				}
-			}else{
+	_reader.onread = async function(a_buf, a_tgt){
+		await _writer.write(a_buf);
+		if(_reader.isEnd()){
+			if(_finalFunc){
+				_finalFunc();
+			}
+		}else if(_stepFunc){
+			if(_stepFunc()){
 				_reader.read();
 			}
-		});
+		}else{
+			_reader.read();
+		}
 	};
 
-	_reader.prepare(0, function(){
-		_writer.prepare(_reader.getSize()).then(function(){
-			_reader.read();
-		});
-	});
+	await _reader.prepare(0);
+	await _writer.prepare(_reader.getSize());
+	_reader.read();
 }

@@ -214,21 +214,23 @@ function ZbOneDrive(_storage, _authUrl){
 	/**
 	 * @override
 	 * @public
-	 * @param {XMLHttpRequest} ajax
-	 * @return {number} Next write postion.
+	 * @param {Response} resp
+	 * @return {!Promise<number>} Next write postion.
 	 */
-	this.getNextPosition = function(ajax){
+	this.getNextPosition = async function(resp){
 		/** @type {Array<number>} */
 		const okSts = [200, 201];
 		/** @type {Array<number>} */
 		const onwaySts = [202];
-		if(okSts.indexOf(ajax.status) >= 0){
+		if(okSts.indexOf(resp.status) >= 0){
 			return ZbDrvWrtPos.FINISHED;
-		}else if(onwaySts.indexOf(ajax.status) < 0){
+		}else if(onwaySts.indexOf(resp.status) < 0){
 			return ZbDrvWrtPos.ERROR;
 		}
+		/** @type {string} */
+		var resptext = await resp.text();
 		/** @type {*} */
-		var dat = JSON.parse(ajax.responseText);
+		var dat = JSON.parse(resptext);
 		var rngs = /** @type {Array<string>} */(dat["nextExpectedRanges"]); // Sample: ["26-"]
 		if(rngs && rngs.length){
 			/** @type {number} */
@@ -244,31 +246,18 @@ function ZbOneDrive(_storage, _authUrl){
 	 * @override
 	 * @public
 	 * @param {string} upurl
-	 * @param {function((boolean|DriveJsonRet), DriveJsonRet=)=} cb
+	 * @return {!Promise<void>}
 	 */
-	this.cancelUpload = function(upurl, cb){
-		/** @type {XMLHttpRequest} */
-		var ajax = new XMLHttpRequest();
-		ajax.open("DELETE", upurl, true);
-		ajax.onload = function(a_evt){
-			/** @type {XMLHttpRequest} */
-			var a_x = a_evt.target;
-			if (a_x.readyState == 4){
-				/** @type {DriveJsonRet} */
-				var a_result = {_status: a_x.status, _restext: a_x.responseText};
-				if(a_x.status >= 200 && a_x.status <= 299){
-					if(cb){
-						cb(false, a_result);
-					}
-				}else{
-					console.log(a_x.responseText+" ("+a_x.status+")");
-					if(cb){
-						cb(a_result);
-					}
-				}
-			}
-		}.bind(this);
-		ajax.send();
+	this.cancelUpload = async function(upurl){
+		/** @type {Response} */
+		var resp = await fetch(upurl, {
+			"method": "DELETE",
+		});
+		if(!resp.ok){
+			/** @type {string} */
+			var resptext = await resp.text();
+			throw resptext+" ("+resp.status+")";
+		}
 	};
 
 	/**
