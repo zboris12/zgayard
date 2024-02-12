@@ -3,15 +3,16 @@
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <title> zgayard - Test Drive </title>
-<script src="../vendor/crypto-js.js" type="text/javascript"></script>
-<script src="../vendor/videostream.js" type="text/javascript"></script>
-<script src="../js/zbcommon.js" type="text/javascript"></script>
-<script src="../js/zbcrypto.js" type="text/javascript"></script>
+<script src="../src/vendor/crypto-js.js" type="text/javascript"></script>
+<script src="../src/vendor/videostream.js" type="text/javascript"></script>
+<script src="../src/js/zbcommon.js" type="text/javascript"></script>
+<script src="../src/js/zbcrypto.js" type="text/javascript"></script>
 <script src="dummydb.js" type="text/javascript"></script>
-<script src="../js/zbdrive.js" type="text/javascript"></script>
-<script src="../js/zbonedrive.js" type="text/javascript"></script>
-<script src="../js/zbgoogledrive.js" type="text/javascript"></script>
-<script src="../js/const.js" type="text/javascript"></script>
+<script src="../src/js/zbdrive.js" type="text/javascript"></script>
+<script src="../src/js/zbonedrive.js" type="text/javascript"></script>
+<script src="../src/js/zbgoogledrive.js" type="text/javascript"></script>
+<script src="../src/js/zbidxbdrive.js" type="text/javascript"></script>
+<script src="../src/js/const.js" type="text/javascript"></script>
 <script src="data.js" type="text/javascript"></script>
 <script language="javascript">
 function init(){
@@ -45,7 +46,7 @@ function changeDrive(e){
 		actLogin = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
 		actToken = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
 		clientId = g_dat["onedrive_client_id"];
-		uri = "http://localhost:10801/";
+		uri = "http://localhost:10801/src/";
 		scope = "offline_access files.readwrite";
 		cSecret = g_dat["onedrive_client_secret"];
 		rftk = g_dat["onedrive_refresh_token"];
@@ -54,7 +55,7 @@ function changeDrive(e){
 		actLogin = "https://accounts.google.com/o/oauth2/v2/auth";
 		actToken = "https://www.googleapis.com/oauth2/v4/token";
 		clientId = g_dat["googdrive_client_id"];
-		uri = "http://localhost:10801/";
+		uri = "http://localhost:10801/src/";
 		scope = "https://www.googleapis.com/auth/drive.file";
 		cSecret = g_dat["googdrive_client_secret"];
 		rftk = g_dat["googdrive_refresh_token"];
@@ -83,7 +84,7 @@ function changeDrive(e){
 		}
 	}
 }
-function token(){
+async function token(){
 	var gtyp;
 	if(document.getElementById("rftk").value){
 		gtyp = "refresh_token";
@@ -94,19 +95,30 @@ function token(){
 		return;
 	}
 
-	var frm = findParent(getElement(), "FORM");
+	var frm = findParent("FORM", getElement());
 	var fd = new FormData(frm);
 	fd.append("grant_type", gtyp);
 
-	var ajax = openAjax(frm.action, {
-		_method: frm.method,
-		_doneFunc: function(a_status, a_restext){
-			var a_dat = JSON.parse(a_restext);
-			document.getElementById("auth").value = a_dat["token_type"] + " " + a_dat["access_token"];
-			console.log(document.getElementById("auth").value);
-		},
+	var resp = await fetch(frm.action, {
+		"method": frm.method,
+		"body": fd,
 	});
-	ajax.send(fd);
+	var resptext = await resp.text();
+	console.debug(resp.status, resptext);
+	if(resp.ok){
+		var dat = JSON.parse(resptext);
+		document.getElementById("auth").value = dat["token_type"] + " " + dat["access_token"];
+		console.log(document.getElementById("auth").value);
+	}else{
+		var curl = "curl -X POST -H \"Content-Type: application/x-www-form-urlencoded\"";
+		for(const pair of fd.entries()){
+			if(pair[0] && pair[1]){
+				curl += ` --data-urlencode "${pair[0]}=${pair[1]}"`;
+			}
+		}
+		curl += " " + frm.action;
+		console.debug(curl);
+	}
 }
 function prepareDrive(){
 	var auth = document.getElementById("auth").value;
@@ -114,39 +126,30 @@ function prepareDrive(){
 		throw new Error("No access token.");
 	}
 	var drvnm = document.getElementById("selDrv").value;
-	var drv = g_DRIVES[drvnm].newDriveInstance(new ZbLocalStorage(), g_AUTHURL, g_RELAYURL);
+	var drv = g_DRIVES[drvnm].newDriveInstance(new ZbLocalStorage(), g_AUTHURL);
 	drv.presetToken(auth);
 	return drv;
 }
-function consoleResult(err, dat){
-	if(err){
-		console.log(err);
-	}else{
-		console.log(dat);
-	}
+function consoleResult(dat){
+	console.log(dat);
 }
 function getDrive(){
 	var drv = prepareDrive();
-	drv.getDrive({
-		_doneFunc: consoleResult,
-	});
+	drv.getDrive({}).then(consoleResult);
 }
 function newFolder(fld, ptid){
 	var drv = prepareDrive();
 	var opt = {
 		_folder: fld,
-		_doneFunc: consoleResult,
 	};
 	if(ptid){
 		opt._parentid = document.getElementById(ptid).value;
 	}
-	drv.newFolder(opt);
+	drv.newFolder(opt).then(consoleResult);
 }
 function searchItems(fnm, hasParent){
 	var drv = prepareDrive();
-	var opt = {
-		_doneFunc: consoleResult,
-	};
+	var opt = {};
 	if(hasParent){
 		var tgt = document.getElementById("selId").value;
 		opt._parentid = document.getElementById(tgt).value;
@@ -154,15 +157,14 @@ function searchItems(fnm, hasParent){
 	if(fnm){
 		opt._fname = fnm;
 	}
-	drv.searchItems(opt);
+	drv.searchItems(opt).then(consoleResult);
 }
 function getItem(){
 	var tgt = document.getElementById("selId").value;
 	var drv = prepareDrive();
 	drv.getItem({
 		_uid: document.getElementById(tgt).value,
-		_doneFunc: consoleResult,
-	});
+	}).then(consoleResult);
 }
 function upload(ptid){
 	var files = document.getElementById("files").files;
@@ -186,8 +188,8 @@ function upload(ptid){
 	zbPipe(reader, writer, function(){
 		console.log(reader.getPos());
 		return true;
-	}, function(){
-		console.log("Upload done!");
+	}).then(function(a_ret){
+		console.log("Upload done?", a_ret);
 	});
 }
 function download(fid){
@@ -202,8 +204,10 @@ function download(fid){
 	zbPipe(reader, writer, function(){
 		console.log(reader.getPos());
 		return true;
-	}, function(){
-		writer.download("zzz.zip");
+	}).then(function(a_ret){
+		if(a_ret){
+			writer.download("zzz.zip");
+		}
 	});
 }
 function rename(fid, newname){
@@ -211,8 +215,7 @@ function rename(fid, newname){
 	drv.rename({
 		_fid: document.getElementById(fid).value,
 		_newname: newname,
-		_doneFunc: consoleResult,
-	});
+	}).then(consoleResult);
 }
 function move(fid, oldptid, ptid){
 	var drv = prepareDrive();
@@ -220,21 +223,19 @@ function move(fid, oldptid, ptid){
 		_fid: document.getElementById(fid).value,
 		_oldparentid: document.getElementById(oldptid).value,
 		_parentid: document.getElementById(ptid).value,
-		_doneFunc: consoleResult,
-	});
+	}).then(consoleResult);
 }
 function delItem(){
 	var tgt = document.getElementById("selId").value;
 	var drv = prepareDrive();
 	drv.delete({
 		_fid: document.getElementById(tgt).value,
-		_doneFunc: consoleResult,
-	});
+	}).then(consoleResult);
 }
 </script>
 </head>
 <body onload="init()">
-<input type="hidden" id="auth" />
+<input type="text" id="auth" placeholder="auth" />
 <label>Driver: </label><select id="selDrv" onchange="changeDrive()"></select>
 <form id="login" method="get" target="_blank">
 	<!-- input type="hidden" name="prompt" value="consent" / -->

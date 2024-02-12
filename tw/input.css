@@ -341,10 +341,10 @@ div.zb-viewer > div:first-of-type > div > span {
 	@apply absolute top-0 h-full flex items-center opacity-0 hover:opacity-100 transition-opacity;
 }
 #diViewer + div {
-	@apply left-1;
+	@apply left-1 h-1/2 top-1/4;
 }
 #diViewer + div + div {
-	@apply right-1;
+	@apply right-1 h-1/2 top-1/4;
 }
 #diViewer ~ div > span{
 	@apply cursor-pointer text-blue-700 bg-blue-100;

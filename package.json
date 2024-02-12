@@ -1,6 +1,6 @@
 {
   "name": "zgayard",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": false,
   "scripts": {
     "dev": "tailwindcss -i ./tw/input.css -o ./src/index.css --watch",

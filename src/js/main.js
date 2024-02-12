@@ -215,32 +215,26 @@ function checkRootFolder(){
 		// Get root folder.
 		g_drive.searchItems({
 			_fname: fldr,
-			_doneFunc: function(a_err, a_arr){
-				if(a_err){
-					showError(JSON.stringify(a_err));
-					return;
-				}
-				if(a_arr && a_arr.length > 0){
-					g_paths = new Array();
-					g_paths.push(a_arr[0]);
-					listFolder();
-					loadRecent();
-					return;
-				}
-				// Create root folder
-				g_drive.newFolder({
-					_folder: fldr,
-					_doneFunc: function(b_err, b_dat){
-						if(b_err){
-							showError(JSON.stringify(b_err));
-						}else{
-							g_paths = new Array();
-							g_paths.push(b_dat);
-							listFolder();
-						}
-					},
-				});
-			},
+		}).then(function(a_arr){
+			if(a_arr && a_arr.length > 0){
+				g_paths = new Array();
+				g_paths.push(a_arr[0]);
+				listFolder();
+				loadRecent();
+				return;
+			}
+			// Create root folder
+			g_drive.newFolder({
+				_folder: fldr,
+			}).then(function(b_dat){
+				g_paths = new Array();
+				g_paths.push(b_dat);
+				listFolder();
+			}).catch(function(b_err){
+				showError(JSON.stringify(b_err));
+			});
+		}).catch(function(a_err){
+			showError(JSON.stringify(a_err));
 		});
 	});
 }
@@ -345,17 +339,13 @@ function loadRecent(){
 		g_drive.getItem({
 			/** @type {string} */
 			_uid: a_rct._fid,
-			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-			_doneFunc: function(b_err, b_dat){
-				if(b_err){
-					return;
-				}
-				if(b_dat._parentId){
-					a_rct._folder = b_dat._parentId;
-				}
-				setRecent(a_idx, decryptFname(b_dat._name), ul);
-				showRecent(a_idx+1);
-			},
+		}).then(function(b_dat){
+			if(b_dat._parentId){
+				a_rct._folder = b_dat._parentId;
+			}
+			setRecent(a_idx, decryptFname(b_dat._name), ul);
+			showRecent(a_idx+1);
+		}).catch(function(b_err){
 		});
 	};
 
@@ -503,74 +493,70 @@ function listFolder(reload, onlyfolder, fld, func){
 	}
 
 	g_drive.searchItems({
-		/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
-		_doneFunc: function(a_err, a_arr){
-			if(a_err){
-				showError(a_err);
-				return;
-			}
-			/**
-			 * Sort by name
-			 *
-			 * @type {Array<DriveItem>}
-			 */
-			var a_sort = new Array();
-			/**
-			 * Folder Count
-			 *
-			 * @type {number}
-			 */
-			var a_fdcnt = 0;
-			a_arr.forEach(/** function(DriveItem) */function(b_ele){
-				/** @type {number} */
-				var b_i = 0;
-				/** @type {number} */
-				var b_j = a_sort.length;
-				b_ele._name = decryptFname(b_ele._name);
-				if(isFolder(b_ele)){
-					b_j = a_fdcnt++;
-				}else{
-					b_i = a_fdcnt;
-				}
-				while(b_i<b_j){
-					if(b_ele._name < a_sort[b_i]._name){
-						break;
-					}else{
-						b_i++;
-					}
-				}
-				if(b_i < a_sort.length){
-					a_sort.splice(b_i, 0, b_ele);
-				}else{
-					a_sort.push(b_ele);
-				}
-			});
-			/* Create List */
-			a_sort.forEach(/** function(DriveItem, number) */function(b_ele, b_idx){
-				if(!onlyfolder || isFolder(b_ele)){
-					addItem(ulList, b_ele);
-				}
-			});
-			if(!onlyfolder){
-				/** @type {Element} */
-				var a_chk = getElement("#chkAll");
-				/** @type {Element} */
-				var a_li = findParent("li", a_chk);
-				getElement("checkbox", a_li, "input.type").checked = false;
-				hideElement(getElement("chkbox", a_li, "span.name"));
-				if(a_arr.length > 0){
-					showElement(a_chk);
-				}else{
-					hideElement(a_chk);
-				}
-			}
-			if(func){
-				func(a_sort);
-			}else{
-				hideMessage();
-			}
-		},
 		_parentid: fld._id,
+	}).then(function(a_arr){
+		/**
+		 * Sort by name
+		 *
+		 * @type {Array<DriveItem>}
+		 */
+		var a_sort = new Array();
+		/**
+		 * Folder Count
+		 *
+		 * @type {number}
+		 */
+		var a_fdcnt = 0;
+		a_arr.forEach(/** function(DriveItem) */function(b_ele){
+			/** @type {number} */
+			var b_i = 0;
+			/** @type {number} */
+			var b_j = a_sort.length;
+			b_ele._name = decryptFname(b_ele._name);
+			if(isFolder(b_ele)){
+				b_j = a_fdcnt++;
+			}else{
+				b_i = a_fdcnt;
+			}
+			while(b_i<b_j){
+				if(b_ele._name < a_sort[b_i]._name){
+					break;
+				}else{
+					b_i++;
+				}
+			}
+			if(b_i < a_sort.length){
+				a_sort.splice(b_i, 0, b_ele);
+			}else{
+				a_sort.push(b_ele);
+			}
+		});
+		/* Create List */
+		a_sort.forEach(/** function(DriveItem, number) */function(b_ele, b_idx){
+			if(!onlyfolder || isFolder(b_ele)){
+				addItem(ulList, b_ele);
+			}
+		});
+		if(!onlyfolder){
+			/** @type {Element} */
+			var a_chk = getElement("#chkAll");
+			/** @type {Element} */
+			var a_li = findParent("li", a_chk);
+			getElement("checkbox", a_li, "input.type").checked = false;
+			hideElement(getElement("chkbox", a_li, "span.name"));
+			if(a_arr.length > 0){
+				showElement(a_chk);
+			}else{
+				hideElement(a_chk);
+			}
+		}
+		if(func){
+			func(a_sort);
+		}else{
+			hideMessage();
+		}
+	}).catch(function(a_err){
+		showError(a_err);
 	});
 }
 /**
@@ -1366,9 +1352,9 @@ function viewFile(fid, fnm){
 		_reader: reader,
 		_writer: writer,
 	});
-	cypt.onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_canceled){
-		if(a_err || a_canceled){
-			console.log(a_err || a_canceled);
+	var onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_done){
+		if(a_err || !a_done){
+			console.log(a_err || !a_done);
 			return;
 		}
 		var a_buf = writer.getBuffer();
@@ -1384,7 +1370,11 @@ function viewFile(fid, fnm){
 			hideElement(span);
 		}
 	});
-	cypt.start();
+	cypt.start().then(function(a_done){
+		onfinal(undefined, a_done);
+	}).catch(function(a_err){
+		onfinal(a_err);
+	});
 }
 /**
  * Event called from html
@@ -1457,27 +1447,29 @@ function imageLoaded(){
  * @param {string} fnm
  */
 function playVedio(vdo, fid, fnm){
-	const VdoStrm = /** @type {typeof VideoStream} */(zb_require("videostream"));
+	// const VdoStrm = /** @type {typeof VideoStream} */(zb_require("videostream"));
+	/** @type {string} */
+	var TODO = null;
 	/** @type {string} */
 	vdo.fid = fid;
 	/** @type {string} */
 	vdo.fnm = fnm;
 	/** @type {ZbStreamWrapper} */
-	vdo.wrapper = new ZbStreamWrapper({
-		_decrypt: true,
-		_keycfg: g_keycfg,
-		_reader: function(){
-			return g_drive.createReader({
-				_id: fid,
-			});
-		},
-	});
+	// vdo.wrapper = new ZbStreamWrapper({
+		// _decrypt: true,
+		// _keycfg: g_keycfg,
+		// _reader: function(){
+			// return g_drive.createReader({
+				// _id: fid,
+			// });
+		// },
+	// });
 //	vdo.addEventListener("error", function(err){
 //		console.error(err);
 //		console.error(err.target.strm.detailedError);
 //	});
 	/** @type {VideoStream} */
-	vdo.vstrm = new VdoStrm(vdo.wrapper, vdo);
+	// vdo.vstrm = new VdoStrm(vdo.wrapper, vdo);
 }
 /**
  * Event called from html
@@ -1485,19 +1477,21 @@ function playVedio(vdo, fid, fnm){
  * @param {Event} errevt
  */
 function resetVideoSrc(errevt){
-	var vdo = /** @type {Element} */(errevt.target);
-	var vstrm = /** @type {VideoStream} */(vdo.vstrm);
-	if(vstrm){
-		if(vstrm.detailedError){
-			return;
-		}
-	}else{
-		return;
-	}
-	if(vstrm._elemWrapper && vstrm._elemWrapper._mediaSource){
-		errevt.stopImmediatePropagation();
-		vdo.src = window.URL.createObjectURL(vstrm._elemWrapper._mediaSource);
-	}
+	/** @type {string} */
+	var TODO = null;
+	// var vdo = /** @type {Element} */(errevt.target);
+	// var vstrm = /** @type {VideoStream} */(vdo.vstrm);
+	// if(vstrm){
+		// if(vstrm.detailedError){
+			// return;
+		// }
+	// }else{
+		// return;
+	// }
+	// if(vstrm._elemWrapper && vstrm._elemWrapper._mediaSource){
+		// errevt.stopImmediatePropagation();
+		// vdo.src = window.URL.createObjectURL(vstrm._elemWrapper._mediaSource);
+	// }
 }
 /**
  * @param {Element} div
@@ -1537,12 +1531,14 @@ function endVideoStream(div){
 		showMenuHistory(true);
 	}
 	hideElement(vdo);
-	if(vdo.vstrm){
-		vdo.vstrm.destroy();
-		vdo.wrapper.destroyStream();
-		delete vdo.vstrm;
-		delete vdo.wrapper;
-	}
+	/** @type {string} */
+	var TODO = null;
+	// if(vdo.vstrm){
+		// vdo.vstrm.destroy();
+		// vdo.wrapper.destroyStream();
+		// delete vdo.vstrm;
+		// delete vdo.wrapper;
+	// }
 	return vdo;
 }
 /**
@@ -1605,20 +1601,17 @@ function clickRecent(evt, next){
 		g_drive.getItem({
 			/** @type {string} */
 			_uid: pnt,
-			/** @type {function((boolean|DriveJsonRet), DriveItem=)} */
-			_doneFunc: function(a_err, a_dat){
-				if(!a_err){
-					a_dat._name = decryptFname(a_dat._name);
-					paths.unshift(a_dat);
-					if(a_dat._parentId == g_paths[0]._parentId){
-						// The recent file is not in this root folder.
-						pnt = undefined;
-					}else{
-						pnt = a_dat._parentId;
-					}
-					getDrvFld();
-				}
-			},
+		}).then(function(a_dat){
+			a_dat._name = decryptFname(a_dat._name);
+			paths.unshift(a_dat);
+			if(a_dat._parentId == g_paths[0]._parentId){
+				// The recent file is not in this root folder.
+				pnt = undefined;
+			}else{
+				pnt = a_dat._parentId;
+			}
+			getDrvFld();
+		}).catch(function(a_err){
 		});
 	};
 	/** @type {function()} */

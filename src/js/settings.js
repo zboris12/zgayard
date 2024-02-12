@@ -474,17 +474,15 @@ function loadDrive(drvnm){
 
 		// Get configuration file.
 		g_drive.searchItems({
-			/** @type {function((boolean|DriveJsonRet), Array<DriveItem>=)} */
-			_doneFunc: function(b_err, b_dats){
-				if(b_err){
-					showError(JSON.stringify(b_err));
-				}else if(b_dats.length == 0){
-					showInputPassword(true);
-				}else{
-					downloadConfile(b_dats[0]._id);
-				}
-			},
 			_fname: g_CONFILE,
+		}).then(function(b_dats){
+			if(b_dats.length == 0){
+				showInputPassword(true);
+			}else{
+				downloadConfile(b_dats[0]._id);
+			}
+		}).catch(function(b_err){
+			showError(JSON.stringify(b_err));
 		});
 	});
 }
@@ -915,7 +913,7 @@ function uploadConfile(conf, func){
 	var writer = g_drive.createWriter({
 		_fnm: g_CONFILE,
 	});
-	zbPipe(reader, writer, undefined, func || checkRootFolder);
+	zbPipe(reader, writer, undefined).then(func || checkRootFolder);
 }
 /**
  * @param {string} fid
@@ -927,7 +925,7 @@ function downloadConfile(fid){
 	});
 	/** @type {ZBWriter} */
 	var writer = new ZBlobWriter();
-	zbPipe(reader, writer, undefined, function(){
+	zbPipe(reader, writer, undefined).then(function(){
 		/** @type {WordArray} */
 		var a_words = new CryptoJS.lib.WordArray.init(writer.getBuffer());
 		var a_conf = JSON.parse(a_words.toString(CryptoJS.enc.Utf8));

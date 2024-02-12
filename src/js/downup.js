@@ -39,8 +39,9 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			_reader: this.reader,
 			_writer: this.writer,
 		});
+
 		/** @type {function():boolean} */
-		cypt.onstep = function(){
+		var onstep = function(){
 			/** @type {WorkerStepInfo} */
 			var a_stepinf = {
 				type: StepInfoType.INPROGRESS,
@@ -59,7 +60,7 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			}
 		}.bind(this);
 
-		cypt.onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_canceled){
+		var donefunc = /** @type {function(*=, boolean=)} */(function(a_err, a_done){
 			/** @type {WorkerStepInfo} */
 			var a_stepinf = {
 				type: StepInfoType.DONE,
@@ -70,7 +71,7 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			};
 			if(a_err){
 				a_stepinf.errr = a_err.message || a_err.restxt;
-			}else if(a_canceled){
+			}else if(!a_done){
 				a_stepinf.type = StepInfoType.CANCELED;
 			}else if(this.writer.getBufferBlob){
 				a_stepinf.blob = this.writer.getBufferBlob();
@@ -79,7 +80,11 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		}.bind(this));
 
 		this.begintime = Date.now();
-		cypt.start();
+		cypt.start(0, onstep).then(function(a_done){
+			donefunc(undefined, a_done);
+		}).catch(function(a_err){
+			donefunc(a_err);
+		});
 	};
 
 	/**

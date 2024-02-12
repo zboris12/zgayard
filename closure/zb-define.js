@@ -137,8 +137,8 @@ var ZBReaderOption;
  * {{
  *    _decrypt: (boolean|undefined),
  *    _keycfg: (CipherParams|string),
- *    _reader: (ZBReader|function():ZBReader),
- *    _writer: (ZBWriter|undefined),
+ *    _reader: (ZBReader),
+ *    _writer: (ZBWriter),
  * }}
  */
 var ZbCryptoOption;

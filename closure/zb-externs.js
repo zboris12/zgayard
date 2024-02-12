@@ -4,57 +4,6 @@
  */
 
 /**
- * @param {string} libnm
- * @return {*}
- */
-function zb_require(libnm){}
-/**
- * @param {*} ctor
- * @param {*} superCtor
- */
-function zb_inherits(ctor, superCtor){}
-
-/**
- * @constructor
- * @extends {stream.ReadableStream}
- */
-function ZbSubReadable(){};
-/** @public @type {function():*} */
-ZbSubReadable.prototype.getSuperClass;
-/** @public @type {function(...*):*} */
-ZbSubReadable.prototype.super;
-/** @public @type {function(string, ...*):*} */
-ZbSubReadable.prototype.superCall;
-
-/**
- * @typedef
- * {{
- *    _mediaSource: MediaSource,
- * }}
- */
-var MediaElementWrapper;
-
-/**
- * @constructor
- * @param {VDStreamWrapper} strm
- * @param {Element} vdo
- */
-function VideoStream(strm, vdo){
-	/** @public @type {MediaElementWrapper} */
-	this._elemWrapper;
-};
-
-/** @interface */
-function VDStreamWrapper(){
-	/**
-	 * @public
-	 * @param {Object<string, number>=} opts
-	 * @return {stream.ReadableStream}
-	 */
-	this.createReadStream = function(opts){}
-}
-
-/**
  * @typedef
  * {{
  *    type: WorkerInfoType,

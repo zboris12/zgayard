@@ -153,7 +153,7 @@ Cipher.prototype.ivSize;
 Cipher.prototype.keySize;
 /** @public @type {function()} */
 Cipher.prototype.mixIn;
-/** @public @type {function()} */
+/** @public @type {function(WordArray):WordArray} */
 Cipher.prototype.process;
 /** @public @type {function()} */
 Cipher.prototype.reset;
