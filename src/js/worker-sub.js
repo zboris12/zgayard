@@ -1,5 +1,3 @@
-/** @define {boolean} */
-var FOROUTPUT = false;
 if(!FOROUTPUT){
 	self.importScripts("../vendor/crypto-js.js");
 	self.importScripts("zbcommon.js");

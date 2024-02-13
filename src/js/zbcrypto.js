@@ -430,6 +430,9 @@ function ZbCryptoReader(_info){
 			return retSize;
 		}
 
+		if(this.reader.getSize() == 0){
+			await this.prepare();
+		}
 		/** @type {number} */
 		var offset = this.reader.getSize() - this.BLOCK_SIZE;
 		/** @type {Array<number>} */
@@ -443,7 +446,7 @@ function ZbCryptoReader(_info){
 	 * @return {!Promise<void>}
 	 */
 	this.prepare = async function(offset){
-		console.debug("do prepare");
+		// console.debug("do prepare");
 		/** @type {number} */
 		var startPos = offset || 0;
 		if(offset){
@@ -631,7 +634,6 @@ function ZbCrypto(_info){
 	this.start = async function(offset, stepFunc){
 		/** @type {number} */
 		var startPos = offset || 0;
-		await this.reader.prepare();
 		/** @type {number} */
 		var wsize = await this.reader.calcWholeSize();
 		await this.writer.prepare(wsize);

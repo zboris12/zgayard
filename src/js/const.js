@@ -20,6 +20,7 @@ const g_imagetypes = {
 	"jpeg": "image/jpeg",
 	"jpg": "image/jpeg",
 	"png": "image/png",
+	"webp": "image/webp",
 };
 /** @const {Object<string, string>} */
 const g_audiotypes = {

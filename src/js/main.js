@@ -638,6 +638,8 @@ function addItem(ul, itm){
 					setSvgImage(sp, "image", "#E7FFE7"); // green
 				}else if(g_videotypes[sfx]){
 					setSvgImage(sp, "video", "#FFE7F3"); // pink
+				}else if(g_audiotypes[sfx]){
+					setSvgImage(sp, "audio", "#DBFBFD"); // blue
 				}else{
 					setSvgImage(sp, "file", "#FFFFB0"); // yellow
 				}
@@ -1143,29 +1145,23 @@ function moveToFolder(func){
 	}
 
 	showInfo("moving");
-	/** @type {number} */
-	var idx = 0;
-	/** @type {DriveUpdateOption} */
-	var opt = {
-		/** @type {string} */
-		_fid: arr[idx]._id,
-		/** @type {string} */
-		_parentid: pntid,
-		/** @type {string} */
-		_oldparentid: g_paths[g_paths.length - 1]._id,
-	}
-	g_drive.move(opt).then(function(){
-		idx++;
-		if(idx < arr.length){
-			opt._fid = arr[idx]._id;
-			g_drive.move(opt);
-		}else{
-			listFolder(true, false, undefined, function(){
-				showNotify("moveDone");
+	var moveall = async function(){
+		/** @type {number} */
+		var idx = 0;
+		for(idx=0; idx<arr.length; idx++){
+			await g_drive.move({
+				_fid: arr[idx]._id,
+				_parentid: pntid,
+				_oldparentid: g_paths[g_paths.length - 1]._id,
 			});
 		}
-	}).catch(function(a_err){
-		showError(a_err);
+	};
+	moveall().then(function(){
+		listFolder(true, false, undefined, function(){
+			showNotify("moveDone");
+		});
+	}).catch(function(err){
+		showError(err);
 	});
 }
 /**
@@ -1190,28 +1186,26 @@ function deleteItems(uid){
 	}
 
 	showInfo("deleting");
-	/** @type {number} */
-	var idx = 0;
-	/** @type {DriveUpdateOption} */
-	var opt = {
-		/** @type {string} */
-		_fid: arr[idx]._id,
-	}
-	g_drive.delete(opt).then(function(a_sz){
-		if(a_sz){
-			addQuotaUsed(a_sz, true);
-		}
-		idx++;
-		if(idx < arr.length){
-			opt._fid = arr[idx]._id;
-			g_drive.delete(opt);
-		}else{
-			listFolder(true, false, undefined, function(){
-				showNotify("delDone");
+
+	var delall = async function(){
+		/** @type {number} */
+		var idx = 0;
+		for(idx=0; idx<arr.length; idx++){
+			/** @type {number} */
+			var sz = await g_drive.delete({
+				_fid: arr[idx]._id,
 			});
+			if(sz){
+				addQuotaUsed(sz, true);
+			}
 		}
-	}).catch(function(a_err){
-		showError(a_err);
+	};
+	delall().then(function(){
+		listFolder(true, false, undefined, function(){
+			showNotify("delDone");
+		});
+	}).catch(function(err){
+		showError(err);
 	});
 }
 /**
