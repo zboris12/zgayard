@@ -940,8 +940,6 @@ function ZbDriveReader(_opt, _drv){
 	/** @private @type {number} */
 	this.retryAuth = 0;  //0 Can't retry, 1 Can retry, 2 Retryed
 
-	/** @public @type {?function(ArrayBuffer, *)} */
-	this.onread = null;
 	/**
 	 * @public
 	 * @param {number=} offset
@@ -996,6 +994,13 @@ function ZbDriveReader(_opt, _drv){
 	 */
 	this.getName = function(){
 		return this.name;
+	};
+	/**
+	 * @public
+	 * @return {number}
+	 */
+	this.getBufSize = function(){
+		return this.bufSize;
 	};
 	/**
 	 * @public

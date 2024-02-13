@@ -93,6 +93,11 @@ function ZBReader(){
 	 * @public
 	 * @return {number}
 	 */
+	this.getBufSize = function(){};
+	/**
+	 * @public
+	 * @return {number}
+	 */
 	this.getPos = function(){};
 	/**
 	 * @public
@@ -131,6 +136,16 @@ var ZBWriterOption;
  * }}
  */
 var ZBReaderOption;
+
+/**
+ * @typedef
+ * {{
+ *    _decrypt: (boolean|undefined),
+ *    _keycfg: (CipherParams|string),
+ *    _reader: (ZBReader),
+ * }}
+ */
+var ZbCryptoReaderOption;
 
 /**
  * @typedef

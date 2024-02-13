@@ -279,9 +279,6 @@ function ZBlobReader(_opt){
 	this.reader = null;
 
 	// --- Public methods Start --- //
-	/** @public @type {null|function(ArrayBuffer, *)} */
-	this.onread = null;
-
 	// --- Implement interface methods Start --- //
 	/**
 	 * @public
@@ -295,9 +292,18 @@ function ZBlobReader(_opt){
 			}else{
 				this.pos = offset;
 			}
+		}else{
+			this.pos = 0;
 		}
 
 		this.reader = new FileReader();
+	};
+	/**
+	 * @public
+	 * @return {number}
+	 */
+	this.getBufSize = function(){
+		return this.bufSize;
 	};
 	/**
 	 * @public
@@ -357,16 +363,15 @@ function ZBlobReader(_opt){
 
 /**
  * @constructor
- * @param {ZbCryptoOption} _info
+ * @param {ZbCryptoReaderOption} _info
  *
  * (required)_info = {
  *   (optional)_decrypt: true,
  *   (required)_keycfg: "aaabbb", // keycfg may be an object as the config of crypto or a string as the password.
  *   (required)_reader: Reader,
- *   (required)_writer: Writer,
  * };
  */
-function ZbCrypto(_info){
+function ZbCryptoReader(_info){
 	/**
 	 * block size of aes is 128 bits = 16 bytes
 	 *
@@ -378,35 +383,22 @@ function ZbCrypto(_info){
 	this.encrypt = true;
 	/** @private @type {ZBReader} */
 	this.reader = _info._reader;
-	/** @private @type {ZBWriter} */
-	this.writer = _info._writer;
 	/** @private @type {WordArray} */
 	this.key = null;
 	/** @private @type {WordArray} */
 	this.iv = null;
-	/** @private @type {number} */
-	this.startPos = 0;
 	/** @private @type {Cipher} */
 	this.cryptor = null;
+	/** @private @type {Array<number>} */
+	this.remain = null;
 	/** @private @type {number} */
-	this.basetime = 0;
-	/** @private @type {number} */
-	this.basepos = 0;
-	/**
-	 * Size per second.
-	 *
-	 * @private @type {number}
-	 */
-	this.speed = 0;
+	this.nextPos = 0;
 
 	if(_info._decrypt){
 		this.encrypt = false;
 	}
 	if(!this.reader){
 		throw new Error("reader must be specified.");
-	}
-	if(!this.writer){
-		throw new Error("writer must be specified.");
 	}
 
 	if(_info._keycfg){
@@ -425,30 +417,45 @@ function ZbCrypto(_info){
 
 	/**
 	 * @public
-	 * @param {number=} offset
-	 * @param {(function():boolean)=} stepFunc
-	 * @return {!Promise<boolean>} return true if done, else return false.
+	 * @return {!Promise<number>}
 	 *
-	 * stepFunc: If need next step return true, else return false.
+	 * In encrypt mode, return assumed data size after encryption.
+	 * In decrypt mode, return real data size after decryption.
 	 */
-	this.start = async function(offset, stepFunc){
+	this.calcWholeSize = async function(){
+		/** @type {number} */
+		var retSize = 0;
+		if(this.encrypt){
+			retSize = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
+			return retSize;
+		}
+
+		/** @type {number} */
+		var offset = this.reader.getSize() - this.BLOCK_SIZE;
+		/** @type {Array<number>} */
+		var buf = await this.read(offset);
+		return offset + buf.length;
+	};
+
+	/**
+	 * @public
+	 * @param {number=} offset
+	 * @return {!Promise<void>}
+	 */
+	this.prepare = async function(offset){
+		console.debug("do prepare");
+		/** @type {number} */
+		var startPos = offset || 0;
 		if(offset){
 			if(this.encrypt){
 				throw new Error("Can NOT set offset for encryption.");
 			}
-			this.startPos = offset;
 			offset -= (offset % this.BLOCK_SIZE) + this.BLOCK_SIZE;
 			if(offset < 0){
 				offset = 0;
 			}
 		}
 		await this.reader.prepare(offset);
-		/** @type {number} */
-		var sizeEnc = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
-		await this.writer.prepare(sizeEnc);
-
-		this.basetime = Date.now() + 1000; // 1 second later
-		this.basepos = this.startPos;
 
 		/** @type {Object<string, *>} */
 		var cfg = {
@@ -456,7 +463,7 @@ function ZbCrypto(_info){
 			mode: CryptoJS.mode.CBC,
 			padding: CryptoJS.pad.Pkcs7
 		};
-		if(this.startPos){
+		if(startPos){
 			// read for decrypt
 			cfg.iv = await this._read(this.BLOCK_SIZE);
 		}
@@ -465,30 +472,186 @@ function ZbCrypto(_info){
 		}else{
 			this.cryptor = CryptoJS.algo.AES.createDecryptor(this.key, cfg);
 		}
+		this.nextPos = startPos;
+		this.remain = null;
+	};
+
+	/**
+	 * @public
+	 * @param {number=} offset
+	 * @param {number=} size
+	 * @return {!Promise<Array<number>>}
+	 */
+	this.read = async function(offset, size){
+		/** @type {number} */
+		var size2 = size || this.reader.getBufSize();
+		/** @type {Array<number>} */
+		var ret = null;
+		/** @type {number} */
+		var startPos = offset >= 0 ? offset : this.reader.getPos();
+		if(this.nextPos == startPos && this.remain){
+			if(size2 <= this.remain.length){
+				this.nextPos += size2;
+				ret = this.remain.slice(0, size2);
+				this.remain = this.remain.slice(size2);
+				if(this.remain.length == 0){
+					this.remain = null;
+				}
+				return ret;
+			}else{
+				ret = this.remain;
+				startPos += this.remain.length;
+				this.nextPos += this.remain.length;
+				size2 -= this.remain.length;
+			}
+		}
+
+		/** @type {number} */
+		var size3 = Math.ceil(((startPos % this.BLOCK_SIZE) + size2) / this.BLOCK_SIZE) * this.BLOCK_SIZE;
+		if(!this.cryptor || this.nextPos != startPos){
+			await this.prepare(startPos);
+			size3 += this.BLOCK_SIZE;
+		}
+
+		/** @type {WordArray} */
+		var wdat = await this._read(size3);
+		/** @type {Array<number>} */
+		var ret2 = wordArrayToBytes(this.cryptor.process(wdat));
+		if(this.reader.isEnd()){
+			ret2 = ret2.concat(wordArrayToBytes(this.cryptor.finalize()));
+		}
+
+		if(startPos < this.reader.getPos()){
+			/** @type {number} */
+			var st = startPos - (this.reader.getPos() - wdat.sigBytes);
+			if(st > 0){
+				ret2 = ret2.slice(st);
+			}
+			if(ret2.length > size2){
+				this.remain = ret2.slice(size2);
+				ret2 = ret2.slice(0, size2);
+			}
+			this.nextPos += size2;
+		}else{
+			ret2 = null;
+		}
+		if(ret){
+			if(ret2){
+				ret = ret.concat(ret2);
+			}
+		}else if(ret2){
+			ret = ret2;
+		}
+		return ret;
+	};
+
+	/**
+	 * @public
+	 * @return {number}
+	 */
+	this.getPos = function(){
+		return this.reader.getPos();
+	};
+	/**
+	 * @public
+	 * @return {number}
+	 */
+	this.getSize = function(){
+		return this.reader.getSize();
+	};
+	/**
+	 * @public
+	 * @return {boolean}
+	 */
+	this.isEnd = function(){
+		return this.reader.isEnd();
+	};
+	/**
+	 * @public
+	 */
+	this.dispose = function(){
+		this.reader.dispose();
+		this.reader = null;
+		this.cryptor = null;
+	};
+
+	/**
+	 * @private
+	 * @param {number=} size
+	 * @return {!Promise<WordArray>}
+	 */
+	this._read = async function(size){
+		/** @type {ArrayBuffer} */
+		var buf = await this.reader.read(size);
+		/** @type {WordArray} */
+		var wdat = new CryptoJS.lib.WordArray.init(buf);
+		return wdat;
+	};
+}
+
+/**
+ * @constructor
+ * @param {ZbCryptoOption} _info
+ *
+ * (required)_info = {
+ *   (optional)_decrypt: true,
+ *   (required)_keycfg: "aaabbb", // keycfg may be an object as the config of crypto or a string as the password.
+ *   (required)_reader: Reader,
+ *   (required)_writer: Writer,
+ * };
+ */
+function ZbCrypto(_info){
+	/** @private @type {ZbCryptoReader} */
+	this.reader = new ZbCryptoReader(_info);
+	/** @private @type {ZBWriter} */
+	this.writer = _info._writer;
+	/** @private @type {number} */
+	this.basetime = 0;
+	/** @private @type {number} */
+	this.basepos = 0;
+	/**
+	 * Size per second.
+	 *
+	 * @private @type {number}
+	 */
+	this.speed = 0;
+
+	if(!this.writer){
+		throw new Error("writer must be specified.");
+	}
+
+	/**
+	 * @public
+	 * @param {number=} offset
+	 * @param {(function():boolean)=} stepFunc
+	 * @return {!Promise<boolean>} return true if done, else return false.
+	 *
+	 * stepFunc: If need next step return true, else return false.
+	 */
+	this.start = async function(offset, stepFunc){
+		/** @type {number} */
+		var startPos = offset || 0;
+		await this.reader.prepare();
+		/** @type {number} */
+		var wsize = await this.reader.calcWholeSize();
+		await this.writer.prepare(wsize);
+		await this.reader.prepare(offset);
+
+		this.basetime = Date.now() + 1000; // 1 second later
+		this.basepos = startPos;
 
 		/** @type {number} */
 		var sts = this.reader.isEnd() ? 2 : 0; // 0 go on, 1 cancel, 2 done
 		while(sts == 0){
-			/** @type {WordArray} */
-			var wdat = await this._read();
 			/** @type {Array<number>} */
-			var ret = wordArrayToBytes(this.cryptor.process(wdat));
-			if(this.reader.isEnd()){
-				ret = ret.concat(wordArrayToBytes(this.cryptor.finalize()));
-				sts = 2;
-			}
-
-			if(this.startPos < this.reader.getPos()){
-				/** @type {number} */
-				var st = this.startPos - (this.reader.getPos() - wdat.sigBytes);
-				if(st > 0){
-					ret = ret.slice(st);
-				}
-
+			var ret = await this.reader.read();
+			if(ret){
 				await this.writer.write(ret);
-				if(sts == 0 && stepFunc && !stepFunc()){
-					sts = 1;
-				}
+			}
+			if(this.reader.isEnd()){
+				sts = 2;
+			}else if(stepFunc && !stepFunc()){
+				sts = 1;
 			}
 			ret = null;
 		}
@@ -512,19 +675,6 @@ function ZbCrypto(_info){
 		}
 		return this.speed;
 	}
-
-	/**
-	 * @private
-	 * @param {number=} size
-	 * @return {!Promise<WordArray>}
-	 */
-	this._read = async function(size){
-		/** @type {ArrayBuffer} */
-		var buf = await this.reader.read(size);
-		/** @type {WordArray} */
-		var wdat = new CryptoJS.lib.WordArray.init(buf);
-		return wdat;
-	};
 }
 
 /**

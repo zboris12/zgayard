@@ -90,6 +90,13 @@ function IdxDbReader(_opt, _drv){
 	 * @public
 	 * @return {number}
 	 */
+	this.getBufSize = function(){
+		return this.bufSize;
+	};
+	/**
+	 * @public
+	 * @return {number}
+	 */
 	this.getPos = function(){
 		return this.pos;
 	};
