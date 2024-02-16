@@ -1,7 +1,7 @@
 /** @define {boolean} */
-var FOROUTPUT = false;
+var FORSERVER = false;
 /** @const {string} */
-const g_AUTHURL = FOROUTPUT ? "https://zgayard.f5.si/grantauth.php" : "/grantauth.php";
+const g_AUTHURL = FORSERVER ? "https://zgayard.f5.si/grantauth.php" : "/grantauth.php";
 /** @const {Object<string, string>} */
 const g_LANGUAGES = {
 	"en": "English",
@@ -34,3 +34,8 @@ const g_videotypes = {
 	"mp4": "video/mp4",
 	"mpeg": "video/mpeg",
 };
+
+/** @const {string} */
+const g_SWPATH = "/src/sw/";
+/** @const {number} */
+const g_SWPATH_LEN = g_SWPATH.length;

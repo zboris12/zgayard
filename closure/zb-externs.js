@@ -58,3 +58,13 @@ var WorkerDownloadInfo;
  * }}
  */
 var WorkerStepInfo;
+
+/**
+ * @typedef
+ * {{
+ *    action: SWorkerAction,
+ *    cominf: (WorkerCommonInfo|undefined),
+ *    msg: (string|undefined),
+ * }}
+ */
+var SWActionInfo;

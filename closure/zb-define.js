@@ -270,3 +270,21 @@ var DriveWriterOption;
  * }}
  */
 var DriveReaderOption;
+
+/**
+ * @typedef
+ * {{
+ *    _drive: ZbDrive,
+ *    _keycfg: CipherParams,
+ *    _readers: Map<string, ZbCryptoReader>,
+ * }}
+ */
+var SWCacheData;
+/**
+ * @typedef
+ * {{
+ *    _from: number,
+ *    _to: number,
+ * }}
+ */
+var FetchRange;

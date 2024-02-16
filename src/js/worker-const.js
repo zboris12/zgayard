@@ -16,3 +16,12 @@ const StepInfoType = {
 	DONE: 2,
 	CANCELED: 3,
 };
+
+/**
+ * @enum {number}
+ */
+const SWorkerAction = {
+	PREPARE: 1,
+	SHOWERR: 2,
+	CLEARCACHE: 3,
+};

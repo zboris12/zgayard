@@ -393,6 +393,12 @@ function ZbCryptoReader(_info){
 	this.remain = null;
 	/** @private @type {number} */
 	this.nextPos = 0;
+	/** @private @type {number} */
+	this.wholeSize = 0;
+	/** @private @type {boolean} */
+	this.locked = false;
+	/** @private @type {Array<function()>} */
+	this.waiters = [];
 
 	if(_info._decrypt){
 		this.encrypt = false;
@@ -417,17 +423,48 @@ function ZbCryptoReader(_info){
 
 	/**
 	 * @public
+	 * @return {!Promise<void>}
+	 */
+	this.lock = function(){
+		return new Promise(function(resolve, reject){
+			if(this.locked){
+				this.waiters.push(resolve);
+			}else{
+				this.locked = true;
+				resolve();
+			}
+		}.bind(this));
+	};
+
+	/**
+	 * @public
+	 */
+	this.unlock = function(){
+		if(this.locked){
+			if(this.waiters.length){
+				/** @type {function()} */
+				var func = this.waiters.shift();
+				func();
+			}else{
+				this.locked = false;
+			}
+		}
+	};
+
+	/**
+	 * @public
 	 * @return {!Promise<number>}
 	 *
 	 * In encrypt mode, return assumed data size after encryption.
 	 * In decrypt mode, return real data size after decryption.
 	 */
 	this.calcWholeSize = async function(){
-		/** @type {number} */
-		var retSize = 0;
+		if(this.wholeSize){
+			return this.wholeSize;
+		}
 		if(this.encrypt){
-			retSize = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
-			return retSize;
+			this.wholeSize = Math.ceil((this.reader.getSize()+1)/this.BLOCK_SIZE)*this.BLOCK_SIZE;
+			return this.wholeSize;
 		}
 
 		if(this.reader.getSize() == 0){
@@ -437,7 +474,8 @@ function ZbCryptoReader(_info){
 		var offset = this.reader.getSize() - this.BLOCK_SIZE;
 		/** @type {Array<number>} */
 		var buf = await this.read(offset);
-		return offset + buf.length;
+		this.wholeSize = offset + buf.length;
+		return this.wholeSize;
 	};
 
 	/**
