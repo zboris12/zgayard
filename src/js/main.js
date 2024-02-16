@@ -219,6 +219,7 @@ function checkRootFolder(){
 			if(a_arr && a_arr.length > 0){
 				g_paths = new Array();
 				g_paths.push(a_arr[0]);
+				registerServiceWorker();
 				listFolder();
 				loadRecent();
 				return;
@@ -229,6 +230,7 @@ function checkRootFolder(){
 			}).then(function(b_dat){
 				g_paths = new Array();
 				g_paths.push(b_dat);
+				registerServiceWorker();
 				listFolder();
 			}).catch(function(b_err){
 				showError(JSON.stringify(b_err));
@@ -1321,8 +1323,12 @@ function viewFile(fid, fnm){
 	/** @type {string} */
 	var vdoType = g_videotypes[sfx];
 
-	if(vdoType){
-		playVedio(vdo, fid, fnm);
+	if(g_swReady && vdoType){
+		/** @type {string} */
+		vdo.fid = fid;
+		/** @type {string} */
+		vdo.fnm = fnm;
+		vdo.src = getFileUrl(fnm, fid);
 		showElement(vdo);
 		hideElement(span);
 		return;
@@ -1436,65 +1442,19 @@ function imageLoaded(){
 	}
 }
 /**
- * @param {Element} vdo
- * @param {string} fid
- * @param {string} fnm
- */
-function playVedio(vdo, fid, fnm){
-	// const VdoStrm = /** @type {typeof VideoStream} */(zb_require("videostream"));
-	/** @type {string} */
-	var TODO = null;
-	/** @type {string} */
-	vdo.fid = fid;
-	/** @type {string} */
-	vdo.fnm = fnm;
-	/** @type {ZbStreamWrapper} */
-	// vdo.wrapper = new ZbStreamWrapper({
-		// _decrypt: true,
-		// _keycfg: g_keycfg,
-		// _reader: function(){
-			// return g_drive.createReader({
-				// _id: fid,
-			// });
-		// },
-	// });
-//	vdo.addEventListener("error", function(err){
-//		console.error(err);
-//		console.error(err.target.strm.detailedError);
-//	});
-	/** @type {VideoStream} */
-	// vdo.vstrm = new VdoStrm(vdo.wrapper, vdo);
-}
-/**
- * Event called from html
- * In the case of google chrome, the data source url may be corrupted, so need to recreate it.
- * @param {Event} errevt
- */
-function resetVideoSrc(errevt){
-	/** @type {string} */
-	var TODO = null;
-	// var vdo = /** @type {Element} */(errevt.target);
-	// var vstrm = /** @type {VideoStream} */(vdo.vstrm);
-	// if(vstrm){
-		// if(vstrm.detailedError){
-			// return;
-		// }
-	// }else{
-		// return;
-	// }
-	// if(vstrm._elemWrapper && vstrm._elemWrapper._mediaSource){
-		// errevt.stopImmediatePropagation();
-		// vdo.src = window.URL.createObjectURL(vstrm._elemWrapper._mediaSource);
-	// }
-}
-/**
  * @param {Element} div
  * @return {Element}
  */
 function endVideoStream(div){
 	/** @type {Element} */
 	var vdo = getElement("video", div);
+	if(vdo.src){
+		vdo.removeAttribute("src");
+		vdo.load();
+	}
 	if(vdo.fid){
+		releaseSwReader(vdo.fid);
+
 		/** @type {string} */
 		var parentid = g_paths[g_paths.length - 1]._id;
 		/** @type {string} */
@@ -1525,14 +1485,6 @@ function endVideoStream(div){
 		showMenuHistory(true);
 	}
 	hideElement(vdo);
-	/** @type {string} */
-	var TODO = null;
-	// if(vdo.vstrm){
-		// vdo.vstrm.destroy();
-		// vdo.wrapper.destroyStream();
-		// delete vdo.vstrm;
-		// delete vdo.wrapper;
-	// }
 	return vdo;
 }
 /**

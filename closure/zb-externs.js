@@ -65,6 +65,7 @@ var WorkerStepInfo;
  *    action: SWorkerAction,
  *    cominf: (WorkerCommonInfo|undefined),
  *    msg: (string|undefined),
+ *    fid: (string|undefined),
  * }}
  */
 var SWActionInfo;

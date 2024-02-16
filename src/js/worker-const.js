@@ -23,5 +23,5 @@ const StepInfoType = {
 const SWorkerAction = {
 	PREPARE: 1,
 	SHOWERR: 2,
-	CLEARCACHE: 3,
+	RELEASEREADER: 3,
 };

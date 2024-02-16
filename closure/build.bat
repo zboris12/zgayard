@@ -14,7 +14,7 @@ echo $
 set chkj=%%externs%% --checks_only %%jss%%
 echo chkj=csr %chkj%
 doskey chkj=%csr% %chkj%
-set csrj=%%externs%% %%jss%% --define WORKER_PATH='' --define FORSERVER --define FOROUTPUT --js_output_file %src%\index.js
+set csrj=%%externs%% %%jss%% --define WORKER_PATH='' --define FORSERVER --js_output_file %src%\index.js
 echo csrj=csr %csrj%
 doskey csrj=%csr% %csrj%
 
@@ -26,7 +26,7 @@ doskey csrj1=%csr% %csrj1%
 
 rem worker
 set jss2=--js %src%\js\worker-const.js --js %src%\js\worker.js
-set csrj2=%%externs%% %%jss2%% --define FORSERVER --define FOROUTPUT --js_output_file %src%\worker.js
+set csrj2=%%externs%% %%jss2%% --define FOROUTPUT --js_output_file %src%\worker.js
 echo csrj2=csr %csrj2%
 doskey csrj2=%csr% %csrj2%
 

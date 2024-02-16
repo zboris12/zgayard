@@ -107,11 +107,13 @@ async function handleClientMessage(evt){
 			msg: msg,
 		});
 		break;
-	case SWorkerAction.CLEARCACHE:
+	case SWorkerAction.RELEASEREADER:
 		/** @type {SWCacheData} */
 		var cache = g_cache.get(cid);
-		if(cache){
-			cache._readers.clear();
+		/** @type {string|undefined} */
+		var fid = actinf.fid;
+		if(cache && fid){
+			cache._readers.delete(fid);
 		}
 		break;
 	}

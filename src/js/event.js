@@ -317,6 +317,9 @@ window.addEventListener("load", function(evt){
 		case "btnDropDb":
 			ele.addEventListener("click", dropLoacalDb);
 			break;
+		case "btnUnregSw":
+			ele.addEventListener("click", dropLoacalDb);
+			break;
 		}
 	}
 

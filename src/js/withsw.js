@@ -45,10 +45,27 @@ async function registerServiceWorker(){
 			},
 		};
 		navigator.serviceWorker.controller.postMessage(actinf);
+		/** @type {Element} */
+		var ele = getElement("btnUnregSw", undefined, "button.iid");
+		showElement(ele);
 
 		return true;
 	}else{
 		return false;
+	}
+}
+
+/**
+ * @param {string} fid
+ */
+function releaseSwReader(fid){
+	if(navigator.serviceWorker){
+		/** @type {SWActionInfo} */
+		var actinf = {
+			action: SWorkerAction.RELEASEREADER,
+			fid: fid,
+		};
+		navigator.serviceWorker.controller.postMessage(actinf);
 	}
 }
 
@@ -66,11 +83,18 @@ async function unregisterServiceWorker(){
 		console.error("no service worker registration");
 		return false;
 	}
+	if(!window.confirm(window["msgs"]["unswConfirm"])){
+		return false;
+	}
 	/** @type {boolean} */
 	var ret = await swr.unregister();
 	if(ret){
 		console.debug("service worker uninstalled.");
 	}
+	g_swReady = false;
+	/** @type {Element} */
+	var ele = getElement("btnUnregSw", undefined, "button.iid");
+	hideElement(ele);
 	return ret;
 }
 
