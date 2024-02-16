@@ -1,17 +1,19 @@
 /** @define {boolean} */
 var FOROUTPUT = false;
-self.importScripts("../vendor/crypto-js.js");
+self.importScripts("vendor/crypto-js.js");
 if(!FOROUTPUT){
-	self.importScripts("../js/zbcommon.js");
-	self.importScripts("../js/zbcrypto.js");
-	self.importScripts("../js/zbidxdb.js");
-	self.importScripts("../js/zbdrive.js");
-	self.importScripts("../js/zbonedrive.js");
-	self.importScripts("../js/zbgoogledrive.js");
-	self.importScripts("../js/zbidxbdrive.js");
-	self.importScripts("../js/const.js");
+	self.importScripts("js/const.js");
+	self.importScripts("js/zbcommon.js");
+	self.importScripts("js/zbcrypto.js");
+	self.importScripts("js/zbidxdb.js");
+	self.importScripts("js/zbdrive.js");
+	self.importScripts("js/zbonedrive.js");
+	self.importScripts("js/zbgoogledrive.js");
+	self.importScripts("js/zbidxbdrive.js");
+	self.importScripts("js/worker-const.js");
 }
 
+window = self;
 /** @const {string} */
 const g_VERSION = "0.0.1";
 /** @const {number} */
@@ -59,33 +61,38 @@ async function postClientMessage(cid, msgdat){
 async function prepare(cid, cinf){
 	/** @type {string} */
 	var msg = "";
+	try{
+		if(g_cache.get(cid)){
+			return msg;
+		}
 
-	if(g_cache.get(cid)){
-		return msg;
-	}
-
-	var keycfg = /** @type {CipherParams} */({
-		"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
-		"key": CryptoJS.enc.Base64url.parse(cinf.key),
-	});
-	if(!g_storage){
-		g_storage = await initIdxDb();
-	}
-	/** @type {ZbDriveDefine} */
-	var drvdef = g_DRIVES[cinf.drvid];
-	if(drvdef){
-		/** @type {ZbDrive} */
-		var drv = drvdef.newDriveInstance(g_storage, g_AUTHURL);
-		drv.presetToken(cinf.gtoken);
-		g_cache.set(cid, {
-			_drive: drv,
-			_keycfg: keycfg,
-			_readers: new Map(),
+		var keycfg = /** @type {CipherParams} */({
+			"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
+			"key": CryptoJS.enc.Base64url.parse(cinf.key),
 		});
+		if(!g_storage){
+			g_storage = await initIdxDb();
+		}
+		/** @type {ZbDriveDefine} */
+		var drvdef = g_DRIVES[cinf.drvid];
+		if(drvdef){
+			/** @type {ZbDrive} */
+			var drv = drvdef.newDriveInstance(g_storage, g_AUTHURL);
+			drv.presetToken(cinf.gtoken);
+			g_cache.set(cid, {
+				_drive: drv,
+				_keycfg: keycfg,
+				_readers: new Map(),
+			});
 
-	}else{
-		msg = "Drive's name is invalid.";
+		}else{
+			msg = "Drive's name is invalid.";
+		}
+	}catch(err){
+		console.error(err);
+		msg = err.message || err;
 	}
+
 	return msg;
 }
 
@@ -188,9 +195,14 @@ function analyzeRange(rngstr){
 
 /**
  * @param {FetchEvent} evt
+ * @param {string} ctyp
+ * @param {string} fid
  * @return {!Promise<Response>}
  */
-async function swFetchData(evt){
+async function swFetchData(evt, ctyp, fid){
+	if(!(ctyp && fid)){
+		return createErrorResponse(404, "Unkown url format.");
+	}
 	if(!evt.clientId){
 		return createErrorResponse(503, "Missing client id.");
 	}
@@ -200,26 +212,7 @@ async function swFetchData(evt){
 		return createErrorResponse(503, "Not ready for decryption.", evt.clientId);
 	}
 
-	/** @type {number} */
-	var idx = evt.request.url.indexOf(g_SWPATH);
-	if(idx < 0){
-		return createErrorResponse(404, "Url is not for service worker.");
-	}
-	/** @type {string} */
-	var str = evt.request.url.substring(idx + g_SWPATH_LEN);
-	idx = str.indexOf("/");
-	if(idx > 0){
-		idx = str.indexOf("/", idx + 1);
-	}
-	if(idx <= 0){
-		return createErrorResponse(404, "Unkown url format.");
-	}
-
 	try{
-		/** @type {string} */
-		var ctyp = str.substring(0, idx);
-		/** @type {string} */
-		var fid = str.substring(idx + 1);
 		/** @type {ZbCryptoReader} */
 		var rdr = cache._readers.get(fid);
 		if(!rdr){
@@ -232,10 +225,6 @@ async function swFetchData(evt){
 			});
 			cache._readers.set(fid, rdr);
 		}
-
-		console.debug(fid, evt.request.mode);
-		console.debug(evt.request.destination);
-		console.debug(evt.request.headers.get("range"));
 
 		await rdr.lock();
 
@@ -270,6 +259,31 @@ async function swFetchData(evt){
 }
 
 self.addEventListener("message", handleClientMessage);
+self.addEventListener("activate", function(evt){
+	evt.waitUntil(/** @type {ServiceWorkerGlobalScope} */(self).clients.claim());
+});
 self.addEventListener("fetch", function(evt){
-	evt.respondWith(swFetchData(/** @type {FetchEvent} */(evt)));
+	/** @type {string} */
+	var str = evt.request.url;
+	/** @type {number} */
+	var idx = str.indexOf(g_SWPATH);
+	if(idx < 0){
+		return;
+	}
+
+	/** @type {string} */
+	var ctyp = "";
+	/** @type {string} */
+	var fid = "";
+
+	str = str.substring(idx + g_SWPATH_LEN);
+	idx = str.indexOf("/");
+	if(idx > 0){
+		idx = str.indexOf("/", idx + 1);
+	}
+	if(idx > 0){
+		ctyp = str.substring(0, idx);
+		fid = str.substring(idx + 1);
+	}
+	evt.respondWith(swFetchData(/** @type {FetchEvent} */(evt), ctyp, fid));
 });

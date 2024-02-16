@@ -1448,6 +1448,8 @@ function imageLoaded(){
 function endVideoStream(div){
 	/** @type {Element} */
 	var vdo = getElement("video", div);
+	/** @type {string} */
+	var ctm = vdo.currentTime;
 	if(vdo.src){
 		vdo.removeAttribute("src");
 		vdo.load();
@@ -1467,7 +1469,7 @@ function endVideoStream(div){
 		for(i=0; i<g_recents.length; i++){
 			if(g_recents[i]._folder == parentid){
 				g_recents[i]._fid = vdo.fid;
-				g_recents[i]._time = vdo.currentTime;
+				g_recents[i]._time = ctm;
 				break;
 			}
 		}
@@ -1475,7 +1477,7 @@ function endVideoStream(div){
 			g_recents.push({
 				_fid: vdo.fid,
 				_folder: parentid,
-				_time: vdo.currentTime,
+				_time: ctm,
 			});
 		}
 		delete vdo.fid;

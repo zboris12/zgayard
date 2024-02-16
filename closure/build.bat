@@ -32,6 +32,6 @@ doskey csrj2=%csr% %csrj2%
 
 rem service-worker
 set jss3=--js %csdef%\zb-define.js --js %src%\js\const.js --js %src%\js\zbcommon.js --js %src%\js\zbcrypto.js --js %src%\js\zbidxdb.js --js %src%\js\zbdrive.js --js %src%\js\zbonedrive.js --js %src%\js\zbgoogledrive.js --js %src%\js\zbidxbdrive.js --js %src%\js\worker-const.js --js %src%\js\sw.js
-set csrj3=%%externs%% %%jss3%% --define FORSERVER --define FOROUTPUT --js_output_file %src%\sw\sw.js
+set csrj3=%%externs%% %%jss3%% --define FORSERVER --define FOROUTPUT --js_output_file %src%\sw.js
 echo csrj3=csr %csrj3%
 doskey csrj3=%csr% %csrj3%

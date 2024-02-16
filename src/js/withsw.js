@@ -30,10 +30,13 @@ async function handleServiceWorkerMessage(evt){
  */
 async function registerServiceWorker(){
 	if(navigator.serviceWorker){
-		await navigator.serviceWorker.register(g_SWPATH + "sw.js");
+		/** @type {ServiceWorkerRegistration} */
+		var swr = await navigator.serviceWorker.register("sw.js");
 		await navigator.serviceWorker.ready;
 		navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
 
+		/** @type {ServiceWorker} */
+		var sw = swr.installing || swr.waiting || swr.active;
 		/** @type {SWActionInfo} */
 		var actinf = {
 			action: SWorkerAction.PREPARE,
@@ -44,7 +47,7 @@ async function registerServiceWorker(){
 				drvid: g_drive.getId(),
 			},
 		};
-		navigator.serviceWorker.controller.postMessage(actinf);
+		sw.postMessage(actinf);
 		/** @type {Element} */
 		var ele = getElement("btnUnregSw", undefined, "button.iid");
 		showElement(ele);

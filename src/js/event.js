@@ -318,7 +318,7 @@ window.addEventListener("load", function(evt){
 			ele.addEventListener("click", dropLoacalDb);
 			break;
 		case "btnUnregSw":
-			ele.addEventListener("click", dropLoacalDb);
+			ele.addEventListener("click", unregisterServiceWorker);
 			break;
 		}
 	}

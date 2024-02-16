@@ -13,6 +13,7 @@
 		"js/settings.js",
 		"js/main.js",
 		"js/main-assign.js",
+		"js/withsw.js",
 		"js/event.js",
 	];
 
