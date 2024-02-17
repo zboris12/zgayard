@@ -809,20 +809,6 @@ function isFolder(f){
 	return (typ == "1");
 }
 /**
- * @param {string} fnm
- * @return {string}
- */
-function getSfx(fnm){
-	/** @type {number} */
-	var pos = fnm.lastIndexOf(".");
-	/** @type {string} */
-	var sfx = "";
-	if(pos >= 0){
-		sfx = fnm.slice(pos + 1);
-	}
-	return sfx.toLowerCase();
-}
-/**
  * Event called from html
  */
 function selectAll(){
@@ -1323,12 +1309,12 @@ function viewFile(fid, fnm){
 	/** @type {string} */
 	var vdoType = g_videotypes[sfx];
 
-	if(g_swReady && vdoType){
+	if(isSwReady() && vdoType){
 		/** @type {string} */
 		vdo.fid = fid;
 		/** @type {string} */
 		vdo.fnm = fnm;
-		vdo.src = getFileUrl(fnm, fid);
+		vdo.src = g_SWPATH + fid;
 		showElement(vdo);
 		hideElement(span);
 		return;

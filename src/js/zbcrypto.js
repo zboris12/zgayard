@@ -395,9 +395,9 @@ function ZbCryptoReader(_info){
 	this.nextPos = 0;
 	/** @private @type {number} */
 	this.wholeSize = 0;
-	/** @private @type {boolean} */
-	this.locked = false;
-	/** @private @type {Array<function()>} */
+	/** @private @type {number} */
+	this.locked = 0; //0 not locked, 1 locked, 2 will dispose
+	/** @private @type {Array<function(boolean):void>} */
 	this.waiters = [];
 
 	if(_info._decrypt){
@@ -423,15 +423,25 @@ function ZbCryptoReader(_info){
 
 	/**
 	 * @public
-	 * @return {!Promise<void>}
+	 * @param {boolean=} dispose
+	 * @return {!Promise<boolean>}
 	 */
-	this.lock = function(){
+	this.lock = function(dispose){
 		return new Promise(function(resolve, reject){
-			if(this.locked){
+			switch(this.locked){
+			case 1:
+				if(dispose){
+					this.locked = 2;
+				}
 				this.waiters.push(resolve);
-			}else{
-				this.locked = true;
-				resolve();
+				break;
+			case 2:
+				resolve(false);
+				break;
+			default:
+				this.locked = dispose ? 2 : 1;
+				resolve(true);
+				break;
 			}
 		}.bind(this));
 	};
@@ -440,13 +450,13 @@ function ZbCryptoReader(_info){
 	 * @public
 	 */
 	this.unlock = function(){
-		if(this.locked){
+		if(this.locked > 0){
 			if(this.waiters.length){
-				/** @type {function()} */
+				/** @type {function(boolean):void} */
 				var func = this.waiters.shift();
-				func();
-			}else{
-				this.locked = false;
+				func(true);
+			}else if(this.locked == 1){
+				this.locked = 0;
 			}
 		}
 	};
@@ -614,6 +624,13 @@ function ZbCryptoReader(_info){
 		this.reader.dispose();
 		this.reader = null;
 		this.cryptor = null;
+	};
+	/**
+	 * @public
+	 * @return {?string}
+	 */
+	this.getName = function(){
+		return this.reader.getName();
 	};
 
 	/**

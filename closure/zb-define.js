@@ -274,9 +274,19 @@ var DriveReaderOption;
 /**
  * @typedef
  * {{
+ *    _ctype: string,
+ *    _fnm: string,
+ *    _reader: ZbCryptoReader,
+ * }}
+ */
+var SWReaderInfo;
+/**
+ * @typedef
+ * {{
  *    _drive: ZbDrive,
  *    _keycfg: CipherParams,
- *    _readers: Map<string, ZbCryptoReader>,
+ *    _encfname: boolean,
+ *    _readers: Map<string, SWReaderInfo>,
  * }}
  */
 var SWCacheData;

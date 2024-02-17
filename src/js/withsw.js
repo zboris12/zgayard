@@ -1,6 +1,3 @@
-/** @type {boolean} */
-var g_swReady = false;
-
 /**
  * @param {Event} evt // MessageEvent
  * @return {!Promise<void>}
@@ -9,12 +6,14 @@ async function handleServiceWorkerMessage(evt){
 	var actinf = /** @type {SWActionInfo} */(evt.data);
 	switch(actinf.action){
 	case SWorkerAction.PREPARE:
-		if(actinf.msg){
-			console.error(actinf.msg);
-			showError(actinf.msg);
-		}else{
-			g_swReady = true;
-		}
+		actinf.cominf = {
+			gtoken: g_drive.getToken(),
+			iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
+			key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
+			drvid: g_drive.getId(),
+			encfname: isEncfname(),
+		};
+		navigator.serviceWorker.controller.postMessage(actinf);
 		break;
 	case SWorkerAction.SHOWERR:
 		if(actinf.msg){
@@ -35,19 +34,6 @@ async function registerServiceWorker(){
 		await navigator.serviceWorker.ready;
 		navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
 
-		/** @type {ServiceWorker} */
-		var sw = swr.installing || swr.waiting || swr.active;
-		/** @type {SWActionInfo} */
-		var actinf = {
-			action: SWorkerAction.PREPARE,
-			cominf: {
-				gtoken: g_drive.getToken(),
-				iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
-				key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
-				drvid: g_drive.getId(),
-			},
-		};
-		sw.postMessage(actinf);
 		/** @type {Element} */
 		var ele = getElement("btnUnregSw", undefined, "button.iid");
 		showElement(ele);
@@ -94,7 +80,6 @@ async function unregisterServiceWorker(){
 	if(ret){
 		console.debug("service worker uninstalled.");
 	}
-	g_swReady = false;
 	/** @type {Element} */
 	var ele = getElement("btnUnregSw", undefined, "button.iid");
 	hideElement(ele);
@@ -102,24 +87,12 @@ async function unregisterServiceWorker(){
 }
 
 /**
- * @param {string} fnm
- * @param {string} fid
- * @return {string}
+ * @return {boolean}
  */
-function getFileUrl(fnm, fid){
-	/** @type {string} */
-	var url = g_SWPATH;
-	/** @type {string} */
-	var sfx = getSfx(fnm);
-	if(g_imagetypes[sfx]){
-		url += g_imagetypes[sfx];
-	}else if(g_videotypes[sfx]){
-		url += g_videotypes[sfx];
-	}else if(g_audiotypes[sfx]){
-		url += g_audiotypes[sfx];
+function isSwReady(){
+	if(navigator.serviceWorker && navigator.serviceWorker.controller){
+		return true;
 	}else{
-		url += "binary/octet-stream";
+		return false;
 	}
-
-	return url += "/" + fid;
 }

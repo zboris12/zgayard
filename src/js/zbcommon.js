@@ -603,6 +603,20 @@ function getStringLength(str){
 	}
 	return sz;
 }
+/**
+ * @param {string} fnm
+ * @return {string}
+ */
+function getSfx(fnm){
+	/** @type {number} */
+	var pos = fnm.lastIndexOf(".");
+	/** @type {string} */
+	var sfx = "";
+	if(pos >= 0){
+		sfx = fnm.slice(pos + 1);
+	}
+	return sfx.toLowerCase();
+}
 
 /**
  * Sleep milliseconds.

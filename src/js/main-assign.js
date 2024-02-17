@@ -553,6 +553,7 @@ function addWorkerQueue(wkinf){
 			iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
 			key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
 			drvid: g_drive.getId(),
+			encfname: isEncfname(),
 		};
 
 		g_worker.addEventListener("message", function(a_evt){
@@ -597,6 +598,15 @@ function doDownUp(li, func){
  * @param {Array<DriveItem>} files
  */
 function download(files){
+	// if(g_swReady && files.length == 1){
+		// /** @type {Element} */
+		// var lnk = getElement("#lnkDown");
+		// lnk.download = files[0]._name;
+		// lnk.href = g_SWPATH + files[0]._id;
+		// lnk.click();
+		// return;
+	// }
+
 	/** @type {Element} */
 	var ul = getElement("ul", "#divQueue");
 	/** @type {number} */

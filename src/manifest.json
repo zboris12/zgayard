@@ -1,0 +1,14 @@
+{
+  "short_name": "zgayard",
+  "name": "zgayard: Create a safety yard in your online storage",
+  "icons": [
+    {
+      "src": "img/logo.png",
+      "type": "image/png",
+      "sizes": "310x310"
+    }
+  ],
+  "start_url": "/zgayard/src/",
+  "display": "standalone",
+  "scope": "/zgayard/src/"
+}

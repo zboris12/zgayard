@@ -22,6 +22,7 @@ var WorkerInfo;
  *    iv: string,
  *    key: string,
  *    drvid: string,
+ *    encfname: boolean,
  * }}
  */
 var WorkerCommonInfo;

@@ -11,7 +11,7 @@ function GrantAuth(lib, consts){
 	/** @private @type {boolean} */
 	this.localhost = false;
 	/** @private @type {string} */
-	this.redirectUri = consts.REDIRECT_URI;
+	this.redirectUri = null;
 	/** @private @type {http.IncomingMessage} */
 	this.req = null;
 	/** @private @type {http.ServerResponse} */
@@ -31,13 +31,23 @@ GrantAuth.prototype.process = function(req, res){
 	const _this = this;
 	/** @type {string} */
 	var ourl = req.headers["origin"];
-	if(ourl == "http://localhost:10801"){
-		_this.localhost = true;
-		_this.redirectUri = ourl + "/src/";
-	}else{
-		ourl = _this.getBaseUrl(_this.redirectUri);
+	/** @type {number} */
+	var l = ourl.length;
+	/** @type {number} */
+	var i = 0;
+	for(i=0; i<_this.cs.REDIRECT_URIS.length; i++){
+		if(_this.cs.REDIRECT_URIS[i].substring(0, l) == ourl){
+			_this.redirectUri = _this.cs.REDIRECT_URIS[i];
+			if(i == 0){
+				_this.localhost = true;
+			}
+			break;
+		}
 	}
-	res.setHeader("Access-Control-Allow-Origin",  ourl);
+	if(!_this.redirectUri){
+		ourl = _this.getBaseUrl(_this.cs.REDIRECT_URIS[0]);
+	}
+	res.setHeader("Access-Control-Allow-Origin", ourl);
 	res.setHeader("Access-Control-Allow-Credentials", "true");
 	res.setHeader("Content-Type", "application/json;charset=UTF-8");
 

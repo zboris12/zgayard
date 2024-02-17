@@ -14,14 +14,14 @@ if(!FOROUTPUT){
 }
 
 window = self;
-/** @const {string} */
-const g_VERSION = "0.0.1";
 /** @const {number} */
 const g_BUFSIZE = 800000;
 /** @type {ZbLocalStorage} */
 var g_storage = null;
-/** @type {Map<string, SWCacheData>} */
-var g_cache = new Map();
+/** @type {?SWCacheData} */
+var g_cache = null;
+/** @type {?function(string):void} */
+var g_resolve = null;
 
 /**
  * @return {!Promise<ZbLocalStorage>}
@@ -54,18 +54,13 @@ async function postClientMessage(cid, msgdat){
 }
 
 /**
- * @param {string} cid client id.
  * @param {WorkerCommonInfo} cinf
  * @return {!Promise<string>}
  */
-async function prepare(cid, cinf){
+async function prepare(cinf){
 	/** @type {string} */
 	var msg = "";
 	try{
-		if(g_cache.get(cid)){
-			return msg;
-		}
-
 		var keycfg = /** @type {CipherParams} */({
 			"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
 			"key": CryptoJS.enc.Base64url.parse(cinf.key),
@@ -79,11 +74,12 @@ async function prepare(cid, cinf){
 			/** @type {ZbDrive} */
 			var drv = drvdef.newDriveInstance(g_storage, g_AUTHURL);
 			drv.presetToken(cinf.gtoken);
-			g_cache.set(cid, {
+			g_cache = {
 				_drive: drv,
 				_keycfg: keycfg,
+				_encfname: cinf.encfname,
 				_readers: new Map(),
-			});
+			};
 
 		}else{
 			msg = "Drive's name is invalid.";
@@ -94,6 +90,23 @@ async function prepare(cid, cinf){
 	}
 
 	return msg;
+}
+
+/**
+ * @param {string} cid
+ * @return {!Promise<string>}
+ */
+function requestPrepare(cid){
+	return new Promise(function(resolve, reject){
+		if(g_resolve){
+			resolve("A conflict has occurred.");
+		}else{
+			g_resolve = resolve;
+			postClientMessage(cid, {
+				action: SWorkerAction.PREPARE,
+			});
+		}
+	});
 }
 
 /**
@@ -108,19 +121,31 @@ async function handleClientMessage(evt){
 	case SWorkerAction.PREPARE:
 		var cinf = /** @type {WorkerCommonInfo} */(actinf.cominf);
 		/** @type {string} */
-		var msg = await prepare(cid, cinf);
-		await postClientMessage(cid, {
-			action: actinf.action,
-			msg: msg,
-		});
+		var msg = await prepare(cinf);
+		if(g_resolve){
+			g_resolve(msg);
+			g_resolve = null;
+		}else if(msg){
+			await postClientMessage(cid, {
+				action: SWorkerAction.SHOWERR,
+				msg: msg,
+			});
+		}
 		break;
 	case SWorkerAction.RELEASEREADER:
-		/** @type {SWCacheData} */
-		var cache = g_cache.get(cid);
 		/** @type {string|undefined} */
 		var fid = actinf.fid;
-		if(cache && fid){
-			cache._readers.delete(fid);
+		if(g_cache && fid){
+			/** @type {SWReaderInfo} */
+			var rinf = g_cache._readers.get(fid);
+			if(rinf){
+				g_cache._readers.delete(fid);
+				/** @type {boolean} */
+				var lok = await rinf._reader.lock(true);
+				if(lok){
+					rinf._reader.dispose();
+				}
+			}
 		}
 		break;
 	}
@@ -137,6 +162,7 @@ function createResponseInit(sts, hdrs){
 		[200, "OK"],
 		[206, "Partial Content"],
 		[404, "Not Found"],
+		[409, "Conflict"],
 		[500, "Internal Server Error"],
 		[503, "Service Unavailable"],
 	]);
@@ -195,43 +221,68 @@ function analyzeRange(rngstr){
 
 /**
  * @param {FetchEvent} evt
- * @param {string} ctyp
  * @param {string} fid
  * @return {!Promise<Response>}
  */
-async function swFetchData(evt, ctyp, fid){
-	if(!(ctyp && fid)){
+async function swFetchData(evt, fid){
+	if(!fid){
 		return createErrorResponse(404, "Unkown url format.");
 	}
-	if(!evt.clientId){
+	var cid = /** @type {string} */(evt.clientId || evt.resultingClientId);
+	if(!cid){
 		return createErrorResponse(503, "Missing client id.");
 	}
-	/** @type {SWCacheData} */
-	var cache = g_cache.get(evt.clientId);
-	if(!cache){
-		return createErrorResponse(503, "Not ready for decryption.", evt.clientId);
+	if(!g_cache){
+		/** @type {string} */
+		var msg = await requestPrepare(cid);
+		if(msg){
+			return createErrorResponse(503, msg, cid);
+		}
 	}
 
 	try{
+		/** @type {SWReaderInfo} */
+		var rinf = g_cache._readers.get(fid);
 		/** @type {ZbCryptoReader} */
-		var rdr = cache._readers.get(fid);
-		if(!rdr){
+		var rdr = null;
+		if(rinf){
+			rdr = rinf._reader;
+		}else{
 			rdr = new ZbCryptoReader({
 				_decrypt: true,
-				_keycfg: cache._keycfg,
-				_reader: cache._drive.createReader({
+				_keycfg: g_cache._keycfg,
+				_reader: g_cache._drive.createReader({
 					_id: fid,
 				}),
 			});
-			cache._readers.set(fid, rdr);
+			rinf = {
+				_ctype: "",
+				_fnm: "",
+				_reader: rdr,
+			};
+			g_cache._readers.set(fid, rinf);
 		}
 
-		await rdr.lock();
+		/** @type {boolean} */
+		var lok = await rdr.lock();
+		if(!lok){
+			return createErrorResponse(409, "The reader will be disposed.");
+		}
 
 		/** @type {FetchRange} */
 		var range = analyzeRange(evt.request.headers.get("range"));
 		/** @type {number} */
 		var wsize = await rdr.calcWholeSize();
+		if(!rinf._fnm){
+			rinf._fnm = /** @type {string} */(rdr.getName());
+			if(g_cache._encfname){
+				rinf._fnm = zbDecryptString(rinf._fnm, g_cache._keycfg);
+			}
+			/** @type {string} */
+			var sfx = getSfx(rinf._fnm);
+			rinf._ctype = g_videotypes[sfx] || g_audiotypes[sfx] || g_imagetypes[sfx] || "binary/octet-stream";
+			// console.debug(rinf._fnm, rinf._ctype);
+		}
 		range._to = Math.min(range._to < 0 ? wsize : range._to, range._from + g_BUFSIZE);
 
 		/** @type {Array<number>} */
@@ -243,7 +294,7 @@ async function swFetchData(evt, ctyp, fid){
 		/** @type {Headers} */
 		var hdrs = new Headers();
 		hdrs.append("Content-Length", dat.length.toString());
-		hdrs.append("Content-Type", ctyp);
+		hdrs.append("Content-Type", rinf._ctype);
 		if(range._from == 0 && dat.length == wsize){
 			return new Response(new Uint8Array(dat), createResponseInit(200, hdrs));
 
@@ -254,7 +305,7 @@ async function swFetchData(evt, ctyp, fid){
 		}
 
 	}catch(err){
-		return createErrorResponse(500, err.message || err, evt.clientId);
+		return createErrorResponse(500, err.message || err, cid);
 	}
 }
 
@@ -266,24 +317,10 @@ self.addEventListener("fetch", function(evt){
 	/** @type {string} */
 	var str = evt.request.url;
 	/** @type {number} */
-	var idx = str.indexOf(g_SWPATH);
+	var idx = str.indexOf("/" + g_SWPATH);
 	if(idx < 0){
 		return;
 	}
-
-	/** @type {string} */
-	var ctyp = "";
-	/** @type {string} */
-	var fid = "";
-
-	str = str.substring(idx + g_SWPATH_LEN);
-	idx = str.indexOf("/");
-	if(idx > 0){
-		idx = str.indexOf("/", idx + 1);
-	}
-	if(idx > 0){
-		ctyp = str.substring(0, idx);
-		fid = str.substring(idx + 1);
-	}
-	evt.respondWith(swFetchData(/** @type {FetchEvent} */(evt), ctyp, fid));
+	str = str.substring(idx + g_SWPATH_LEN + 1);
+	evt.respondWith(swFetchData(/** @type {FetchEvent} */(evt), str));
 });
