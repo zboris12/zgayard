@@ -238,6 +238,16 @@ function ZbGoogleDrive(_storage, _authUrl){
 
 	/**
 	 * @override
+	 * @public
+	 * @param {Response} resp
+	 * @return {boolean}
+	 */
+	this.isPutOk = function(resp){
+		return (resp.ok || resp.status == 308);
+	};
+
+	/**
+	 * @override
 	 * @protected
 	 * @return {string}
 	 */

@@ -1291,7 +1291,9 @@ function viewFile(fid, fnm){
 	/** @type {Element} */
 	var img = getElement("img", div);
 	/** @type {Element} */
-	var vdo = endVideoStream(div);
+	var vdo = endMediaStream("video", div);
+	/** @type {Element} */
+	var ado = endMediaStream("audio", div);
 
 	span.innerText = window["msgs"]["loading"];
 	showElement(span);
@@ -1308,6 +1310,8 @@ function viewFile(fid, fnm){
 	var imgType = g_imagetypes[sfx];
 	/** @type {string} */
 	var vdoType = g_videotypes[sfx];
+	/** @type {string} */
+	var adoType = g_audiotypes[sfx];
 
 	if(isSwReady() && vdoType){
 		/** @type {string} */
@@ -1316,6 +1320,17 @@ function viewFile(fid, fnm){
 		vdo.fnm = fnm;
 		vdo.src = g_SWPATH + fid;
 		showElement(vdo);
+		hideElement(span);
+		return;
+	}else if(isSwReady() && adoType){
+		/** @type {string} */
+		ado.fid = fid;
+		/** @type {string} */
+		ado.fnm = fnm;
+		ado.src = g_SWPATH + fid;
+		showElement(ado);
+		img.src = "img/logo.png";
+		showElement(img);
 		hideElement(span);
 		return;
 	}else if(!imgType){
@@ -1414,7 +1429,8 @@ function clickNext(){
  * @param {Event} evt
  */
 function exitViewer(evt){
-	endVideoStream(getElement("#diViewer"));
+	endMediaStream("video", getElement("#diViewer"));
+	endMediaStream("audio", getElement("#diViewer"));
 	hideModal(evt);
 }
 /**
@@ -1428,12 +1444,13 @@ function imageLoaded(){
 	}
 }
 /**
+ * @param {string} tag
  * @param {Element} div
  * @return {Element}
  */
-function endVideoStream(div){
+function endMediaStream(tag, div){
 	/** @type {Element} */
-	var vdo = getElement("video", div);
+	var vdo = getElement(tag, div);
 	/** @type {string} */
 	var ctm = vdo.currentTime;
 	if(vdo.src){
@@ -1579,7 +1596,7 @@ function clickRecent(evt, next){
 					clickItem(fid, 2);
 				}else{
 					if(ctime){
-						getElement("video", "#diViewer").setAttribute("ctime", ctime);
+						getElement("#diViewer").setAttribute("ctime", ctime);
 					}
 					clickItem(fid);
 				}
@@ -1598,13 +1615,15 @@ function clickRecentNext(evt){
  * @param {Event} evt
  */
 function restoreTime(evt){
-	/** @type {EventTarget} */
-	var vdo = getElement(evt);
+	/** @type {Element} */
+	var ele = getElement(evt);
+	/** @type {Element} */
+	var div = findParent("div", ele);
 	/** @type {string} */
-	var ctime = vdo.getAttribute("ctime");
+	var ctime = div.getAttribute("ctime");
 	if(ctime){
-		vdo.removeAttribute("ctime");
-		vdo.currentTime = ctime;
+		div.removeAttribute("ctime");
+		ele.currentTime = ctime;
 	}
 }
 /**

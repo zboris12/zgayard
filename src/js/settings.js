@@ -211,6 +211,7 @@ async function fetchLocalStorageAuth(){
 		"method": "POST",
 		"body": formData,
 		"credentials": "include",
+		"redirect": "follow",
 	});
 	if(resp.status == 200){
 		var respObj = await resp.json();

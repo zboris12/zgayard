@@ -252,6 +252,7 @@ function ZbOneDrive(_storage, _authUrl){
 		/** @type {Response} */
 		var resp = await fetch(upurl, {
 			"method": "DELETE",
+			"redirect": "follow",
 		});
 		if(!resp.ok){
 			/** @type {string} */

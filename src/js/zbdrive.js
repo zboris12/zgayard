@@ -153,6 +153,7 @@ ZbDrive.prototype.sendAjax = async function(opt){
 		"method": method,
 		"body": opt._data,
 		"headers": headers,
+		"redirect": "follow",
 	});
 	if(resp.status == 401 && this.storage.isSkipLogin() && !opt._retry){
 		resp = await this.retryAjaxWithLogin(opt);
@@ -298,6 +299,7 @@ ZbDrive.prototype.logout = async function(){
 		"method": "POST",
 		"credentials": "include",
 		"body": formData,
+		"redirect": "follow",
 	});
 	if(resp.ok){
 		/** @type {string} */
@@ -636,6 +638,7 @@ ZbDrive.prototype.authorize = async function(opt){
 		"method": "POST",
 		"body": formData,
 		"credentials": "include",
+		"redirect": "follow",
 	});
 	if(resp.status == 200){
 		var respObj = await resp.json();
@@ -667,6 +670,14 @@ ZbDrive.prototype.retryAjaxWithLogin = async function(_opt){
 		_opt._auth = /** @type {string} */(this.accessToken);
 		return await this.sendAjax(_opt);
 	}
+};
+/**
+ * @public
+ * @param {Response} resp
+ * @return {boolean}
+ */
+ZbDrive.prototype.isPutOk = function(resp){
+	return resp.ok;
 };
 
 /**
@@ -825,10 +836,11 @@ function ZbDriveWriter(_opt, _drv){
 					"method": "PUT",
 					"headers": headers,
 					"body": bufblob,
+					"redirect": "follow",
 				});
 				/** @type {string} */
 				var resptext = "";
-				if(resp.ok){
+				if(_drv.isPutOk(resp)){
 					/** @type {number} */
 					var a_npos = await this.drive.getNextPosition(resp);
 					if(a_npos == ZbDrvWrtPos.ERROR){
@@ -874,6 +886,7 @@ function ZbDriveWriter(_opt, _drv){
 				}else{
 					buf = null;
 					bufblob = null;
+					throw err;
 				}
 			}
 		}.bind(this);
@@ -1082,6 +1095,7 @@ function ZbDriveReader(_opt, _drv){
 				var resp = await fetch(url, {
 					"method": "GET",
 					"headers": headers,
+					"redirect": "follow",
 				});
 				if(this.oldreading){
 					this.oldreading = 0;
@@ -1149,6 +1163,8 @@ function ZbDriveReader(_opt, _drv){
 					// retry for occasionally server failed
 					await sleep(500);
 					return await ajaxGet();
+				}else{
+					throw err;
 				}
 			}
 

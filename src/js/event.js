@@ -198,6 +198,19 @@ function clickMainMenu(evt){
 	}
 }
 
+/**
+ * @param {string} tag
+ * @param {Element} div
+ */
+function addMediaControl(tag, div){
+	/** @type {Element} */
+	var ele = getElement(tag, div);
+	ele.addEventListener("canplay", restoreTime);
+	ele.addEventListener("ended", function(){
+		clickItem(findParent("div").getAttribute("uid"), 2, true);
+	});
+}
+
 window.addEventListener("load", function(evt){
 	/**
 	 * "input file multiple" is not supported in Android, so we need to add "input file" manually.
@@ -417,11 +430,9 @@ window.addEventListener("load", function(evt){
 		downloadById(findParent("div").getAttribute("uid"));
 	});
 	getElement("img", ele).addEventListener("load", imageLoaded);
-	ele = getElement("video", ele);
-	ele.addEventListener("canplay", restoreTime);
-	ele.addEventListener("ended", function(){
-		clickItem(findParent("div").getAttribute("uid"), 2, true);
-	});
+
+	addMediaControl("audio", ele);
+	addMediaControl("video", ele);
 	// screen.orientation.addEventListener("change", function(a_evt){
 		// if(a_evt.currentTarget.type == "landscape-primary"){
 			// /** @type {Element} */
