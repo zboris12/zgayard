@@ -130,24 +130,23 @@ GrantAuth.prototype.endProcess = function(result){
 /**
  * @private
  * @param {boolean=} keyOnly
- * @return {string|Object}
+ * @return {Buffer|Object}
  */
 GrantAuth.prototype.getLocalStorageAuth = function(keyOnly){
 	/** @const {GrantAuth} */
 	const _this = this;
-	/** @const {forge} */
-	const forge = _this.loadLib("node-forge");
 	/** @type {string} */
 	var lskey64 = _this.cookies["lskey"];
 	/** @type {boolean} */
 	var newkey = false;
-	/** @type {string} */
+	/** @type {Buffer} */
 	var lskey = "";
 	if(lskey64){
-		lskey = forge.util.decode64(lskey64);
+		lskey = Buffer.from(lskey64, "base64");
 	}else{
-		lskey = forge.random.getBytesSync(20);
-		lskey64 = forge.util.encode64(lskey);
+		lskey = Buffer.alloc(20);
+		_this.loadLib("crypto").randomFillSync(lskey);
+		lskey64 = lskey.toString("base64");
 		newkey = true;
 	}
 	/** @type {string} */
@@ -182,58 +181,60 @@ GrantAuth.prototype.getLocalStorageAuth = function(keyOnly){
 };
 /**
  * @private
- * @param {string} data
+ * @param {string|Buffer} data
  * @param {boolean=} encrypt
  * @return {string}
  */
 GrantAuth.prototype.cryptData = function(data, encrypt){
 	/** @const {GrantAuth} */
 	const _this = this;
-	/** @const {forge} */
-	const forge = _this.loadLib("node-forge");
 	/** @const {number} */
 	const ivlen = 16;
 	/** @type {string} */
 	var iv = _this.cs.CRYPT_IV.substring(0, ivlen);
-	/** @type {string} */
-	var lskey = _this.getLocalStorageAuth(true) + _this.cs.CRYPT_IV.substring(ivlen);
+	/** @type {Buffer} */
+	var lskey = Buffer.concat([
+		_this.getLocalStorageAuth(true),
+		Buffer.from(_this.cs.CRYPT_IV.substring(ivlen), "utf8"),
+	]);
 	/** @type {Array<string>} */
 	var cinfarr = _this.cs.CRYPT_METHOD.split("-");
-	/** @type {string} */
-	var cmthd = "AES-CBC";
 	/** @type {number} */
 	var keylen = 16;
 	if(cinfarr.length == 3){
-		cmthd = cinfarr[0] + "-" + cinfarr[2];
 		if(cinfarr[1] == "192" || cinfarr[1] == "256"){
 			keylen = parseInt(cinfarr[1], 10) / 8;
 		}
 	}
-	/** @type {forge.md} */
-	var md = forge.md.sha256.create();
+	/** @const {crypto} */
+	const crypto = _this.loadLib("crypto");
+	/** @type {crypto.Hash} */
+	const md = crypto.createHash("sha256");
 	md.update(lskey);
-	/** @type {forge.util.ByteStringBuffer} */
-	var key = md.digest();
-	key.truncate(key.length() - keylen);
-	/** @type {forge.cipher.BlockCipher} */
+	/** @type {Buffer} */
+	var key = md.digest().subarray(0, keylen);
+
+	/** @type {crypto.Cipher|crypto.Decipher} */
 	var cipher = null;
 	if(encrypt){
-		cipher = forge.cipher.createCipher(cmthd, key);
+		cipher = crypto.createCipheriv(_this.cs.CRYPT_METHOD, key, iv);
+		if (typeof data == "string") {
+			data =  Buffer.from(data, "utf8");
+		}
 	}else{
-		cipher = forge.cipher.createDecipher(cmthd, key);
-		data = forge.util.decode64(data);
+		cipher = crypto.createDecipheriv(_this.cs.CRYPT_METHOD, key, iv);
+		if (typeof data == "string") {
+			data =  Buffer.from(data, "base64");
+		}
 	}
-	/** @type {forge.util.ByteStringBuffer} */
-	var buff = forge.util.createBuffer(data);
-	cipher.start({iv: iv});
-	cipher.update(buff);
-	cipher.finish();
-	/** @type {string} */
-	var dataOut = cipher.output.getBytes();
+	/** @type {Buffer} */
+	var dataOut = cipher.update(data);
+	dataOut = Buffer.concat([dataOut, cipher.final()]);
 	if(encrypt){
-		dataOut = forge.util.encode64(dataOut);
+		return dataOut.toString("base64");
+	}else{
+		return dataOut.toString("utf8");
 	}
-	return dataOut;
 };
 /**
  * @private
@@ -371,12 +372,13 @@ GrantAuth.prototype.getDriveAuth = function(infs){
 			}else{
 				data["response_type"] = "token";
 			}
-			/** @const {forge} */
-			const forge = _this.loadLib("node-forge");
+			/** @const {crypto} */
+			const crypto = _this.loadLib("crypto");
+			/** @const {Buffer} */
+			var state = Buffer.alloc(20);
+			crypto.randomFillSync(state);
 			/** @type {string} */
-			var state = forge.random.getBytesSync(20);
-			/** @type {string} */
-			var state64 = forge.util.encode64(state);
+			var state64 = state.toString("base64");
 			endauth({
 				"url": infs["login_url"] + "?" + qs.stringify(data),
 				"state": state64,
@@ -415,13 +417,12 @@ GrantAuth.prototype.getBaseUrl = function(url){
 GrantAuth.prototype.hmac = function(dat){
 	/** @const {GrantAuth} */
 	const _this = this;
-	/** @const {forge} */
-	const forge = _this.loadLib("node-forge");
-	/** @type {forge.hmac} */
-	var hmac = forge.hmac.create();
-	hmac.start(_this.cs.HMAC_METHOD, _this.cs.HMAC_KEY);
+	/** @const {crypto} */
+	const crypto = _this.loadLib("crypto");
+	/** @type {crypto.Hmac} */
+	const hmac = crypto.createHmac(_this.cs.HMAC_METHOD, _this.cs.HMAC_KEY);
 	hmac.update(dat);
-	return forge.util.encode64(hmac.digest().getBytes());
+	return hmac.digest("base64");
 };
 
 module.exports = function(lib, relay){

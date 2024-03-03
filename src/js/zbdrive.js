@@ -237,7 +237,7 @@ ZbDrive.prototype.login = async function(reuseToken){
 				this.storage.setDriveExInfo(dext);
 			}
 			this.setAccessToken(authObj["token_type"], authObj["access_token"]);
-			if(canSkipLogin && opt.code && authObj["refresh_token"]){
+			if(canSkipLogin && authObj["refresh_token"]){
 				this.storage.saveDriveData("refresh_token", authObj["refresh_token"]);
 			}
 			if(authObj["logout"]){
