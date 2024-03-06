@@ -8,8 +8,8 @@ async function handleServiceWorkerMessage(evt){
 	case SWorkerAction.PREPARE:
 		actinf.cominf = {
 			gtoken: g_drive.getToken(),
-			iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
-			key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
+			iv: rawToBase64url(g_keycfg.iv),
+			key: rawToBase64url(g_keycfg.key),
 			drvid: g_drive.getId(),
 			encfname: isEncfname(),
 		};

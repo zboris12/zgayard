@@ -1,6 +1,6 @@
 /**
  * @constructor
- * @param {CipherParams} keycfg
+ * @param {AesSecrets} keycfg
  * @param {function():boolean} isCancelFunc
  * @param {function(WorkerStepInfo)} sendSpInfFunc
  */
@@ -9,7 +9,7 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 	this.reader = null;
 	/** @private @type {ZBWriter} */
 	this.writer = null;
-	/** @private @type {CipherParams} */
+	/** @private @type {AesSecrets} */
 	this.keycfg = keycfg;
 	/** @private @type {WorkerInfoType} */
 	this.wktype = WorkerInfoType.DOWNLOAD;

@@ -1363,8 +1363,6 @@ function viewFile(fid, fnm){
 			a_buf = new Uint8Array(a_buf);
 		}
 		if(imgType){
-//			var a_words = new CryptoJS.lib.WordArray.init(a_buf);
-//			img.src = "data:"+imgType+";base64," + a_words.toString(CryptoJS.enc.Base64);
 			var a_blob = new Blob([a_buf], { "type" : imgType });
 			img.src = window.URL.createObjectURL(a_blob);
 			showElement(img);

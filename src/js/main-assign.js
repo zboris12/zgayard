@@ -550,8 +550,8 @@ function addWorkerQueue(wkinf){
 		/** @type {WorkerCommonInfo} */
 		g_worker.cinf = {
 			gtoken: g_drive.getToken(),
-			iv: g_keycfg["iv"].toString(CryptoJS.enc.Base64url),
-			key: g_keycfg["key"].toString(CryptoJS.enc.Base64url),
+			iv: rawToBase64url(g_keycfg.iv),
+			key: rawToBase64url(g_keycfg.key),
 			drvid: g_drive.getId(),
 			encfname: isEncfname(),
 		};

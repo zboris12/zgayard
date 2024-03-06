@@ -61,6 +61,15 @@ var PlayedInfo;
  */
 var UploadTarget;
 
+/**
+ * @typedef
+ * {{
+ *    key: string,
+ *    iv: string,
+ * }}
+ */
+var AesSecrets;
+
 /** @interface */
 function ZBWriter(){
 	/**
@@ -71,7 +80,7 @@ function ZBWriter(){
 	this.prepare = async function(fsize){};
 	/**
 	 * @public
-	 * @param {ArrayBuffer|Array<number>} buf
+	 * @param {ArrayBuffer|Uint8Array} buf
 	 * @return {!Promise<void>}
 	 */
 	this.write = async function(buf){};
@@ -141,7 +150,7 @@ var ZBReaderOption;
  * @typedef
  * {{
  *    _decrypt: (boolean|undefined),
- *    _keycfg: (CipherParams|string),
+ *    _keycfg: (AesSecrets|string),
  *    _reader: (ZBReader),
  * }}
  */
@@ -151,7 +160,7 @@ var ZbCryptoReaderOption;
  * @typedef
  * {{
  *    _decrypt: (boolean|undefined),
- *    _keycfg: (CipherParams|string),
+ *    _keycfg: (AesSecrets|string),
  *    _reader: (ZBReader),
  *    _writer: (ZBWriter),
  * }}
@@ -284,7 +293,7 @@ var SWReaderInfo;
  * @typedef
  * {{
  *    _drive: ZbDrive,
- *    _keycfg: CipherParams,
+ *    _keycfg: AesSecrets,
  *    _encfname: boolean,
  *    _readers: Map<string, SWReaderInfo>,
  * }}

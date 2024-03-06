@@ -42,7 +42,9 @@ And I use this name to hope the merits from this application will be dedicated t
 
 ## The Dependencies
 
-* [crypto-js](https://github.com/brix/crypto-js)
+* ~~[crypto-js](https://github.com/brix/crypto-js)~~
+* [node-forge](https://github.com/digitalbazaar/forge)  
+Changed crypto module from crypto-js to node-forge, because node-forge is fast.
 * ~~[videostream](https://github.com/jhiesey/videostream)~~  
 Because Safari on iOS does not support [MediaSource](https://developer.mozilla.org/ja/docs/Web/API/MediaSource),
 the new version uses service worker to handle video requests instead.

@@ -1,6 +1,7 @@
+window = self;
 /** @define {boolean} */
 var FOROUTPUT = false;
-self.importScripts("vendor/crypto-js.js");
+self.importScripts("vendor/forge.min.js");
 if(!FOROUTPUT){
 	self.importScripts("js/const.js");
 	self.importScripts("js/zbcommon.js");
@@ -13,7 +14,6 @@ if(!FOROUTPUT){
 	self.importScripts("js/worker-const.js");
 }
 
-window = self;
 /** @const {number} */
 const g_BUFSIZE = 800000;
 /** @type {ZbLocalStorage} */
@@ -61,10 +61,11 @@ async function prepare(cinf){
 	/** @type {string} */
 	var msg = "";
 	try{
-		var keycfg = /** @type {CipherParams} */({
-			"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
-			"key": CryptoJS.enc.Base64url.parse(cinf.key),
-		});
+		/** @type {AesSecrets} */
+		var keycfg = {
+			iv: base64urlToRaw(cinf.iv),
+			key: base64urlToRaw(cinf.key),
+		};
 		if(!g_storage){
 			g_storage = await initIdxDb();
 		}
@@ -285,7 +286,7 @@ async function swFetchData(evt, fid){
 		}
 		range._to = Math.min(range._to < 0 ? wsize : range._to, range._from + g_BUFSIZE);
 
-		/** @type {Array<number>} */
+		/** @type {string} */
 		var dat = await rdr.read(range._from, range._to - range._from);
 		rdr.unlock();
 
@@ -296,12 +297,12 @@ async function swFetchData(evt, fid){
 		hdrs.append("Content-Length", dat.length.toString());
 		hdrs.append("Content-Type", rinf._ctype);
 		if(range._from == 0 && dat.length == wsize){
-			return new Response(new Uint8Array(dat), createResponseInit(200, hdrs));
+			return new Response(rawToU8arr(dat), createResponseInit(200, hdrs));
 
 		}else{
 			hdrs.append("Accept-Ranges", "bytes");
 			hdrs.append("Content-Range", `bytes ${range._from}-${to}/${wsize}`);
-			return new Response(new Uint8Array(dat), createResponseInit(206, hdrs));
+			return new Response(rawToU8arr(dat), createResponseInit(206, hdrs));
 		}
 
 	}catch(err){

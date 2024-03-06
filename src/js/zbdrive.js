@@ -768,7 +768,7 @@ function ZbDriveWriter(_opt, _drv){
 	this.upSize = 0;
 	/** @private @type {number} */
 	this.pos = 0;
-	/** @private @type {ArrayBuffer|Array<number>} */
+	/** @private @type {ArrayBuffer|Uint8Array} */
 	this.rebuf = null; // remained buffer
 
 	if(!(this.opt && this.opt._fnm)){
@@ -787,31 +787,25 @@ function ZbDriveWriter(_opt, _drv){
 
 	/**
 	 * @public
-	 * @param {ArrayBuffer|Array<number>} buf
+	 * @param {ArrayBuffer|Uint8Array} buf
 	 * @return {!Promise<void>}
 	 */
 	this.write = async function(buf){
 		/** @type {Uint8Array} */
 		var whole = null;
 		if(this.rebuf){
-			if(this.rebuf instanceof ArrayBuffer){
-				/** @type {number} */
-				var buflen = this.rebuf.byteLength;
-				if(buflen > 0){
-					whole = new Uint8Array(buflen + buf.byteLength);
-					whole.set(new Uint8Array(this.rebuf), 0);
-					whole.set(new Uint8Array(buf), buflen);
-				}else{
-					whole = new Uint8Array(buf);
-				}
-			}else if(this.rebuf.length > 0){
-				whole = new Uint8Array(this.rebuf.concat(buf));
+			/** @type {number} */
+			var buflen = this.rebuf.byteLength;
+			if(buflen > 0){
+				whole = new Uint8Array(buflen + buf.byteLength);
+				whole.set(this.getU8arr(this.rebuf), 0);
+				whole.set(this.getU8arr(buf), buflen);
 			}else{
-				whole = new Uint8Array(buf);
+				whole = this.getU8arr(buf);
 			}
 			this.rebuf = null;
 		}else{
-			whole = new Uint8Array(buf);
+			whole = this.getU8arr(buf);
 		}
 
 		/** @type {Blob} */
@@ -849,15 +843,10 @@ function ZbDriveWriter(_opt, _drv){
 						throw new Error(resptext+" ("+resp.status+")");
 					}else if(a_npos != ZbDrvWrtPos.FINISHED && a_npos != ZbDrvWrtPos.UNKNOWN && a_npos < this.pos){
 						/** @type {number} */
-						var a_buflen = 0;
-						if(buf instanceof ArrayBuffer){
-							a_buflen = buf.byteLength;
-						}else{
-							a_buflen = buf.length;
-						}
+						var a_buflen = buf.byteLength;
 						a_buflen -= this.pos - a_npos;
 						if(a_buflen > 0){
-							/** @type {ArrayBuffer|Array<number>} */
+							/** @type {ArrayBuffer|Uint8Array} */
 							var a_buf = buf.slice(a_buflen);
 							buf = null;
 							if(this.pos >= this.upSize){
@@ -905,6 +894,18 @@ function ZbDriveWriter(_opt, _drv){
 	 */
 	this.getTotalSize = function(){
 		return this.upSize;
+	};
+	/**
+	 * @private
+	 * @param {ArrayBuffer|Uint8Array} buf
+	 * @return {!Uint8Array}
+	 */
+	this.getU8arr = function(buf){
+		if(buf instanceof Uint8Array){
+			return buf;
+		}else{
+			return new Uint8Array(buf);
+		}
 	};
 }
 

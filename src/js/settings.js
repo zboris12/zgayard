@@ -6,7 +6,7 @@ var g_drive = null;
 var g_conf = new Array();
 /** @type {number} */
 var g_rootidx = 0;
-/** @type {?CipherParams} */
+/** @type {AesSecrets} @suppress {checkTypes} */
 var g_keycfg = null;
 /** @type {Array<DriveItem>} */
 var g_paths = new Array();
@@ -163,7 +163,7 @@ function loadjs(js, func, remove){
 loadjs.count = 0;
 
 /**
- * @param {WordArray} keyWords
+ * @param {string} keyWords
  */
 function saveKeyData(keyWords){
 	if(!g_storage.isReady()){
@@ -174,9 +174,9 @@ function saveKeyData(keyWords){
 			/** @type {string} */
 			var a_kw = "";
 			if(a_lskdat && a_lskdat["lsauth"]){
-				/** @type {WordArray} */
+				/** @type {string} */
 				var a_dat = zbDataCrypto(true, keyWords, /** @type {string} */(a_lskdat["lsauth"]));
-				a_kw = a_dat.toString(CryptoJS.enc.Base64url);
+				a_kw =  rawToBase64url(a_dat);
 			}
 			g_storage.saveDriveData("key_words", a_kw, true);
 		}).catch(function(a_err){
@@ -774,16 +774,17 @@ function setPassword(){
 		}
 	}
 
-	/** @type {WordArray} */
-	var words = null;
+	/** @type {string} */
+	var words = "";
 	if(pwdKey){
-		words = CryptoJS.enc.Utf8.parse(pwdKey);
+		words = forge.util.encodeUtf8(pwdKey);
 	}
 	if(fKey.length > 0){
 		/** @type {FileReader} */
 		var reader = new FileReader();
-		/** @type {Hasher} */
-		var hash = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA512, "zb12");
+		/** @type {forge.md.digest} */
+		var hash = forge.hmac.create();
+		hash.start("sha512", "zb12");
 		i = 0;
 		reader.doread = function(){
 			reader.readAsArrayBuffer(fKey[i].slice(0, 1023));
@@ -791,16 +792,11 @@ function setPassword(){
 		}
 		/** @type function(Event) */
 		reader.onload = function(a_evt){
-			hash.update(new CryptoJS.lib.WordArray.init(a_evt.target.result));
+			hash.update(u8arrToRaw(new Uint8Array(a_evt.target.result)));
 			if(i < fKey.length){
 				reader.doread();
 			}else{
-				if(words){
-					words.concat(hash.finalize());
-				}else{
-					words = hash.finalize();
-				}
-				words.clamp();
+				words += hash.digest().getBytes();
 				checkPassword(words, addroot);
 			}
 		};
@@ -810,14 +806,18 @@ function setPassword(){
 	}
 }
 /**
- * @param {WordArray} keyWords
+ * @param {string} keyWords
  * @param {boolean=} addroot
  */
 function checkPassword(keyWords, addroot){
+	/** @type {forge.md.digest} */
+	var hash = forge.hmac.create();
+	hash.start("md5", g_HASHKEY);
+	hash.update(keyWords);
 	/** @type {string} */
-	var hmac = CryptoJS.HmacMD5(keyWords, g_HASHKEY).toString(CryptoJS.enc.Base64url).slice(0, 8);
-	/** @type {WordArray} */
-	var rkeys = null;
+	var hmac = rawToBase64url(hash.digest().getBytes()).substring(0, 8);
+	/** @type {string} */
+	var rkeys = "";
 	if(addroot){
 		/** @type {Object<string, (string|boolean)>} */
 		var conf = {
@@ -840,7 +840,7 @@ function checkPassword(keyWords, addroot){
 			g_storage.saveDriveData("root", /** @type {string} */(conf["root"]));
 			saveKeyData(keyWords);
 		}
-		rkeys = CryptoJS.lib.WordArray.random(1024);
+		rkeys = forge.random.getBytesSync(1024);
 		g_keycfg = zbCreateCfg(rkeys);
 		conf["iv"] = hmac.concat(cryptoRKeys(true, rkeys, keyWords));
 		g_rootidx = g_conf.length;
@@ -861,7 +861,7 @@ function checkPassword(keyWords, addroot){
 			g_rootidx = a_rootidx;
 			g_storage.saveDriveData("root", a_root);
 			saveKeyData(keyWords);
-			rkeys = /** @type {WordArray} */(cryptoRKeys(false, g_conf[g_rootidx]["iv"].slice(hmac.length), keyWords));
+			rkeys = cryptoRKeys(false, g_conf[g_rootidx]["iv"].slice(hmac.length), keyWords);
 			g_keycfg = zbCreateCfg(rkeys);
 			checkRootFolder();
 		}else if(isVisible(getElement("#divPwd"))){
@@ -873,24 +873,19 @@ function checkPassword(keyWords, addroot){
 }
 /**
  * @param {boolean} encFlg
- * @param {WordArray|string} rkeys
- * @param {WordArray} keyWords
- * @return {string|WordArray}
+ * @param {string} rkeys
+ * @param {string} keyWords
+ * @return {string}
  */
 function cryptoRKeys(encFlg, rkeys, keyWords){
-	/** @type {CipherParams} */
+	/** @type {AesSecrets} */
 	var cfg = zbCreateCfg(keyWords);
-	/** @type {WordArray} */
-	var dat1 = null;
-	if(encFlg){
-		dat1 = /** @type {WordArray} */(rkeys);
-	}else{
-		dat1 = CryptoJS.enc.Base64url.parse(rkeys);
-	}
-	/** @type {WordArray|string} */
+	/** @type {string} */
+	var dat1 = encFlg ? rkeys : base64urlToRaw(rkeys);
+	/** @type {string} */
 	var dat = zbDataCrypto(encFlg, dat1, cfg);
 	if(encFlg){
-		return dat.toString(CryptoJS.enc.Base64url);
+		return rawToBase64url(dat);
 	}else{
 		return dat;
 	}
@@ -901,10 +896,10 @@ function cryptoRKeys(encFlg, rkeys, keyWords){
  * @param {(function())=} func
  */
 function uploadConfile(conf, func){
-	/** @type {WordArray} */
-	var words = CryptoJS.enc.Utf8.parse(JSON.stringify(conf));
+	/** @type {Uint8Array} */
+	var words = forge.util.text.utf8.encode(JSON.stringify(conf));
 	/** @type {Blob} */
-	var blob = new Blob([new Uint8Array(wordArrayToBytes(words))], { "type" : "application/octet-binary" });
+	var blob = new Blob([words], { "type" : "application/octet-binary" });
 	/** @type {ZBlobReader} */
 	var reader = new ZBlobReader({
 		_blob: blob,
@@ -927,9 +922,9 @@ function downloadConfile(fid){
 	/** @type {ZBWriter} */
 	var writer = new ZBlobWriter();
 	zbPipe(reader, writer, undefined).then(function(){
-		/** @type {WordArray} */
-		var a_words = new CryptoJS.lib.WordArray.init(writer.getBuffer());
-		var a_conf = JSON.parse(a_words.toString(CryptoJS.enc.Utf8));
+		/** @type {string} */
+		var a_words = forge.util.decodeUtf8(u8arrToRaw(writer.getBuffer()));
+		var a_conf = JSON.parse(a_words);
 		if(Array.isArray(a_conf)){
 			g_conf = /** @type {Array<Object<string,(boolean|string)>>} */(a_conf);
 		}else{
@@ -960,8 +955,8 @@ function downloadConfile(fid){
 			if(a_kw){
 				fetchLocalStorageAuth().then(function(b_lskdat){
 					if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
-						/** @type {WordArray} */
-						var b_keywords = zbDataCrypto(false, CryptoJS.enc.Base64url.parse(a_kw), /** @type {string} */(b_lskdat["lsauth"]));
+						/** @type {string} */
+						var b_keywords = zbDataCrypto(false, base64urlToRaw(/** @type {string} */(a_kw)), /** @type {string} */(b_lskdat["lsauth"]));
 						checkPassword(b_keywords);
 					}else{
 						showInputPassword();

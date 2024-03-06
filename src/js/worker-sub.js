@@ -1,7 +1,10 @@
+window = self;
+/** @define {string} */
+const WORKER_PATH = "../";
 /** @define {boolean} */
 var FOROUTPUT = false;
+self.importScripts(WORKER_PATH+"vendor/forge.min.js");
 if(!FOROUTPUT){
-	self.importScripts("../vendor/crypto-js.js");
 	self.importScripts("zbcommon.js");
 	self.importScripts("zbcrypto.js");
 	self.importScripts("zbidxdb.js");
@@ -14,12 +17,11 @@ if(!FOROUTPUT){
 	self.importScripts("downup.js");
 }
 
-window = self;
 /** @type {boolean} */
 self.canceled = false;
 
 /**
- * @param {CipherParams} keycfg
+ * @param {AesSecrets} keycfg
  * @param {ZbDrive} drv
  * @return {ZbTransfer}
  */
@@ -43,10 +45,11 @@ function work(wkinf){
 	/** @type {WorkerInfoType} */
 	var wtyp = wkinf.type;
 	var cinf = /** @type {WorkerCommonInfo} */(wkinf.cominf);
-	var keycfg = /** @type {CipherParams} */({
-		"iv": CryptoJS.enc.Base64url.parse(cinf.iv),
-		"key": CryptoJS.enc.Base64url.parse(cinf.key),
-	});
+	/** @type {AesSecrets} */
+	var keycfg = {
+		iv: base64urlToRaw(cinf.iv),
+		key: base64urlToRaw(cinf.key),
+	};
 	/** @type {WorkerStepInfo} */
 	var stepinf = {
 		type: StepInfoType.BEGIN,

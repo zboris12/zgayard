@@ -32,12 +32,12 @@ function IdxDbReader(_opt, _drv){
 	this.pos = 0;
 
 	/**
-	 * current data (a bytes array)
+	 * current data (a raw string)
 	 *
 	 * @private 
-	 * @type {Array<number>}
+	 * @type {string}
 	 */
-	this.curdat = null;
+	this.curdat = "";
 	/**
 	 * current data's index
 	 *
@@ -129,9 +129,7 @@ function IdxDbReader(_opt, _drv){
 		}else{
 			/** @type {string} */
 			var a_dat = await this.drive.fetchData(this.dataInfos[this.idx]._id);
-			/** @type {WordArray} */
-			var a_words = CryptoJS.enc.Base64url.parse(a_dat);
-			this.curdat = wordArrayToBytes(a_words);
+			this.curdat = base64urlToRaw(a_dat);
 			return await this.readData(size);
 		}
 	};
@@ -140,7 +138,7 @@ function IdxDbReader(_opt, _drv){
 	 */
 	this.dispose = function(){
 		this.dataInfos = null;
-		this.curdat = null;
+		this.curdat = "";
 	};
 
 	/**
@@ -178,7 +176,7 @@ function IdxDbReader(_opt, _drv){
 			this.stpos = 0;
 			this.idx = 0;
 		}
-		this.curdat = null;
+		this.curdat = "";
 	}
 
 	/**
@@ -199,10 +197,10 @@ function IdxDbReader(_opt, _drv){
 			remain = this.bufSize;
 		}
 		/** @type {Uint8Array} */
-		var dat = new Uint8Array(this.curdat.slice(st, st + remain));
+		var dat = rawToU8arr(this.curdat.substring(st, st + remain));
 		this.pos += remain;
 		if(this.curdat.length == st + remain){
-			this.curdat = null;
+			this.curdat = "";
 			this.idx++;
 			this.stpos = this.pos;
 		}
@@ -255,27 +253,15 @@ function IdxDbWriter(_opt, _drv){
 
 	/**
 	 * @public
-	 * @param {ArrayBuffer|Array<number>} buf
+	 * @param {ArrayBuffer|Uint8Array} buf
 	 * @return {!Promise<void>}
 	 */
 	this.write = async function(buf){
-		// if(this.opt._fnm == g_CONFILE){
-			// /** @type {WordArray} */
-			// var a_words = new CryptoJS.lib.WordArray.init(buf);
-			// console.log(a_words.toString(CryptoJS.enc.Utf8));
-		// }
-		/** @type {WordArray} */
-		var words = null;
-		if(Array.isArray(buf)){
-			words = new CryptoJS.lib.WordArray.init(new Uint8Array(buf));
-		}else{
-			words = new CryptoJS.lib.WordArray.init(buf);
-		}
-		this.data._size += words.sigBytes;
+		this.data._size += buf.byteLength;
 		/** @type {string} */
-		var data = words.toString(CryptoJS.enc.Base64url);
+		var data = rawToBase64url(u8arrToRaw(this.getU8arr(buf)));
 		this.ridx++;
-		await this.drive.saveData(this.data._id, this.ridx, words.sigBytes, data);
+		await this.drive.saveData(this.data._id, this.ridx, buf.byteLength, data);
 		if(this.data._size >= this.fsize){
 			await this.drive.saveItem(this.data);
 		}
@@ -296,6 +282,18 @@ function IdxDbWriter(_opt, _drv){
 	 */
 	this.getTotalSize = function(){
 		return this.fsize;
+	};
+	/**
+	 * @private
+	 * @param {ArrayBuffer|Uint8Array} buf
+	 * @return {Uint8Array}
+	 */
+	this.getU8arr = function(buf){
+		if(buf instanceof Uint8Array){
+			return buf;
+		}else{
+			return new Uint8Array(buf);
+		}
 	};
 }
 

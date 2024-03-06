@@ -5,7 +5,7 @@ doskey csr=%csr% $*
 set ndp=\closure-compiler\contrib\nodejs\
 set ndextp=--externs %ndp%
 set csdef=closure
-set externs=%ndextp%globals.js %ndextp%stream.js %ndextp%events.js %ndextp%buffer.js --externs %csdef%\cryptojs-extern.js --externs %csdef%\zb-externs.js
+set externs=%ndextp%globals.js %ndextp%stream.js %ndextp%events.js %ndextp%buffer.js --externs %csdef%\forge-extern.js --externs %csdef%\zb-externs.js
 
 set cors=true
 
@@ -21,8 +21,8 @@ echo csrj=csr %csrj%
 doskey csrj=%csr% %csrj%
 
 rem worker-sub
-set jss1=--js %csdef%\zb-worker-imp.js --js %csdef%\zb-define.js --js %src%\js\const.js --js %src%\js\zbcommon.js --js %src%\js\zbcrypto.js --js %src%\js\zbidxdb.js --js %src%\js\zbdrive.js --js %src%\js\zbonedrive.js --js %src%\js\zbgoogledrive.js --js %src%\js\zbidxbdrive.js --js %src%\js\worker-const.js --js %src%\js\downup.js --js %src%\js\worker-sub.js
-set csrj1=%%externs%% %%jss1%% --define CORS=%%cors%% --define FOROUTPUT --js_output_file %src%\worker-sub.js
+set jss1=--js %csdef%\zb-define.js --js %src%\js\const.js --js %src%\js\zbcommon.js --js %src%\js\zbcrypto.js --js %src%\js\zbidxdb.js --js %src%\js\zbdrive.js --js %src%\js\zbonedrive.js --js %src%\js\zbgoogledrive.js --js %src%\js\zbidxbdrive.js --js %src%\js\worker-const.js --js %src%\js\downup.js --js %src%\js\worker-sub.js
+set csrj1=%%externs%% %%jss1%% --define WORKER_PATH='' --define CORS=%%cors%% --define FOROUTPUT --js_output_file %src%\worker-sub.js
 echo csrj1=csr %csrj1%
 doskey csrj1=%csr% %csrj1%
 
