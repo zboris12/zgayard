@@ -649,9 +649,6 @@ function ZbCryptoReader(_info){
 				this.nextPos += size2;
 				ret = this.remain.substring(0, size2);
 				this.remain = this.remain.substring(size2);
-				if(this.remain.length == 0){
-					this.remain = "";
-				}
 				return ret;
 			}else{
 				ret = this.remain;
@@ -665,7 +662,6 @@ function ZbCryptoReader(_info){
 		var size3 = Math.ceil(((startPos % this.BLOCK_SIZE) + size2) / this.BLOCK_SIZE) * this.BLOCK_SIZE;
 		if(!this.cryptor || this.nextPos != startPos){
 			await this.prepare(startPos);
-			size3 += this.BLOCK_SIZE;
 		}
 
 		/** @type {string} */
