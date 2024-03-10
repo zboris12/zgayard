@@ -23,8 +23,9 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 
 	/**
 	 * @private
+	 * @return {!Promise<void>}
 	 */
-	this.startTransfer = function(){
+	this.startTransfer = async function(){
 		/** @type {WorkerStepInfo} */
 		var stepinf = {
 			type: StepInfoType.BEGIN,
@@ -60,39 +61,37 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 			}
 		}.bind(this);
 
-		var donefunc = /** @type {function(*=, boolean=)} */(function(a_err, a_done){
-			/** @type {WorkerStepInfo} */
-			var a_stepinf = {
-				type: StepInfoType.DONE,
-				wtype: this.wktype,
-				begin: this.begintime,
-				posn: this.reader.getPos(),
-				size: this.writer.getTotalSize(),
-			};
-			if(a_err){
-				a_stepinf.errr = a_err.message || a_err.restxt;
-			}else if(!a_done){
-				a_stepinf.type = StepInfoType.CANCELED;
-			}else if(this.writer.getBufferBlob){
-				a_stepinf.blob = this.writer.getBufferBlob();
-			}
-			this.sendStepInfo(a_stepinf);
-		}.bind(this));
-
 		this.begintime = Date.now();
-		cypt.start(0, onstep).then(function(a_done){
-			donefunc(undefined, a_done);
-		}).catch(function(a_err){
-			donefunc(a_err);
+		/** @type {*} */
+		var err = null;
+		/** @type {boolean|undefined} */
+		var done = await cypt.start(0, onstep).catch(function(a_err){
+			err = a_err;
 		});
+		stepinf = {
+			type: StepInfoType.DONE,
+			wtype: this.wktype,
+			begin: this.begintime,
+			posn: this.reader.getPos(),
+			size: this.writer.getTotalSize(),
+		};
+		if(err){
+			stepinf.errr = err.message || err.restxt;
+		}else if(!done){
+			stepinf.type = StepInfoType.CANCELED;
+		}else if(this.writer.getBufferBlob){
+			stepinf.blob = this.writer.getBufferBlob();
+		}
+		this.sendStepInfo(stepinf);
 	};
 
 	/**
 	 * @public
 	 * @param {ZbDrive} drv
 	 * @param {string} tid
+	 * @return {!Promise<void>}
 	 */
-	this.downloadFile = function(drv, tid){
+	this.downloadFile = async function(drv, tid){
 		/** @type {WorkerInfoType} */
 	 	this.wktype = WorkerInfoType.DOWNLOAD;
 		/** @type {ZBlobReader} */
@@ -102,7 +101,7 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		});
 		/** @type {ZBlobWriter} */
 		this.writer = new ZBlobWriter();
-		this.startTransfer();
+		await this.startTransfer();
 	};
 
 	/**
@@ -111,8 +110,9 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 	 * @param {string} fnm
 	 * @param {File} file
 	 * @param {string} fldrId
+	 * @return {!Promise<void>}
 	 */
-	this.uploadFile = function(drv, fnm, file, fldrId){
+	this.uploadFile = async function(drv, fnm, file, fldrId){
 		/** @type {WorkerInfoType} */
 		this.wktype = WorkerInfoType.UPLOAD;
 		/** @type {ZBlobReader} */
@@ -127,6 +127,6 @@ function ZbTransfer(keycfg, isCancelFunc, sendSpInfFunc){
 		};
 		/** @type {ZBWriter} */
 		this.writer = drv.createWriter(wopt);
-		this.startTransfer();
+		await this.startTransfer();
 	};
 }

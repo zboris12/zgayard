@@ -24,23 +24,6 @@ var g_cache = null;
 var g_resolve = null;
 
 /**
- * @return {!Promise<ZbLocalStorage>}
- */
-function initIdxDb(){
-	return new Promise(function(resolve, reject){
-		/** @type {ZbLocalStorage} */
-		var stg = new ZbLocalStorage();
-		stg.initIdxDb(function(a_err){
-			if(a_err){
-				reject(a_err);
-			}else{
-				resolve(stg);
-			}
-		});
-	});
-}
-
-/**
  * @param {string} cid client id.
  * @param {SWActionInfo} msgdat
  * @return {!Promise<void>}
@@ -67,7 +50,8 @@ async function prepare(cinf){
 			key: base64urlToRaw(cinf.key),
 		};
 		if(!g_storage){
-			g_storage = await initIdxDb();
+			g_storage = new ZbLocalStorage();
+			await g_storage.initIdxDb();
 		}
 		/** @type {ZbDriveDefine} */
 		var drvdef = g_DRIVES[cinf.drvid];

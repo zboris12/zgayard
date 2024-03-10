@@ -313,136 +313,129 @@ this.setDriveExInfo = function(dext){
 
 /**
  * @public
- * @param {function(?string=)} func function(a_err){}
+ * @return {!Promise<void>}
  */
-this.initIdxDb = function(func){
-	/** @const {string} */
-	const msg = "IndexedDB is not supported in your browser settings.";
-	if(!window.indexedDB){
-		if(func){
-			func(msg);
-		}else{
-			throw new Error(msg);
+this.initIdxDb = function(){
+	/** @type {ZbLocalStorage} */
+	var _this = this;
+	return new Promise(function(resolve, reject){
+		/** @const {string} */
+		const msg = "IndexedDB is not supported in your browser settings.";
+		if(!window.indexedDB){
+			reject(new Error(msg));
+			return;
 		}
-		return;
-	}
-	/** @type {IDBOpenDBRequest} */
-	var request = window.indexedDB.open(this.LSNM);
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onerror = function(a_evt){
-		if(func){
-			func(msg);
-		}else{
-			throw new Error(msg);
-		}
-	};
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onupgradeneeded = function(a_evt){
-		/** @type {IDBDatabase} */
-		var a_db = a_evt.target.result;
-		/** @type {IDBObjectStore} */
-		var a_store = a_db.createObjectStore("settings", {
-			"keyPath": "key"
-		});
-//			a_store.transaction.oncomplete = function(b_evt){
-//				console.log("aa");
-//			};
-	};
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onsuccess = function(a_evt){
-		/** @type {IDBDatabase} */
-		var a_db = a_evt.target.result;
-		/** @type {IDBTransaction} */
-		var a_trans = a_db.transaction("settings", "readwrite");
+		/** @type {IDBOpenDBRequest} */
+		var request = window.indexedDB.open(_this.LSNM);
 		/**
-		 * @param {Event} b_evt
+		 * @param {Event} a_evt
 		 */
-		a_trans.oncomplete = function(b_evt){
-			a_db.close();
-			if(func){
-				func();
-			}
+		request.onerror = function(a_evt){
+			reject(a_evt.target.error);
 		};
-		/** @type {IDBObjectStore} */
-		var a_store = a_trans.objectStore("settings");
-		/** @type {IDBRequest} */
-		var a_req = a_store.getAll();
 		/**
-		 * @param {Event} b_evt
+		 * @param {Event} a_evt
 		 */
-		a_req.onsuccess = function(b_evt){
-			this.datas = new Object();
-			b_evt.target.result.forEach(function(c_ele, c_idx){
-				this.datas[c_ele["key"]] = c_ele["value"];
-			}.bind(this));
-			/** @type {string} */
-			var b_drvnm = this.datas["drive"];
-			if(b_drvnm && this.datas[b_drvnm] && this.datas[b_drvnm]["refresh_token"]){
-				this.skipLogin = true;
-			}else{
-				this.skipLogin = false;
-			}
-		}.bind(this);
-	}.bind(this);
+		request.onupgradeneeded = function(a_evt){
+			/** @type {IDBDatabase} */
+			var a_db = a_evt.target.result;
+			/** @type {IDBObjectStore} */
+			var a_store = a_db.createObjectStore("settings", {
+				"keyPath": "key"
+			});
+	//			a_store.transaction.oncomplete = function(b_evt){
+	//				console.log("aa");
+	//			};
+		};
+		/**
+		 * @param {Event} a_evt
+		 */
+		request.onsuccess = function(a_evt){
+			/** @type {IDBDatabase} */
+			var a_db = a_evt.target.result;
+			/** @type {IDBTransaction} */
+			var a_trans = a_db.transaction("settings", "readwrite");
+			/**
+			 * @param {Event} b_evt
+			 */
+			a_trans.oncomplete = function(b_evt){
+				a_db.close();
+				resolve();
+			};
+			/** @type {IDBObjectStore} */
+			var a_store = a_trans.objectStore("settings");
+			/** @type {IDBRequest} */
+			var a_req = a_store.getAll();
+			/**
+			 * @param {Event} b_evt
+			 */
+			a_req.onsuccess = function(b_evt){
+				_this.datas = new Object();
+				b_evt.target.result.forEach(function(c_ele, c_idx){
+					_this.datas[c_ele["key"]] = c_ele["value"];
+				});
+				/** @type {string} */
+				var b_drvnm = _this.datas["drive"];
+				if(b_drvnm && _this.datas[b_drvnm] && _this.datas[b_drvnm]["refresh_token"]){
+					_this.skipLogin = true;
+				}else{
+					_this.skipLogin = false;
+				}
+			};
+		};
+	});
 };
 /**
  * @public
- * @param {function(?string=)} func function(a_err){}
+ * @return {!Promise<void>}
  */
-this.dropIdxDb = function(func){
-	/** @const {string} */
-	const msg = "Failed to dropt IndexedDB.";
-	/** @type {IDBOpenDBRequest} */
-	var request = window.indexedDB.deleteDatabase(this.LSNM);
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onerror = function(a_evt){
-		if(func){
-			func(msg);
-		}else{
-			throw new Error(msg);
-		}
-	};
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onsuccess = function(a_evt){
-		this.clearSession(true);
-		this.datas = null;
-		this.skipLogin = false;
-		if(func){
-			func();
-		}else{
+this.dropIdxDb = function(){
+	/** @type {ZbLocalStorage} */
+	var _this = this;
+	return new Promise(function(resolve, reject){
+		/** @type {IDBOpenDBRequest} */
+		var request = window.indexedDB.deleteDatabase(_this.LSNM);
+		/**
+		 * @param {Event} a_evt
+		 */
+		request.onerror = function(a_evt){
+			console.error("Failed to dropt IndexedDB.");
+			reject(a_evt.target.error);
+		};
+		/**
+		 * @param {Event} a_evt
+		 */
+		request.onsuccess = function(a_evt){
+			_this.clearSession(true);
+			_this.datas = null;
+			_this.skipLogin = false;
 			console.log("IndexedDB has been dropped.");
-		}
-	}.bind(this);
+			resolve();
+		};
+	});
 };
 /**
  * @public
+ * @return {!Promise<void>}
  */
-this.saveAllData = function(){
+this.saveAllData = async function(){
 	if(!this.needSave || !this.datas){
 		return;
 	}
-	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
+	/** @type {ZbLocalStorage} */
+	var _this = this;
+	await this.processData(/** @type function(IDBObjectStore) */(function(a_store){
 		/** @type {IDBRequest} */
 		var a_req = a_store.clear();
 		/**
 		 * @param {Event} b_evt
 		 */
 		a_req.onsuccess = function(b_evt){
-			for(var b_k in this.datas){
-				a_store.put({"key": b_k, "value": this.datas[b_k]});
+			for(var b_k in _this.datas){
+				a_store.put({"key": b_k, "value": _this.datas[b_k]});
 			}
-		}.bind(this);
-	}).bind(this));
+		};
+	}));
 	this.needSave = false;
 };
 /**
@@ -481,16 +474,14 @@ this.deleteDriveData = function(key){
  * @public
  * @param {string} key
  * @param {?string} data
- * @param {boolean|function()=} func 
+ * @param {boolean=} dosave
+ * @return {!Promise<void>}
  *
- * If func is not specified, saving to db will not be executed.
+ * If dosave is not true, saving to db will not be executed.
  * But the needSave flag will be set.
  */
-this.saveDriveData = function(key, data, func){
+this.saveDriveData = async function(key, data, dosave){
 	if(!this.datas){
-		if(func && func instanceof Function){
-			func();
-		}
 		return;
 	}
 	var drvnm = /** @type {string} */ (this.getValue("drive"));
@@ -502,51 +493,44 @@ this.saveDriveData = function(key, data, func){
 	}else if(this.datas[drvnm] && this.datas[drvnm][key]){
 		delete this.datas[drvnm][key];
 	}else{
-		if(func && func instanceof Function){
-			func();
-		}
 		return;
 	}
 
-	if(func){
-		/** @type {function()|undefined} */
-		var _func = undefined;
-		if(func instanceof Function){
-			_func = func;
-		}
-		this.processData(/** @type function(IDBObjectStore) */(function(a_store){
-			a_store.put({"key": drvnm, "value": this.datas[drvnm]});
-		}).bind(this), _func);
+	if(dosave){
+		/** @type {ZbLocalStorage} */
+		var _this = this;
+		await this.processData(/** @type function(IDBObjectStore) */(function(a_store){
+			a_store.put({"key": drvnm, "value": _this.datas[drvnm]});
+		}));
 	}else{
 		this.needSave = true;
 	}
 };
 /**
  * @public
- * @param {function()=} func function(){}
+ * @return {!Promise<void>}
  */
-this.clearLogInfo = function(func){
+this.clearLogInfo = async function(){
 	this.clearSession(true);
 	if(!this.datas){
-		if(func){
-			func();
-		}
 		return;
 	}
 
 	var drvnm = /** @type {string} */ (this.getValue("drive"));
 	delete this.datas[drvnm]["refresh_token"];
 	delete this.datas["drive"];
-	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
-		a_store.put({"key": drvnm, "value": this.datas[drvnm]});
+	/** @type {ZbLocalStorage} */
+	var _this = this;
+	await this.processData(/** @type function(IDBObjectStore) */(function(a_store){
+		a_store.put({"key": drvnm, "value": _this.datas[drvnm]});
 		a_store.delete("drive");
-	}).bind(this), func);
+	}));
 };
 /**
  * @public
  * @param {PlayedInfo} pif
  * @param {number} pos
- * @param {function()=} func function(){}
+ * @return {!Promise<void>}
  *
  * this.getValue("recent") is 
  * Array<{{
@@ -558,7 +542,7 @@ this.clearLogInfo = function(func){
  *  }}>,
  * }}>
  */
-this.saveRecent = function(pif, pos, func){
+this.saveRecent = async function(pif, pos){
 	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
 	if(!lst){
 		lst = new Array();
@@ -583,7 +567,7 @@ this.saveRecent = function(pif, pos, func){
 	}else{
 		hh["played"].push(obj);
 	}
-	this.saveData("recent", lst, func);
+	await this.saveData("recent", lst);
 };
 /**
  * @public
@@ -624,9 +608,9 @@ this.getRecent = function(){
 /**
  * @public
  * @param {number} pos
- * @param {function()=} func function(){}
+ * @return {!Promise<void>}
  */
-this.removeRecent = function(pos, func){
+this.removeRecent = async function(pos){
 	var lst = /** @type {Array<Object<string, *>>} */(this.getValue("recent"));
 	if(!lst || this.recentIdx < 0){
 		return;
@@ -634,7 +618,7 @@ this.removeRecent = function(pos, func){
 	var plst = /** @type {Array<Object<string, string>>} */(lst[this.recentIdx]["played"]);
 	if(pos < plst.length){
 		plst.splice(pos, 1);
-		this.saveData("recent", lst, func);
+		await this.saveData("recent", lst);
 	}
 };
 
@@ -642,34 +626,42 @@ this.removeRecent = function(pos, func){
 /**
  * @private
  * @param {function(!IDBObjectStore)} datafunc function(a_store){}
- * @param {function()=} endfunc function(){}
+ * @return {!Promise<void>}
  */
-this.processData = function(datafunc, endfunc){
-	/** @type {IDBOpenDBRequest} */
-	var request = window.indexedDB.open(this.LSNM);
-	/**
-	 * @param {Event} a_evt
-	 */
-	request.onsuccess = function(a_evt){
-		/** @type {IDBDatabase} */
-		var a_db = a_evt.target.result;
-		/** @type {IDBTransaction} */
-		var a_trans = a_db.transaction("settings", "readwrite");
+this.processData = function(datafunc){
+	/** @type {ZbLocalStorage} */
+	var _this = this;
+	return new Promise(function(resolve, reject){
+		/** @type {IDBOpenDBRequest} */
+		var request = window.indexedDB.open(_this.LSNM);
 		/**
-		 * @param {Event} b_evt
+		 * @param {Event} a_evt
 		 */
-		a_trans.oncomplete = function(b_evt){
-			a_db.close();
-			if(endfunc){
-				endfunc();
+		request.onerror = function(a_evt){
+			reject(a_evt.target.error);
+		};
+		/**
+		 * @param {Event} a_evt
+		 */
+		request.onsuccess = function(a_evt){
+			/** @type {IDBDatabase} */
+			var a_db = a_evt.target.result;
+			/** @type {IDBTransaction} */
+			var a_trans = a_db.transaction("settings", "readwrite");
+			/**
+			 * @param {Event} b_evt
+			 */
+			a_trans.oncomplete = function(b_evt){
+				a_db.close();
+				resolve();
+			};
+			/** @type {!IDBObjectStore} */
+			var a_store = a_trans.objectStore("settings");
+			if(datafunc){
+				datafunc(a_store);
 			}
 		};
-		/** @type {!IDBObjectStore} */
-		var a_store = a_trans.objectStore("settings");
-		if(datafunc){
-			datafunc(a_store);
-		}
-	};
+	});
 };
 /**
  * @private
@@ -713,15 +705,15 @@ this.getValue = function(key){
  * @private
  * @param {string} key
  * @param {*} value
- * @param {function()=} func function(){}
+ * @return {!Promise<void>}
  */
-this.saveData = function(key, value, func){
+this.saveData = async function(key, value){
 	if(this.datas){
 		this.datas[key] = value;
 	}
-	this.processData(/** @type function(IDBObjectStore) */(function(a_store){
+	await this.processData(/** @type function(IDBObjectStore) */(function(a_store){
 		a_store.put({"key": key, "value": value});
-	}).bind(this), func);
+	}));
 };
 // --- Private methods End --- //
 }

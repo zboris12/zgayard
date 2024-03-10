@@ -570,10 +570,9 @@ function addWorkerQueue(wkinf){
 
 /**
  * @param {Element} li
- * @param {function()} func
  * @return {ZbTransfer}
  */
-function doDownUp(li, func){
+function doDownUp(li){
 	/** @type {number} */
 	var idx = getIntAttr(li, "rowIdx");
 	/** @type {Element} */
@@ -587,17 +586,16 @@ function doDownUp(li, func){
 		}
 	}), /** @type {function(WorkerStepInfo)} */(function(b_spinf){
 		b_spinf.rowIdx = idx;
-		if(handleLiProgress(li, b_spinf)){
-			func();
-		}
+		handleLiProgress(li, b_spinf);
 	}));
 	return tfr;
 }
 
 /**
  * @param {Array<DriveItem>} files
+ * @return {!Promise<void>}
  */
-function download(files){
+async function download(files){
 	// if(g_swReady && files.length == 1){
 		// /** @type {Element} */
 		// var lnk = getElement("#lnkDown");
@@ -630,20 +628,16 @@ function download(files){
 	}
 
 	if(!USE_WORKER){
-		/** @type {function(number)} */
-		var downloadFile = function(a_idx){
+		/** @type {number} */
+		var a_idx = 0;
+		while(a_idx < files.length){
 			/** @type {Element} */
 			var a_li = getTargetLi(parseInt(files[a_idx]._parentId, 10), ul);
 			/** @type {ZbTransfer} */
-			var a_tfr = doDownUp(a_li, function(){
-				a_idx++;
-				if(a_idx < files.length){
-					downloadFile(a_idx);
-				}
-			});
-			a_tfr.downloadFile(g_drive, files[a_idx]._id);
-		};
-		downloadFile(0);
+			var a_tfr = doDownUp(a_li);
+			await a_tfr.downloadFile(g_drive, files[a_idx]._id);
+			a_idx++;
+		}
 	}
 }
 
@@ -651,8 +645,9 @@ function download(files){
  * Event called from html
  *
  * @param {Array<File>} files
+ * @return {!Promise<void>}
  */
-function upload(files){
+async function upload(files){
 	/** @type {Element} */
 	var ul = getElement("ul", "#divQueue");
 	/** @type {Array<UploadTarget>} */
@@ -690,62 +685,43 @@ function upload(files){
 		basefld = basefld.addChild(g_paths[i]);
 	}
 
-	/** @type {function(number)} */
-	var uploadFile = function(a_idx){
+	/** @type {number} */
+	var a_idx = 0;
+	while(a_idx < targets.length){
 		/** @type {UploadTarget} */
 		var a_ele = targets[a_idx];
-		findFolderId(basefld, a_ele._fpath, function(b_err, b_fnm, b_ptid){
-			if(b_err){
-				handleProgress({
-					type: StepInfoType.DONE,
-					wtype: WorkerInfoType.UPLOAD,
-					rowIdx: a_ele._idx,
-					size: 0,
-					errr: JSON.stringify(b_err),
-				}, ul);
-				return;
-			}
-
-			if(USE_WORKER){
-				addWorkerQueue({
-					type: WorkerInfoType.UPLOAD,
-					rowIdx: a_ele._idx,
-					upinf: {
-						fname: b_fnm,
-						file: a_ele._file,
-						ptid: /** @type {string} */(b_ptid),
-					},
-				});
-				a_idx++;
-				if(a_idx < targets.length){
-					uploadFile(a_idx);
-				}
-
-			}else{
-				/** @type {Element} */
-				var b_li = getTargetLi(a_ele._idx, ul);
-				/** @type {ZbTransfer} */
-				var b_tfr = doDownUp(b_li, function(){
-					a_idx++;
-					if(a_idx < files.length){
-						uploadFile(a_idx);
-					}else{
-						listFolder(true);
-					}
-				});
-				b_tfr.uploadFile(g_drive, b_fnm, a_ele._file, /** @type {string} */(b_ptid));
-			}
-		});
-	};
-	uploadFile(0);
+		/** @type {DriveWriterOption} */
+		var a_dwopt = await findFolderId(basefld, a_ele._fpath);
+		a_idx++;
+		if(USE_WORKER){
+			addWorkerQueue({
+				type: WorkerInfoType.UPLOAD,
+				rowIdx: a_ele._idx,
+				upinf: {
+					fname: a_dwopt._fnm,
+					file: a_ele._file,
+					ptid: /** @type {string} */(a_dwopt._fldrId),
+				},
+			});
+		}else{
+			/** @type {Element} */
+			var b_li = getTargetLi(a_ele._idx, ul);
+			/** @type {ZbTransfer} */
+			var b_tfr = doDownUp(b_li);
+			await b_tfr.uploadFile(g_drive, a_dwopt._fnm, a_ele._file, /** @type {string} */(a_dwopt._fldrId));
+		}
+	}
+	if(!USE_WORKER){
+		listFolder(true);
+	}
 }
 
 /**
  * @param {ZbFolder} bsFldr Base folder
  * @param {string} fpath
- * @param {function((boolean|DriveJsonRet), string, string=)} func
+ * @return {!Promise<DriveWriterOption>}
  */
-function findFolderId(bsFldr, fpath, func){
+async function findFolderId(bsFldr, fpath){
 	/** @type {Array<string>} */
 	var farr = fpath.split("/");
 	/** @type {string} */
@@ -754,50 +730,26 @@ function findFolderId(bsFldr, fpath, func){
 	var fldr = bsFldr;
 
 	if(farr.length == 0){
-		func(false, fnm, fldr.getId());
-		return;
+		return {
+			_fnm: fnm,
+			_fldrId: fldr.getId(),
+		};
 	}
 
-	/** @type {boolean} */
-	var newfld = false;
-	/** @type {function(number)} */
-	var getFolderId = function(a_idx){
+	/** @type {number} */
+	var a_idx = 0;
+	while(a_idx < farr.length){
 		/** @type {string} */
 		var a_orifnm = farr[a_idx];
 		/** @type {string} */
 		var a_fnm = encryptFname(a_orifnm);
-
-		/** @type {function(ZbFolder)} */
-		var a_doNext = function(b_fldr){
-			fldr = b_fldr;
-			a_idx++;
-			if(a_idx < farr.length){
-				getFolderId(a_idx);
-			}else{
-				func(false, fnm, fldr.getId());
-			}
-		};
-
-		if(newfld){
-			/** @type {DriveNewFolderOption} */
-			var b_opt = {
-				_folder: a_fnm,
-				_parentid: fldr.getId(),
-			};
-			g_drive.newFolder(b_opt).then(function(c_itm){
-				c_itm._name = a_orifnm;
-				a_doNext(fldr.addChild(c_itm));
-			}).catch(function(c_err){
-				func(/** @type {DriveJsonRet} */(c_err), fnm);
-			});
-			return;
-		}
+		a_idx++;
 
 		/** @type {ZbFolder} */
 		var a_fldr = fldr.getChild(a_orifnm);
 		if(a_fldr){
-			a_doNext(a_fldr);
-			return;
+			fldr = a_fldr;
+			continue;
 		}
 
 		/** @type {DriveSearchItemsOption} */
@@ -805,17 +757,25 @@ function findFolderId(bsFldr, fpath, func){
 			_fname: a_fnm,
 			_parentid: fldr.getId(),
 		};
-		g_drive.searchItems(a_opt).then(function(b_lst){
-			if(b_lst.length == 0){
-				newfld = true;
-				getFolderId(a_idx);
-			}else{
-				b_lst[0]._name = a_orifnm;
-				a_doNext(fldr.addChild(b_lst[0]));
-			}
-		}).catch(function(b_err){
-			func(/** @type {DriveJsonRet} */(b_err), fnm);
-		});
+		/** @type {Array<DriveItem>} */
+		var b_lst = await g_drive.searchItems(a_opt);
+		if(b_lst.length == 0){
+			/** @type {DriveNewFolderOption} */
+			var b_opt = {
+				_folder: a_fnm,
+				_parentid: fldr.getId(),
+			};
+			/** @type {DriveItem} */
+			var b_itm = await g_drive.newFolder(b_opt);
+			b_itm._name = a_orifnm;
+			fldr = fldr.addChild(b_itm);
+		}else{
+			b_lst[0]._name = a_orifnm;
+			fldr = fldr.addChild(b_lst[0]);
+		}
+	}
+	return {
+		_fnm: fnm,
+		_fldrId: fldr.getId(),
 	};
-	getFolderId(0);
 }

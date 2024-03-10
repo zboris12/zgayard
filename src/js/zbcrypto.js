@@ -1,4 +1,44 @@
 /**
+ * @return {FileReader}
+ */
+FileReader.zbPreparePromise = function(){
+	var reader = new FileReader();
+	reader.addEventListener("load", function(a_evt){
+		if(a_evt.target.zbResolve){
+			a_evt.target.zbResolve(a_evt.target.result);
+		}
+	});
+	reader.addEventListener("error", function(a_evt){
+		if(a_evt.target.zbReject){
+			a_evt.target.zbReject(a_evt.target.error);
+		}
+	});
+	return reader;
+};
+/**
+ * @private @type {function(ArrayBuffer)|undefined}
+ */
+FileReader.prototype.zbResolve = undefined;
+/**
+ * @private @type {function(DOMException)|undefined}
+ */
+FileReader.prototype.zbReject = undefined;
+/**
+ * @public
+ * @param {!Blob} _blob
+ * @return {!Promise<ArrayBuffer>}
+ */
+FileReader.prototype.zbReadAsArrayBuffer = function(_blob){
+	/** @type {FileReader} */
+	var _this = this;
+	return new Promise(function(resolve, reject){
+		_this.zbResolve = resolve;
+		_this.zbReject = reject;
+		_this.readAsArrayBuffer(_blob);
+	});
+};
+
+/**
  * @param {string} base64
  * @return {string}
  */
@@ -404,7 +444,7 @@ function ZBlobReader(_opt){
 			this.pos = 0;
 		}
 
-		this.reader = new FileReader();
+		this.reader = FileReader.zbPreparePromise();
 	};
 	/**
 	 * @public
@@ -439,25 +479,20 @@ function ZBlobReader(_opt){
 	 * @param {number=} size
 	 * @return {!Promise<ArrayBuffer>}
 	 */
-	this.read = function(size){
-		return new Promise(function(resolve, reject){
-			if(this.reader.readyState == 1){
-				return;
-			}
-			this.reader.onload = function(a_evt){
-				/** @type {ArrayBuffer} */
-				var a_dat = a_evt.target.result;
-				resolve(a_dat);
-			}.bind(this);
-			/** @type {number} */
-			var pos1 = this.pos;
-			if(size){
-				this.pos += size;
-			}else{
-				this.pos += this.bufSize;
-			}
-			this.reader.readAsArrayBuffer(this.blob.slice(pos1, this.pos));
-		}.bind(this));
+	this.read = async function(size){
+		if(this.reader.readyState == 1){
+			return null;
+		}
+		/** @type {number} */
+		var pos1 = this.pos;
+		if(size){
+			this.pos += size;
+		}else{
+			this.pos += this.bufSize;
+		}
+		/** @type {ArrayBuffer} */
+		var dat = await this.reader.zbReadAsArrayBuffer(this.blob.slice(pos1, this.pos));
+		return dat;
 	};
 	/**
 	 * @public

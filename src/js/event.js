@@ -146,44 +146,43 @@ function addMenuEvent(mnu){
 
 /**
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function clickMainMenu(evt){
+async function clickMainMenu(evt){
 	/** @type {Element} */
 	var ele = getElement("label", findParent("li"));
 	/** @type {string} */
 	var act = ele.getAttribute("iid");
-	/** @type {function()|undefined} */
-	var func = undefined;
 	ele = nextElement(ele);
-	if(ele){
-		func = function(){
-			ele.classList.remove("rotate-90");
-		};
-	}
 	switch(act){
 	case "menuNewFldr":
 		if(ele){
 			ele.classList.add("rotate-90");
 		}
-		showModal("new", func);
+		await showModal("new");
+		if(ele){
+			ele.classList.remove("rotate-90");
+		}
 		break;
 	case "menuUpload":
 		if(ele){
 			ele.classList.add("rotate-90");
 		}
-		showModal("upload", function(){
-			getElement("#upfiles").value = null;
-			getElement("#upfolder").value = null;
-			if(func){
-				func();
-			}
-		});
+		await showModal("upload");
+		getElement("#upfiles").value = null;
+		getElement("#upfolder").value = null;
+		if(ele){
+			ele.classList.remove("rotate-90");
+		}
 		break;
 	case "menuMovefs":
 		if(ele){
 			ele.classList.add("rotate-90");
 		}
-		showMove(func);
+		await showMove();
+		if(ele){
+			ele.classList.remove("rotate-90");
+		}
 		break;
 	case "menuDownfs":
 		/** @type {Array<DriveItem>} */
@@ -193,7 +192,7 @@ function clickMainMenu(evt){
 		}
 		break;
 	case "menuDelfs":
-		deleteItems();
+		await deleteItems();
 		break;
 	}
 }

@@ -115,62 +115,45 @@ function showNotify(msg){
 }
 
 /**
- * @param {Event} evt
- * @param {function(boolean)} func
- */
-function loadjsend(evt, func){
-	loadjs.count--;
-	if(evt.type == "error"){
-		loadjs.err = true;
-	}
-	if(loadjs.count == 0){
-		/** @type {boolean} */
-		var err = loadjs.err;
-		delete loadjs.err;
-		if(func){
-			func(err);
-		}
-	}
-	/** @type {EventTarget} */
-	var script = evt.target || evt.srcElement;
-	if(script.hasAttribute("temporary")){
-		script.remove();
-	}
-}
-/**
  * @param {string} js
- * @param {function(boolean)} func
- * @param {boolean} remove
+ * @param {boolean=} remove
+ * @return {!Promise<boolean>}
  */
-function loadjs(js, func, remove){
-	loadjs.count++;
-	/** @type {function(Event)} */
-	var endfunc = function(a_evt){
-		loadjsend(a_evt, func);
-	};
-	/** @type {Element} */
-	var script = document.createElement("script");
-	script.setAttribute("type", "text/javascript");
-	script.setAttribute("src", js);
-	if(remove){
-		script.setAttribute("temporary", "1");
-	}
-	script.addEventListener("load", endfunc);
-	script.addEventListener("error", endfunc);
-	document.body.appendChild(script);
+function loadjs(js, remove){
+	return new Promise(function(resolve, reject){
+		/** @type {function(Event)} */
+		var endfunc = function(a_evt){
+			/** @type {EventTarget} */
+			var a_spt = a_evt.target || a_evt.srcElement;
+			if(remove){
+				a_spt.remove();
+			}
+			resolve(a_evt.type != "error");
+		};
+		/** @type {Element} */
+		var script = document.createElement("script");
+		script.setAttribute("type", "text/javascript");
+		script.setAttribute("src", js);
+		script.addEventListener("load", endfunc);
+		script.addEventListener("error", endfunc);
+		document.body.appendChild(script);
+	});
 }
-/** @type {number} */
-loadjs.count = 0;
 
 /**
  * @param {string} keyWords
+ * @return {!Promise<void>}
  */
-function saveKeyData(keyWords){
+async function saveKeyData(keyWords){
 	if(!g_storage.isReady()){
 		return;
 	}
 	if(getElement("#chkSaveKey").checked){
-		fetchLocalStorageAuth().then(function(a_lskdat){
+		/** @type {Object<string, (string|boolean)>|undefined} */
+		var a_lskdat = await fetchLocalStorageAuth().catch(function(a_err){
+			showError(a_err);
+		});
+		if(a_lskdat){
 			/** @type {string} */
 			var a_kw = "";
 			if(a_lskdat && a_lskdat["lsauth"]){
@@ -178,27 +161,25 @@ function saveKeyData(keyWords){
 				var a_dat = zbDataCrypto(true, keyWords, /** @type {string} */(a_lskdat["lsauth"]));
 				a_kw =  rawToBase64url(a_dat);
 			}
-			g_storage.saveDriveData("key_words", a_kw, true);
-		}).catch(function(a_err){
-			showError(a_err);
-		});
+			await g_storage.saveDriveData("key_words", a_kw, true);
+		}
 	}else{
-		g_storage.saveDriveData("key_words", null, true);
+		await g_storage.saveDriveData("key_words", null, true);
 	}
 }
 
 /**
  * Event called from html
+ * @return {!Promise<void>}
  */
-function logout(){
-	g_storage.clearLogInfo(function(){
-		g_drive.logout();
-	});
+async function logout(){
+	await g_storage.clearLogInfo();
+	await g_drive.logout();
 }
 /**
  * Get authorization of local storage
  *
- * @return {Promise<null|Object<string, (string|boolean)>>}
+ * @return {!Promise<null|Object<string, (string|boolean)>>}
  */
 async function fetchLocalStorageAuth(){
 	/** @type {null|Object<string, (string|boolean)>} */
@@ -236,8 +217,10 @@ async function fetchLocalStorageAuth(){
 
 /**
  * Called from main.js
+ *
+ * @return {!Promise<void>}
  */
-function loadSettings(){
+async function loadSettings(){
 	/** @type {?string} */
 	var lang = g_storage.getLanguage();
 	if(!lang){
@@ -252,7 +235,7 @@ function loadSettings(){
 			lang = lang.substring(0, i);
 		}
 	}
-	changeLanguage(lang);
+	await changeLanguage(lang);
 
 	getElement("#txtRelay").value = g_storage.getRelayUrl();
 
@@ -305,7 +288,7 @@ function loadSettings(){
 
 	// Load drive
 	if(drv){
-		loadDrive(drv);
+		await loadDrive(drv);
 	}else{
 		showSettings();
 	}
@@ -336,8 +319,9 @@ function showSettings(evt){
 
 /**
  * @param {string} lang
+ * @return {!Promise<void>}
  */
-function changeLanguage(lang){
+async function changeLanguage(lang){
 	if(window["msgs"] && window["msgs"]["lang"] == lang){
 		return;
 	}
@@ -349,28 +333,26 @@ function changeLanguage(lang){
 	 */
 	var old_msgs = window["msgs"];
 	window["msgs"] = null;
-	loadjs("msg/"+lang+".js", function(a_err){
-		if(window["msgs"]){
-			window["msgs"]["lang"] = lang;
-			g_storage.setLanguage(lang);
-			applyLanguage(window["msgs"]);
+	await loadjs("msg/"+lang+".js", true);
+	if(window["msgs"]){
+		window["msgs"]["lang"] = lang;
+		g_storage.setLanguage(lang);
+		applyLanguage(window["msgs"]);
+	}else{
+		console.log("Message file of '"+lang+"' is missing.");
+		if(old_msgs){
+			window["msgs"] = old_msgs;
 		}else{
-			console.log("Message file of '"+lang+"' is missing.");
-			if(old_msgs){
-				window["msgs"] = old_msgs;
+			await loadjs("msg/en.js", true);
+			if(window["msgs"]){
+				window["msgs"]["lang"] = "en";
+				g_storage.setLanguage(window["msgs"]["lang"]);
+				applyLanguage(window["msgs"]);
 			}else{
-				loadjs("msg/en.js", function(b_err){
-					if(window["msgs"]){
-						window["msgs"]["lang"] = "en";
-						g_storage.setLanguage(window["msgs"]["lang"]);
-						applyLanguage(window["msgs"]);
-					}else{
-						showError("Message file is missing.");
-					}
-				}, true);
+				showError("Message file is missing.");
 			}
 		}
-	}, true);
+	}
 }
 /**
  * @param {Object<string, string>} msgs
@@ -444,8 +426,9 @@ function applyLanguage(msgs){
 
 /**
  * @param {string} drvnm
+ * @return {!Promise<void>}
  */
-function loadDrive(drvnm){
+async function loadDrive(drvnm){
 	showInfo("loading");
 	/** @type {ZbDriveDefine} */
 	var drv = g_DRIVES[drvnm];
@@ -455,42 +438,45 @@ function loadDrive(drvnm){
 		showError("unkDrive");
 		return;
 	}
-	g_drive.login(true).then(function(a_err){
-		if(a_err){
-			if(a_err != "redirect"){
-				g_storage.clearLogInfo(function(){
-					showError(window["msgs"]["loginFailed"].replace("{0}", a_err));
-				});
-			}
-			return;
-		}else{
-			g_storage.saveAllData();
+	/** @type {?string} */
+	var a_err = await g_drive.login(true);
+	if(a_err){
+		if(a_err != "redirect"){
+			await g_storage.clearLogInfo();
+			showError(window["msgs"]["loginFailed"].replace("{0}", a_err));
 		}
+		return;
+	}else{
+		await g_storage.saveAllData();
+	}
 
-		// Set image of drive
-		/** @type {Element} */
-		var a_img = getElement("img", findParent("div", getElement("#spanQuota")));
-		a_img.src = "img/"+drvnm+".png";
-		a_img.alt = drv.getName();
+	// Set image of drive
+	/** @type {Element} */
+	var a_img = getElement("img", findParent("div", getElement("#spanQuota")));
+	a_img.src = "img/"+drvnm+".png";
+	a_img.alt = drv.getName();
 
-		// Get configuration file.
-		g_drive.searchItems({
-			_fname: g_CONFILE,
-		}).then(function(b_dats){
-			if(b_dats.length == 0){
-				showInputPassword(true);
-			}else{
-				downloadConfile(b_dats[0]._id);
-			}
-		}).catch(function(b_err){
-			showError(JSON.stringify(b_err));
-		});
+	// Get configuration file.
+	/** @type {Array<DriveItem>|undefined} */
+	var b_dats = await g_drive.searchItems({
+		_fname: g_CONFILE,
+	}).catch(function(b_err){
+		showError(JSON.stringify(b_err));
 	});
+	if(b_dats){
+		if(b_dats.length == 0){
+			showInputPassword(true);
+		}else{
+			await downloadConfile(b_dats[0]._id);
+		}
+	}
 }
 /**
  * Event called from html
+ *
+ * @return {!Promise<void>}
  */
-function saveSettings(){
+async function saveSettings(){
 	if(!getElement("#chkAgreeTos").checked){
 		showError("noAgreeTos");
 		return;
@@ -525,12 +511,12 @@ function saveSettings(){
 	g_storage.setDriveExInfo(dext);
 	g_storage.setSkipLogin(getElement("#chkSkipLogin").checked);
 	g_storage.setRelayUrl(getElement("#txtRelay").value);
-	changeLanguage(getElement("#seLang").value);
+	await changeLanguage(getElement("#seLang").value);
 	if(needLoad){
 		g_storage.clearSession();
-		loadDrive(sel.value);
+		await loadDrive(sel.value);
 	}else{
-		g_storage.saveAllData();
+		await g_storage.saveAllData();
 	}
 	hideSettings();
 }
@@ -596,8 +582,9 @@ function showAddRoot(addroot, firstep){
 }
 /**
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function deleteRoot(evt){
+async function deleteRoot(evt){
 	if(!window.confirm(window["msgs"]["delConfirm"])){
 		return;
 	}
@@ -615,61 +602,47 @@ function deleteRoot(evt){
 		}
 	}));
 
-	/** @type {function()} */
-	var reload = function(){
-		if(rootidx == g_rootidx){
-			window.location.reload();
-		}else{
-			/** @type {Array<Element>} */
-			var a_eles = getElementsByAttribute("option", sel);
-			/** @type {number} */
-			var a_i = 0;
-			for(a_i=0; a_i<a_eles.length; a_i++){
-				/** @type {Element} */
-				var a_opt = a_eles[a_i];
-				if(a_opt.value == root){
-					sel.removeChild(a_opt);
-					break;
-				}
-			}
-			showNotify("delrootDone");
-		}
-	};
-
 	if(rootidx >= 0){
-		/** @type {function()} */
-		var editconf = function(){
-			g_conf.splice(rootidx, 1);
-			uploadConfile(g_conf, reload);
-		};
-		/** @type {function(string)} */
-		var delroot = function(a_fid){
-			/** @type {DriveUpdateOption} */
-			var a_opt = {
-				/** @type {string} */
-				_fid: a_fid,
-			};
-			g_drive.delete(a_opt).then(editconf).catch(function(a_err){
-				showError(a_err);
-			});
-		};
-
 		/** @type {DriveSearchItemsOption} */
 		var opt = {
 			_fname: /** @type {string} */(g_conf[rootidx]["root"]),
 		};
-		g_drive.searchItems(opt).then(function(a_dats){
-			if(a_dats.length == 0){
-				editconf();
-			}else{
-				delroot(a_dats[0]._id);
-			}
-		}).catch(function(a_err){
+		/** @type {Array<DriveItem>|undefined} */
+		var a_dats = await g_drive.searchItems(opt).catch(function(a_err){
 			console.error(a_err);
 		});
+		if(a_dats){
+			if(a_dats.length > 0){
+				/** @type {DriveUpdateOption} */
+				var a_opt = {
+					/** @type {string} */
+					_fid: a_dats[0]._id,
+				};
+				await g_drive.delete(a_opt).catch(function(a_err){
+					showError(a_err);
+				});
+			}
+			g_conf.splice(rootidx, 1);
+			await uploadConfile(g_conf);
+		};
+	}
 
+	if(rootidx == g_rootidx){
+		window.location.reload();
 	}else{
-		reload();
+		/** @type {Array<Element>} */
+		var a_eles = getElementsByAttribute("option", sel);
+		/** @type {number} */
+		var a_i = 0;
+		for(a_i=0; a_i<a_eles.length; a_i++){
+			/** @type {Element} */
+			var a_ele = a_eles[a_i];
+			if(a_ele.value == root){
+				sel.removeChild(a_ele);
+				break;
+			}
+		}
+		showNotify("delrootDone");
 	}
 }
 
@@ -732,8 +705,9 @@ function clearKeyf(){
 }
 /**
  * Event called from html
+ * @return {!Promise<void>}
  */
-function setPassword(){
+async function setPassword(){
 	showInfo("loading");
 
 	/** @type {boolean} */
@@ -781,35 +755,27 @@ function setPassword(){
 	}
 	if(fKey.length > 0){
 		/** @type {FileReader} */
-		var reader = new FileReader();
+		var reader = FileReader.zbPreparePromise();
 		/** @type {forge.md.digest} */
 		var hash = forge.hmac.create();
 		hash.start("sha512", "zb12");
 		i = 0;
-		reader.doread = function(){
-			reader.readAsArrayBuffer(fKey[i].slice(0, 1023));
+		while(i < fKey.length){
+			/** @type {ArrayBuffer} */
+			var kdat = await reader.zbReadAsArrayBuffer(fKey[i].slice(0, 1023));
+			hash.update(u8arrToRaw(new Uint8Array(kdat)));
 			i++;
 		}
-		/** @type function(Event) */
-		reader.onload = function(a_evt){
-			hash.update(u8arrToRaw(new Uint8Array(a_evt.target.result)));
-			if(i < fKey.length){
-				reader.doread();
-			}else{
-				words += hash.digest().getBytes();
-				checkPassword(words, addroot);
-			}
-		};
-		reader.doread();
-	}else{
-		checkPassword(words, addroot);
+		words += hash.digest().getBytes();
 	}
+	await checkPassword(words, addroot);
 }
 /**
  * @param {string} keyWords
  * @param {boolean=} addroot
+ * @return {!Promise<void>}
  */
-function checkPassword(keyWords, addroot){
+async function checkPassword(keyWords, addroot){
 	/** @type {forge.md.digest} */
 	var hash = forge.hmac.create();
 	hash.start("md5", g_HASHKEY);
@@ -837,8 +803,8 @@ function checkPassword(keyWords, addroot){
 			showError("dupRoot");
 			return;
 		}else{
-			g_storage.saveDriveData("root", /** @type {string} */(conf["root"]));
-			saveKeyData(keyWords);
+			await g_storage.saveDriveData("root", /** @type {string} */(conf["root"]));
+			await saveKeyData(keyWords);
 		}
 		rkeys = forge.random.getBytesSync(1024);
 		g_keycfg = zbCreateCfg(rkeys);
@@ -846,7 +812,8 @@ function checkPassword(keyWords, addroot){
 		g_rootidx = g_conf.length;
 		g_conf.push(conf);
 		appendRootItem(conf, true);
-		uploadConfile(g_conf);
+		await uploadConfile(g_conf);
+		await checkRootFolder();
 	}else{
 		/** @type {string} */
 		var a_root = getElement("#selRoot").value;
@@ -859,11 +826,11 @@ function checkPassword(keyWords, addroot){
 		}));
 		if(a_rootidx >= 0 && g_conf[a_rootidx]["iv"] && hmac == g_conf[a_rootidx]["iv"].slice(0, hmac.length)){
 			g_rootidx = a_rootidx;
-			g_storage.saveDriveData("root", a_root);
-			saveKeyData(keyWords);
+			await g_storage.saveDriveData("root", a_root);
+			await saveKeyData(keyWords);
 			rkeys = cryptoRKeys(false, g_conf[g_rootidx]["iv"].slice(hmac.length), keyWords);
 			g_keycfg = zbCreateCfg(rkeys);
-			checkRootFolder();
+			await checkRootFolder();
 		}else if(isVisible(getElement("#divPwd"))){
 			showError("pwdError");
 		}else{
@@ -893,9 +860,9 @@ function cryptoRKeys(encFlg, rkeys, keyWords){
 
 /**
  * @param {Array<Object<string, (string|boolean)>>} conf
- * @param {(function())=} func
+ * @return {!Promise<void>}
  */
-function uploadConfile(conf, func){
+async function uploadConfile(conf){
 	/** @type {Uint8Array} */
 	var words = forge.util.text.utf8.encode(JSON.stringify(conf));
 	/** @type {Blob} */
@@ -909,69 +876,68 @@ function uploadConfile(conf, func){
 	var writer = g_drive.createWriter({
 		_fnm: g_CONFILE,
 	});
-	zbPipe(reader, writer, undefined).then(func || checkRootFolder);
+	await zbPipe(reader, writer, undefined);
 }
 /**
  * @param {string} fid
+ * @return {!Promise<void>}
  */
-function downloadConfile(fid){
+async function downloadConfile(fid){
 	/** @type {ZBReader} */
 	var reader = g_drive.createReader({
 		_id: fid,
 	});
 	/** @type {ZBWriter} */
 	var writer = new ZBlobWriter();
-	zbPipe(reader, writer, undefined).then(function(){
-		/** @type {string} */
-		var a_words = forge.util.decodeUtf8(u8arrToRaw(writer.getBuffer()));
-		var a_conf = JSON.parse(a_words);
-		if(Array.isArray(a_conf)){
-			g_conf = /** @type {Array<Object<string,(boolean|string)>>} */(a_conf);
-		}else{
-			g_conf.push(/** @type {Object<string,(boolean|string)>} */(a_conf));
+	await zbPipe(reader, writer, undefined);
+	/** @type {string} */
+	var a_words = forge.util.decodeUtf8(u8arrToRaw(writer.getBuffer()));
+	var a_conf = JSON.parse(a_words);
+	if(Array.isArray(a_conf)){
+		g_conf = /** @type {Array<Object<string,(boolean|string)>>} */(a_conf);
+	}else{
+		g_conf.push(/** @type {Object<string,(boolean|string)>} */(a_conf));
+	}
+	/** @type {number} */
+	var a_rootidx = -1;
+	/** @type {?string} */
+	var a_root = g_storage.getDriveData("root");
+	/** @type {Element} */
+	var a_sel = getElement("#selRoot");
+	a_sel.innerHTML = "";
+	g_conf.forEach(/** function(Object<string,(boolean|string)>, number) */(function(b_ele, b_idx){
+		/** @type {boolean} */
+		var b_selected = false;
+		if(a_root && b_ele["root"] == a_root){
+			b_selected = true;
 		}
-		/** @type {number} */
-		var a_rootidx = -1;
+		appendRootItem(b_ele, b_selected, a_sel);
+		if(b_selected){
+			a_rootidx = b_idx;
+		}
+	}));
+	if(a_rootidx >= 0){
+		g_rootidx = a_rootidx;
 		/** @type {?string} */
-		var a_root = g_storage.getDriveData("root");
-		/** @type {Element} */
-		var a_sel = getElement("#selRoot");
-		a_sel.innerHTML = "";
-		g_conf.forEach(/** function(Object<string,(boolean|string)>, number) */(function(b_ele, b_idx){
-			/** @type {boolean} */
-			var b_selected = false;
-			if(a_root && b_ele["root"] == a_root){
-				b_selected = true;
+		var a_kw = g_storage.getDriveData("key_words");
+		if(a_kw){
+			/** @type {Object<string, (string|boolean)>|undefined} */
+			var b_lskdat = await fetchLocalStorageAuth().catch(function(b_err){
+				showError(b_err);
+			});
+			if(b_lskdat){
+				if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
+					/** @type {string} */
+					var b_keywords = zbDataCrypto(false, base64urlToRaw(/** @type {string} */(a_kw)), /** @type {string} */(b_lskdat["lsauth"]));
+					await checkPassword(b_keywords);
+					return;
+				}
 			}
-			appendRootItem(b_ele, b_selected, a_sel);
-			if(b_selected){
-				a_rootidx = b_idx;
-			}
-		}));
-		if(a_rootidx >= 0){
-			g_rootidx = a_rootidx;
-			/** @type {?string} */
-			var a_kw = g_storage.getDriveData("key_words");
-			if(a_kw){
-				fetchLocalStorageAuth().then(function(b_lskdat){
-					if(b_lskdat && b_lskdat["lsauth"] && !b_lskdat["newkey"]){
-						/** @type {string} */
-						var b_keywords = zbDataCrypto(false, base64urlToRaw(/** @type {string} */(a_kw)), /** @type {string} */(b_lskdat["lsauth"]));
-						checkPassword(b_keywords);
-					}else{
-						showInputPassword();
-					}
-				}).catch(function(b_err){
-					showError(b_err);
-				});
-			}else{
-				showInputPassword();
-			}
-		}else{
-			g_rootidx = 0;
-			showInputPassword();
 		}
-	});
+	}else{
+		g_rootidx = 0;
+	}
+	showInputPassword();
 }
 /**
  * @param {Object<string, (string|boolean)>} _conf
@@ -993,15 +959,12 @@ function appendRootItem(_conf, _selected, _sel){
 /**
  * Event called from html
  */
-function dropLoacalDb(){
+async function dropLoacalDb(){
 	if(!window.confirm(window["msgs"]["dropConfirm"])){
 		return;
 	}
-	g_storage.dropIdxDb(function(a_err){
-		if(a_err){
-			showError(a_err);
-		}else{
-			g_drive.logout();
-		}
+	await g_storage.dropIdxDb().catch(function(a_err){
+		showError(a_err);
 	});
+	await g_drive.logout();
 }

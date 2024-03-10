@@ -40,8 +40,9 @@ function createTransfer(keycfg, drv){
 
 /**
  * @param {WorkerInfo} wkinf
+ * @return {!Promise<void>}
  */
-function work(wkinf){
+async function work(wkinf){
 	/** @type {WorkerInfoType} */
 	var wtyp = wkinf.type;
 	var cinf = /** @type {WorkerCommonInfo} */(wkinf.cominf);
@@ -60,43 +61,41 @@ function work(wkinf){
 
 	/** @type {ZbLocalStorage} */
 	var stg = new ZbLocalStorage();
-	stg.initIdxDb(function(a_err){
-		if(a_err){
-			console.error("IndexedDB is not supported in your browser settings.");
-		}
-		/** @type {ZbDriveDefine} */
-		var a_drvdef = g_DRIVES[cinf.drvid];
-		if(a_drvdef){
-			/** @type {ZbDrive} */
-			var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL);
-			a_drv.presetToken(cinf.gtoken);
-
-			switch(wtyp){
-			case WorkerInfoType.DOWNLOAD:
-				var a_downinf = /** @type {WorkerDownloadInfo} */(wkinf.downinf);
-				/** @type {ZbTransfer} */
-				var a_tfr1 = createTransfer(keycfg, a_drv);
-				a_tfr1.downloadFile(a_drv, a_downinf.targetId);
-				break;
-			case WorkerInfoType.UPLOAD:
-				var a_upinf = /** @type {WorkerUploadInfo} */(wkinf.upinf);
-				/** @type {ZbTransfer} */
-				var a_tfr2 = createTransfer(keycfg, a_drv);
-				a_tfr2.uploadFile(a_drv, a_upinf.fname, a_upinf.file, a_upinf.ptid);
-				break;
-			}
-
-		}else{
-			/** @type {WorkerStepInfo} */
-			var a_stepinf = {
-				type: StepInfoType.DONE,
-				wtype: wtyp,
-				size: 0,
-				errr: "Drive's name is invalid.",
-			};
-			self.postMessage(a_stepinf);
-		}
+	await stg.initIdxDb().catch(function(a_err){
+		console.error("IndexedDB is not supported in your browser settings.", a_err);
 	});
+	/** @type {ZbDriveDefine} */
+	var a_drvdef = g_DRIVES[cinf.drvid];
+	if(a_drvdef){
+		/** @type {ZbDrive} */
+		var a_drv = a_drvdef.newDriveInstance(stg, g_AUTHURL);
+		a_drv.presetToken(cinf.gtoken);
+
+		switch(wtyp){
+		case WorkerInfoType.DOWNLOAD:
+			var a_downinf = /** @type {WorkerDownloadInfo} */(wkinf.downinf);
+			/** @type {ZbTransfer} */
+			var a_tfr1 = createTransfer(keycfg, a_drv);
+			await a_tfr1.downloadFile(a_drv, a_downinf.targetId);
+			break;
+		case WorkerInfoType.UPLOAD:
+			var a_upinf = /** @type {WorkerUploadInfo} */(wkinf.upinf);
+			/** @type {ZbTransfer} */
+			var a_tfr2 = createTransfer(keycfg, a_drv);
+			await a_tfr2.uploadFile(a_drv, a_upinf.fname, a_upinf.file, a_upinf.ptid);
+			break;
+		}
+
+	}else{
+		/** @type {WorkerStepInfo} */
+		var a_stepinf = {
+			type: StepInfoType.DONE,
+			wtype: wtyp,
+			size: 0,
+			errr: "Drive's name is invalid.",
+		};
+		self.postMessage(a_stepinf);
+	}
 }
 
 self.addEventListener("message", function(evt){

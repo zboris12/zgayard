@@ -686,7 +686,7 @@ function ZbIdxDbDrive(_storage, _authUrl){
 	 * @param {string} id
 	 * @return {!Promise<Array<IdxDbDataInfo>>}
 	 */
-	this.fetchDataInfos = async function(id, func){
+	this.fetchDataInfos = async function(id){
 		/** @type {Array<IdxDbDataInfo>} */
 		var arrs = [];
 		await this.operateDatas(function(a_store){
@@ -739,55 +739,48 @@ function ZbIdxDbDrive(_storage, _authUrl){
 
 	/**
 	 * @private
-	 * @param {function(string=)} func function(a_err){}
+	 * @return {!Promise<void>}
 	 */
-	this.checkDb = function(func){
-		/** @const {string} */
-		const msg = "IndexedDB is not supported in your browser settings.";
-		if(!window.indexedDB){
-			if(func){
-				func(msg);
-			}else{
-				throw new Error(msg);
+	this.checkDb = function(){
+		return new Promise(function(resolve, reject){
+			/** @const {string} */
+			const msg = "IndexedDB is not supported in your browser settings.";
+			if(!window.indexedDB){
+				reject(new Error(msg));
+				return;
 			}
-			return;
-		}
-		/** @type {IDBOpenDBRequest} */
-		var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
-		/**
-		 * @param {Event} a_evt
-		 */
-		request.onerror = function(a_evt){
-			if(func){
-				func(msg);
-			}else{
-				throw new Error(msg);
-			}
-		}.bind(this);
-		/**
-		 * @param {Event} a_evt
-		 */
-		request.onupgradeneeded = function(a_evt){
-			/** @type {IDBDatabase} */
-			var a_db = a_evt.target.result;
-			a_db.createObjectStore(ZbIdxDbDrive.ITEMS_NAME, {
-				"keyPath": "key"
-			});
-			a_db.createObjectStore(ZbIdxDbDrive.DATAS_NAME, {
-				"keyPath": "key"
-			});
-		}.bind(this);
-		/**
-		 * @param {Event} a_evt
-		 */
-		request.onsuccess = function(a_evt){
-			/** @type {IDBDatabase} */
-			var a_db = a_evt.target.result;
-			a_db.close();
-			if(func){
-				func();
-			}
-		}.bind(this);
+
+			/** @type {IDBOpenDBRequest} */
+			var request = window.indexedDB.open(ZbIdxDbDrive.DB_NAME);
+			/**
+			 * @param {Event} a_evt
+			 */
+			request.onerror = function(a_evt){
+				reject(a_evt.target.error);
+			};
+			/**
+			 * @param {Event} a_evt
+			 */
+			request.onupgradeneeded = function(a_evt){
+				/** @type {IDBDatabase} */
+				var a_db = a_evt.target.result;
+				a_db.createObjectStore(ZbIdxDbDrive.ITEMS_NAME, {
+					"keyPath": "key"
+				});
+				a_db.createObjectStore(ZbIdxDbDrive.DATAS_NAME, {
+					"keyPath": "key"
+				});
+			};
+			/**
+			 * @param {Event} a_evt
+			 */
+			request.onsuccess = function(a_evt){
+				/** @type {IDBDatabase} */
+				var a_db = a_evt.target.result;
+				a_db.close();
+				resolve();
+			};
+		});
 	};
 
 	/**

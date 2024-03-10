@@ -10,48 +10,49 @@ const MenuType = {
 
 /**
  * @param {string} typ
- * @param {function()=} func A function called while exit modal
+ * @return {!Promise<void>}
  */
-function showModal(typ, func){
-	/** @type {string} */
-	var ttl = "";
-	switch(typ){
-	case "new":
-		ttl = "spanNew";
-		break;
-	case "upload":
-		ttl = "spanUpload";
-		break;
-	case "selfldr":
-		ttl = "spanSelFldr";
-		break;
-	default:
-		return;
-	}
-	/** @type {Element} */
-	var div = getElement("#divModal");
-	/** @type {Element} */
-	var ele = getElement("#spanModal");
-	ele.innerText = window["msgs"][ttl];
-	/** @type {Array<Element>} */
-	var eles = getElementsByAttribute("div", nextElement(ele));
-	/** @type {number} */
-	var i = 0;
-	for(i=0; i<eles.length; i++){
-		ele = eles[i];
-		if(ele.hasAttribute("type")){
-			if(ele.getAttribute("type") == typ){
-				showElement(ele);
-			}else{
-				hideElement(ele);
+function showModal(typ){
+	return new Promise(function(resolve, reject){
+		/** @type {string} */
+		var ttl = "";
+		switch(typ){
+		case "new":
+			ttl = "spanNew";
+			break;
+		case "upload":
+			ttl = "spanUpload";
+			break;
+		case "selfldr":
+			ttl = "spanSelFldr";
+			break;
+		default:
+			return;
+		}
+		/** @type {Element} */
+		var div = getElement("#divModal");
+		/** @type {Element} */
+		var ele = getElement("#spanModal");
+		ele.innerText = window["msgs"][ttl];
+		/** @type {Array<Element>} */
+		var eles = getElementsByAttribute("div", nextElement(ele));
+		/** @type {number} */
+		var i = 0;
+		for(i=0; i<eles.length; i++){
+			ele = eles[i];
+			if(ele.hasAttribute("type")){
+				if(ele.getAttribute("type") == typ){
+					showElement(ele);
+				}else{
+					hideElement(ele);
+				}
 			}
 		}
-	}
 
-	if(func){
-		div.onhide = func;
-	}
-	showElement(div);
+		div.presv = resolve;
+		div.prejt = reject;
+		showElement(div);
+	});
 }
 /**
  * Call from html event.
@@ -62,9 +63,10 @@ function hideModal(evt){
 	/** @type {Element} */
 	var div = findParent("zb-modal", getElement(evt), "div.class");
 	if(div){
-		if(div.onhide){
-			div.onhide();
-			delete div.onhide;
+		if(div.presv){
+			div.presv();
+			delete div.presv;
+			delete div.prejt;
 		}
 		hideElement(div);
 	}
@@ -73,14 +75,9 @@ function hideModal(evt){
  * Call from html event.
  *
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function okModal(evt){
-	/** @type {function(boolean)} */
-	var func = function(a_ret){
-		if(a_ret){
-			hideModal(evt);
-		}
-	};
+async function okModal(evt){
 	/** @type {string} */
 	var typ = "";
 	/** @type {Array<Element>} */
@@ -97,10 +94,12 @@ function okModal(evt){
 			}
 		}
 	}
-	
+
+	/** @type {boolean} */
+	var ret = false;
 	switch(typ){
 	case "new":
-		newFolder(func);
+		ret = await newFolder();
 		break;
 	case "upload":
 		/** @type {Array<File>} */
@@ -117,13 +116,29 @@ function okModal(evt){
 		if(files.length <= 0){
 			showError("noFiles");
 		}else{
-			func(true);
+			ret = true;
 			upload(files);
 		}
 		break;
 	case "selfldr":
-		moveToFolder(func);
+		/** @type {Element} */
+		var div = getElement("#divModal");
+		/** @type {Element} */
+		var ul = getHeaderUl(div);
+		/** @type {Element} */
+		var li = previousElement(ul, "li", true);
+		/** @type {string} */
+		var pntid = li.getAttribute("uid") ;
+		if(pntid != g_paths[g_paths.length - 1]._id){
+			hideModal(evt);
+			/** @type {string} */
+			var uid = div.getAttribute("uid");
+			await moveToFolder(pntid, uid);
+		}
 		break;
+	}
+	if(ret){
+		hideModal(evt);
 	}
 }
 /**
@@ -178,19 +193,18 @@ function decryptFname(fnm){
 /**
  * Event called from html
  */
-function onbody(){
+async function onbody(){
 	g_storage = new ZbLocalStorage();
-	g_storage.initIdxDb(function(a_err){
-		if(a_err){
-			showError("IndexedDB is not supported in your browser settings.");
-		}
-		loadSettings();
+	await g_storage.initIdxDb().catch(function(a_err){
+		showError("IndexedDB is not supported in your browser settings.");
 	});
+	await loadSettings();
 }
 /**
  * A function.
+ * @return {!Promise<void>}
  */
-function checkRootFolder(){
+async function checkRootFolder(){
 	/** @type {Array<Element>} */
 	var uls = [getHeaderUl("#divMain"), getElement("ul", "#divHistory")];
 	uls.forEach(function(a_ul){
@@ -209,36 +223,50 @@ function checkRootFolder(){
 	hideSetPwd();
 	showElement(".zb-nav-tools");
 	showElement("#divMain");
-	getDriveInfo(function(){
-		/** @type {string} */
-		var fldr = /** @type {string} */(g_conf[g_rootidx]["root"]);
-		// Get root folder.
-		g_drive.searchItems({
-			_fname: fldr,
-		}).then(function(a_arr){
-			if(a_arr && a_arr.length > 0){
-				g_paths = new Array();
-				g_paths.push(a_arr[0]);
-				registerServiceWorker();
-				listFolder();
-				loadRecent();
-				return;
-			}
-			// Create root folder
-			g_drive.newFolder({
-				_folder: fldr,
-			}).then(function(b_dat){
-				g_paths = new Array();
-				g_paths.push(b_dat);
-				registerServiceWorker();
-				listFolder();
-			}).catch(function(b_err){
-				showError(JSON.stringify(b_err));
-			});
-		}).catch(function(a_err){
-			showError(JSON.stringify(a_err));
-		});
+
+	/** @type {DriveInfo|undefined} */
+	var a_dat = await g_drive.getDrive({}).catch(function(a_err){
+		showError(a_err);
 	});
+	if(!a_dat){
+		return;
+	}
+	/** @type {Element} */
+	var a_ele = getElement("#spanQuota");
+	a_ele.setAttribute("total", a_dat._total);
+	a_ele.setAttribute("trash", a_dat._trash);
+	addQuotaUsed(a_dat._used);
+
+	/** @type {string} */
+	var fldr = /** @type {string} */(g_conf[g_rootidx]["root"]);
+	// Get root folder.
+	/** @type {Array<DriveItem>|undefined} */
+	var a_arr = await g_drive.searchItems({
+		_fname: fldr,
+	}).catch(function(a_err){
+		showError(JSON.stringify(a_err));
+	});
+	if(a_arr && a_arr.length > 0){
+		g_paths = new Array();
+		g_paths.push(a_arr[0]);
+		await registerServiceWorker();
+		await listFolder();
+		await loadRecent();
+		return;
+	}
+	// Create root folder
+	/** @type {DriveItem|undefined} */
+	var b_dat = await g_drive.newFolder({
+		_folder: fldr,
+	}).catch(function(b_err){
+		showError(JSON.stringify(b_err));
+	});
+	if(b_dat){
+		g_paths = new Array();
+		g_paths.push(b_dat);
+		await registerServiceWorker();
+		await listFolder();
+	};
 }
 /**
  * @param {string|number} sz
@@ -280,23 +308,6 @@ function addQuotaUsed(sz, trashFlg){
 	}
 }
 /**
- * @param {function()} func
- */
-function getDriveInfo(func){
-	g_drive.getDrive({}).then(function(a_dat){
-		/** @type {Element} */
-		var a_ele = getElement("#spanQuota");
-		a_ele.setAttribute("total", a_dat._total);
-		a_ele.setAttribute("trash", a_dat._trash);
-		addQuotaUsed(a_dat._used);
-		if(func){
-			func();
-		}
-	}).catch(function(a_err){
-		showError(a_err);
-	});
-}
-/**
  * @param {boolean} showFl
  */
 function showMenuHistory(showFl){
@@ -319,39 +330,39 @@ function showMenuHistory(showFl){
 	_showMenuHistory("zb-nav-tools", "span");
 	_showMenuHistory("zb-nav-menu", "label");
 }
-function loadRecent(){
+/**
+ * @return {!Promise<void>}
+ */
+async function loadRecent(){
 	g_recents = g_storage.getRecent();
 	if(!g_recents){
 		return;
 	}
 	/** @type {Element} */
 	var ul = getElement("ul", "#divHistory");
-
-	/** @type {function(number)} */
-	var showRecent = function(a_idx){
-		if(a_idx >= g_recents.length){
-			if(g_recents.length > 0){
-				showMenuHistory(true);
-			}
-			return;
-		}
+	/** @type {number} */
+	var a_idx = 0;
+	while(a_idx < g_recents.length){
 		/** @type {PlayedInfo} */
 		var a_rct = g_recents[a_idx];
 		// /* Get recent item. */
-		g_drive.getItem({
+		/** @type {DriveItem|undefined} */
+		var b_dat = await g_drive.getItem({
 			/** @type {string} */
 			_uid: a_rct._fid,
-		}).then(function(b_dat){
+		}).catch(function(b_err){
+		});
+		if(b_dat){
 			if(b_dat._parentId){
 				a_rct._folder = b_dat._parentId;
 			}
 			setRecent(a_idx, decryptFname(b_dat._name), ul);
-			showRecent(a_idx+1);
-		}).catch(function(b_err){
-		});
-	};
-
-	showRecent(0);
+		};
+		a_idx++;
+	}
+	if(g_recents.length > 0){
+		showMenuHistory(true);
+	}
 }
 /**
  * @param {number} idx
@@ -431,14 +442,14 @@ function setRecent(idx, nm, ul){
  * @param {boolean=} reload
  * @param {boolean=} onlyfolder
  * @param {DriveItem=} fld
- * @param {function(Array<DriveItem>)=} func
+ * @return {!Promise<Array<DriveItem>>}
  */
-function listFolder(reload, onlyfolder, fld, func){
+async function listFolder(reload, onlyfolder, fld){
 	/** @type {number} */
 	var idx = 0;
 	if(!fld){
 		if(g_paths.length <= 0){
-			return;
+			return null;
 		}
 		idx = g_paths.length - 1;
 		fld = g_paths[idx];
@@ -494,9 +505,13 @@ function listFolder(reload, onlyfolder, fld, func){
 		addPath(ulPath, fld, idx);
 	}
 
-	g_drive.searchItems({
+	/** @type {Array<DriveItem>|undefined} */
+	var a_arr = await g_drive.searchItems({
 		_parentid: fld._id,
-	}).then(function(a_arr){
+	}).catch(function(a_err){
+		showError(a_err);
+	});
+	if(a_arr){
 		/**
 		 * Sort by name
 		 *
@@ -552,14 +567,11 @@ function listFolder(reload, onlyfolder, fld, func){
 				hideElement(a_chk);
 			}
 		}
-		if(func){
-			func(a_sort);
-		}else{
-			hideMessage();
-		}
-	}).catch(function(a_err){
-		showError(a_err);
-	});
+		hideMessage();
+		return a_sort;
+	}else{
+		return null;
+	}
 }
 /**
  * @param {Element} ul
@@ -709,10 +721,11 @@ function clickIcon(evt){
  * @param {string|Event} uidevt Event or uid
  * @param {number=} direction
  * @param {boolean=} noLoop
+ * @return {!Promise<void>}
  *
  * direction: 1 previous, 2 next, self if omitted.
  */
-function clickItem(uidevt, direction, noLoop){
+async function clickItem(uidevt, direction, noLoop){
 	/** @type {Element} */
 	var itm = null;
 	/** @type {string} */
@@ -739,10 +752,10 @@ function clickItem(uidevt, direction, noLoop){
 	};
 	if(isFolder(itm)){
 		if(onlyfolder){
-			listFolder(false, true, drvitm);
+			await listFolder(false, true, drvitm);
 		}else{
 			g_paths.push(drvitm);
-			listFolder();
+			await listFolder();
 		}
 	}else{
 		viewFile(drvitm._id, drvitm._name);
@@ -752,8 +765,9 @@ function clickItem(uidevt, direction, noLoop){
 /**
  * Event called from html
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function clickPath(evt){
+async function clickPath(evt){
 	/** @type {Element} */
 	var itm = findParent("li");
 	/** @type {Element} */
@@ -780,7 +794,7 @@ function clickPath(evt){
 	}
 
 	if(onlyfolder){
-		listFolder(true, true, {
+		await listFolder(true, true, {
 			_name: getElement("span", itm).innerText,
 			_id : itm.getAttribute("uid"),
 		});
@@ -789,7 +803,7 @@ function clickPath(evt){
 		if(cnt < g_paths.length - 1){
 			g_paths.splice(cnt + 1);
 		}
-		listFolder(true);
+		await listFolder(true);
 	}
 }
 /**
@@ -938,8 +952,9 @@ function getMenuTarget(uid, direction, noLoop){
  * Event called from html
  *
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function clickIteMenu(evt){
+async function clickIteMenu(evt){
 	/** @type {Element} */
 	var li = findParent("li");
 	/** @type {Element} */
@@ -984,10 +999,10 @@ function clickIteMenu(evt){
 		evt.buttonKey = MenuType.TEXT;
 		break;
 	case "menuMove":
-		showMove(uid);
+		await showMove(uid);
 		break;
 	case "menuDelete":
-		deleteItems(uid);
+		await deleteItems(uid);
 		break;
 	}
 }
@@ -1007,18 +1022,16 @@ function downloadById(uid){
 	download([drvitm]);
 }
 /**
- * @param {string|function()=} uidfunc 
+ * @param {string=} uid
+ * @return {!Promise<void>}
  */
-function showMove(uidfunc){
-	/** @type {function()|undefined} */
-	var func = undefined;
+async function showMove(uid){
 	/** @type {Element} */
 	var div = getElement("#divModal");
-	if(typeof uidfunc == "string"){
-		div.setAttribute("uid", uidfunc);
+	if(uid){
+		div.setAttribute("uid", uid);
 	}else if(getMultiChecked()){
 		div.removeAttribute("uid");
-		func = uidfunc;
 	}else{
 		return;
 	}
@@ -1031,8 +1044,8 @@ function showMove(uidfunc){
 	for(i=0; i<eles.length; i++){
 		ul.removeChild(eles[i]);
 	}
-	listFolder(false, true, g_paths[0]);
-	showModal("selfldr", func);
+	await listFolder(false, true, g_paths[0]);
+	await showModal("selfldr");
 }
 /**
  * Event called from html
@@ -1056,8 +1069,9 @@ function keyupNewname(evt){
 }
 /**
  * Event called from html
+ * @return {!Promise<void>}
  */
-function admitRename(){
+async function admitRename(){
 	/** @type {Element} */
 	var div = findParent("div");
 	/** @type {Element} */
@@ -1085,41 +1099,25 @@ function admitRename(){
 				/** @type {string} */
 				_newname: fnm,
 			}
-			g_drive.rename(opt).then(function(){
+			try{
+				await g_drive.rename(opt);
 				sp.innerText = txt.value;
 				showNotify("renDone");
-			}).catch(function(a_err){
+			}catch(a_err){
 				showError(a_err);
-			});
+			}
 		}
 	}
 	hideElement(div);
 }
 /**
- * @param {function(boolean)=} func
+ * @param {string} pntid
+ * @param {string} uid
+ * @return {!Promise<void>}
  */
-function moveToFolder(func){
-	/** @type {Element} */
-	var div = getElement("#divModal");
-	/** @type {Element} */
-	var ul = getHeaderUl(div);
-	/** @type {Element} */
-	var li = previousElement(ul, "li", true);
-	/** @type {string} */
-	var pntid = li.getAttribute("uid") ;
-	if(pntid == g_paths[g_paths.length - 1]._id){
-		if(func){
-			func(false);
-		}
-		return;
-	}else if(func){
-		func(true);
-	}
-
+async function moveToFolder(pntid, uid){
 	/** @type {Array<DriveItem>} */
 	var arr = [];
-	/** @type {string} */
-	var uid = div.getAttribute("uid");
 	if(uid){
 		arr.push({
 			_id: uid,
@@ -1133,29 +1131,31 @@ function moveToFolder(func){
 	}
 
 	showInfo("moving");
-	var moveall = async function(){
-		/** @type {number} */
-		var idx = 0;
-		for(idx=0; idx<arr.length; idx++){
-			await g_drive.move({
-				_fid: arr[idx]._id,
-				_parentid: pntid,
-				_oldparentid: g_paths[g_paths.length - 1]._id,
-			});
-		}
-	};
-	moveall().then(function(){
-		listFolder(true, false, undefined, function(){
-			showNotify("moveDone");
+	/** @type {boolean} */
+	var noerr = true;
+	/** @type {number} */
+	var idx = 0;
+	while(noerr && idx < arr.length){
+		await g_drive.move({
+			_fid: arr[idx]._id,
+			_parentid: pntid,
+			_oldparentid: g_paths[g_paths.length - 1]._id,
+		}).catch(function(err){
+			showError(err);
+			noerr = false;
 		});
-	}).catch(function(err){
-		showError(err);
-	});
+		idx++;
+	}
+	if(noerr){
+		await listFolder(true, false);
+		showNotify("moveDone");
+	}
 }
 /**
  * @param {string=} uid
+ * @return {!Promise<void>}
  */
-function deleteItems(uid){
+async function deleteItems(uid){
 	/** @type {Array<DriveItem>} */
 	var arr = null;
 	if(uid){
@@ -1174,40 +1174,38 @@ function deleteItems(uid){
 	}
 
 	showInfo("deleting");
-
-	var delall = async function(){
-		/** @type {number} */
-		var idx = 0;
-		for(idx=0; idx<arr.length; idx++){
-			/** @type {number} */
-			var sz = await g_drive.delete({
-				_fid: arr[idx]._id,
-			});
-			if(sz){
-				addQuotaUsed(sz, true);
-			}
-		}
-	};
-	delall().then(function(){
-		listFolder(true, false, undefined, function(){
-			showNotify("delDone");
+	/** @type {boolean} */
+	var noerr = true;
+	/** @type {number} */
+	var idx = 0;
+	while(noerr && idx < arr.length){
+		/** @type {number|undefined} */
+		var sz = await g_drive.delete({
+			_fid: arr[idx]._id,
+		}).catch(function(err){
+			showError(err);
+			noerr = false;
 		});
-	}).catch(function(err){
-		showError(err);
-	});
+		if(sz){
+			addQuotaUsed(sz, true);
+		}
+		idx++;
+	}
+
+	if(noerr){
+		await listFolder(true, false);
+		showNotify("delDone");
+	}
 }
 /**
- * @param {function(boolean)=} func
+ * @return {!Promise<boolean>}
  */
-function newFolder(func){
+async function newFolder(){
 	/** @type {string} */
 	var fldnm = getElement("#fldnm").value;
 	if(!fldnm){
 		showError("noFldName");
-		if(func){
-			func(false);
-		}
-		return;
+		return false;
 	}
 	/** @type {boolean} */
 	var finto = getElement("#chkFInto").checked;
@@ -1219,30 +1217,23 @@ function newFolder(func){
 	if(g_paths.length > 0){
 		opt._parentid = g_paths[g_paths.length - 1]._id;
 	}
-	g_drive.newFolder(opt).then(function(a_dat){
+	/** @type {DriveItem|undefined} */
+	var a_dat = await g_drive.newFolder(opt).catch(function(a_err){
+		showError(a_err._restext);
+	});
+	if(a_dat){
 		a_dat._name = fldnm;
 		if(finto){
-			/** @type {function(Array<DriveItem>)|undefined} */
-			var a_func = undefined;
-			if(func){
-				a_func = function(b_itms){
-					func(true);
-					hideMessage();
-				};
-			}
 			g_paths.push(a_dat);
-			listFolder(false, false, undefined, a_func);
-		}else if(func){
+			await listFolder(false, false);
+		}else{
 			addItem(getListUl("#divMain"), a_dat);
-			func(true);
 			showNotify("flDone");
 		}
-	}).catch(function(a_err){
-		showError(a_err._restext);
-		if(func){
-			func(false);
-		}
-	});
+		return true;
+	}else{
+		return false;
+	}
 }
 /**
  * @param {boolean=} noFolder
@@ -1278,8 +1269,9 @@ function getMultiChecked(noFolder){
 /**
  * @param {string} fid
  * @param {string} fnm
+ * @return {!Promise<void>}
  */
-function viewFile(fid, fnm){
+async function viewFile(fid, fnm){
 	/** @type {Element} */
 	var div = getElement("#diViewer");
 	/** @type {Element} */
@@ -1291,9 +1283,9 @@ function viewFile(fid, fnm){
 	/** @type {Element} */
 	var img = getElement("img", div);
 	/** @type {Element} */
-	var vdo = endMediaStream("video", div);
+	var vdo = await endMediaStream("video", div);
 	/** @type {Element} */
-	var ado = endMediaStream("audio", div);
+	var ado = await endMediaStream("audio", div);
 
 	span.innerText = window["msgs"]["loading"];
 	showElement(span);
@@ -1353,9 +1345,11 @@ function viewFile(fid, fnm){
 		_reader: reader,
 		_writer: writer,
 	});
-	var onfinal = /** @type {function(*=, boolean=)} */(function(a_err, a_done){
-		if(a_err || !a_done){
-			console.log(a_err || !a_done);
+	try{
+		/** @type {boolean} */
+		var a_done = await cypt.start();
+		if(!a_done){
+			console.log("Not done!");
 			return;
 		}
 		var a_buf = writer.getBuffer();
@@ -1368,12 +1362,9 @@ function viewFile(fid, fnm){
 			showElement(img);
 			hideElement(span);
 		}
-	});
-	cypt.start().then(function(a_done){
-		onfinal(undefined, a_done);
-	}).catch(function(a_err){
-		onfinal(a_err);
-	});
+	}catch(a_err){
+		console.log(a_err);
+	}
 }
 /**
  * Event called from html
@@ -1425,10 +1416,11 @@ function clickNext(){
 /**
  * Call from html event.
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function exitViewer(evt){
-	endMediaStream("video", getElement("#diViewer"));
-	endMediaStream("audio", getElement("#diViewer"));
+async function exitViewer(evt){
+	await endMediaStream("video", getElement("#diViewer"));
+	await endMediaStream("audio", getElement("#diViewer"));
 	hideModal(evt);
 }
 /**
@@ -1444,9 +1436,9 @@ function imageLoaded(){
 /**
  * @param {string} tag
  * @param {Element} div
- * @return {Element}
+ * @return {!Promise<Element>}
  */
-function endMediaStream(tag, div){
+async function endMediaStream(tag, div){
 	/** @type {Element} */
 	var vdo = getElement(tag, div);
 	/** @type {string} */
@@ -1483,7 +1475,7 @@ function endMediaStream(tag, div){
 		}
 		delete vdo.fid;
 		delete vdo.fnm;
-		g_storage.saveRecent(g_recents[i], i);
+		await g_storage.saveRecent(g_recents[i], i);
 		setRecent(i, fnm);
 		showMenuHistory(true);
 	}
@@ -1511,8 +1503,9 @@ function findRecentIndex(li){
 /**
  * @param {Event} evt
  * @param {boolean=} next
+ * @return {!Promise<void>}
  */
-function clickRecent(evt, next){
+async function clickRecent(evt, next){
 	getElement("close", "#divHistory", "span.name").click();
 	/** @type {Element} */
 	var ele = getElement(evt);
@@ -1537,20 +1530,15 @@ function clickRecent(evt, next){
 	showInfo("loading");
 	/** @type {Array<DriveItem>} */
 	var paths = new Array();
-	/** @type {function()} */
-	var getDrvFld = function(){
-		if(!pnt){
-			showInfo("cantPlayRecent");
-			return;
-		}else if(pnt == g_paths[0]._id){
-			paths.unshift(g_paths[0]);
-			gotoPlay();
-			return;
-		}
-		g_drive.getItem({
+
+	while(pnt && pnt != g_paths[0]._id){
+		/** @type {DriveItem|undefined} */
+		var a_dat = await g_drive.getItem({
 			/** @type {string} */
 			_uid: pnt,
-		}).then(function(a_dat){
+		}).catch(function(a_err){
+		});
+		if(a_dat){
 			a_dat._name = decryptFname(a_dat._name);
 			paths.unshift(a_dat);
 			if(a_dat._parentId == g_paths[0]._parentId){
@@ -1559,49 +1547,53 @@ function clickRecent(evt, next){
 			}else{
 				pnt = a_dat._parentId;
 			}
-			getDrvFld();
-		}).catch(function(a_err){
-		});
-	};
-	/** @type {function()} */
-	var gotoPlay = function(){
-		/** @type {Element} */
-		var a_ulPath = getHeaderUl("#divMain");
+		}else{
+			pnt = undefined;
+		}
+	}
+	if(pnt == g_paths[0]._id){
+		paths.unshift(g_paths[0]);
+	}else{
+		showInfo("cantPlayRecent");
+		return;
+	}
+
+	/** @type {Element} */
+	var a_ulPath = getHeaderUl("#divMain");
+	/** @type {number} */
+	var a_i = 0;
+	/** @type {Array<Element>} */
+	var a_eles = getElementsByAttribute("li", a_ulPath);
+	for(a_i = 0; a_i < a_eles.length; a_i++){
+		if(!a_eles[a_i].classList.contains("template")){
+			a_eles[a_i].remove();
+		}
+	}
+	for(a_i = 0; a_i < paths.length; a_i++){
+		addPath(a_ulPath, paths[a_i], a_i, true);
+	}
+	g_paths = paths;
+	/** @type {Array<DriveItem>|undefined} */
+	var b_arr = await listFolder(true, false);
+	if(b_arr){
 		/** @type {number} */
-		var a_i = 0;
-		/** @type {Array<Element>} */
-		var a_eles = getElementsByAttribute("li", a_ulPath);
-		for(a_i = 0; a_i < a_eles.length; a_i++){
-			if(!a_eles[a_i].classList.contains("template")){
-				a_eles[a_i].remove();
+		var b_i = 0;
+		for(b_i = 0; b_i < b_arr.length; b_i++){
+			if(b_arr[b_i]._id == fid){
+				break;
 			}
 		}
-		for(a_i = 0; a_i < paths.length; a_i++){
-			addPath(a_ulPath, paths[a_i], a_i, true);
+		if(b_i < b_arr.length){
+			if(next){
+				clickItem(fid, 2);
+			}else{
+				if(ctime){
+					getElement("#diViewer").setAttribute("ctime", ctime);
+				}
+				clickItem(fid);
+			}
 		}
-		g_paths = paths;
-		listFolder(true, false, undefined,  /** @type {function(Array<DriveItem>)} */(function(b_arr){
-			hideMessage();
-			/** @type {number} */
-			var b_i = 0;
-			for(b_i = 0; b_i < b_arr.length; b_i++){
-				if(b_arr[b_i]._id == fid){
-					break;
-				}
-			}
-			if(b_i < b_arr.length){
-				if(next){
-					clickItem(fid, 2);
-				}else{
-					if(ctime){
-						getElement("#diViewer").setAttribute("ctime", ctime);
-					}
-					clickItem(fid);
-				}
-			}
-		}));
-	};
-	getDrvFld();
+	}
 }
 /**
  * @param {Event} evt
@@ -1626,8 +1618,9 @@ function restoreTime(evt){
 }
 /**
  * @param {Event} evt
+ * @return {!Promise<void>}
  */
-function clickDeleteRecent(evt){
+async function clickDeleteRecent(evt){
 	/** @type {Element} */
 	var ele = getElement(evt);
 	/** @type {Element} */
@@ -1639,7 +1632,7 @@ function clickDeleteRecent(evt){
 	}
 	li.remove();
 	g_recents.splice(idx, 1);
-	g_storage.removeRecent(idx);
+	await g_storage.removeRecent(idx);
 	if(g_recents.length == 0){
 		showMenuHistory(false);
 	}
