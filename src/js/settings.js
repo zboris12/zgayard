@@ -642,6 +642,9 @@ async function deleteRoot(evt){
 				break;
 			}
 		}
+		if(rootidx < g_rootidx){
+			g_rootidx--;
+		}
 		showNotify("delrootDone");
 	}
 }
