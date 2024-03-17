@@ -264,6 +264,7 @@ ul.zb-main-list > li.header > div:first-of-type {
 }
 ul.zb-main-list > li > div:first-of-type > span:first-of-type {
 	@apply cursor-pointer inline-block text-blue-800 hover:bg-blue-200 ml-8 my-auto;
+	min-width: 100px;
 }
 ul.zb-main-list > li.header > div:first-of-type > span:first-of-type {
 	@apply cursor-default text-black mx-auto my-auto;

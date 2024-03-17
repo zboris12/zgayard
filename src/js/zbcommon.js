@@ -355,21 +355,21 @@ function getQueryParameters(){
  * @return {string}
  */
 function makeQueryString(query, noEncode){
-	/** @type {Array<string>} */
-	var qarr = [];
+	/** @type {string} */
+	var qstr = "";
 	/** @type {string} */
 	var k;
 	for(k in query){
 		if(noEncode){
-			qarr.push(k.concat("=").concat(query[k]));
+			qstr += "&" + k + "=" + query[k];
 		}else{
-			qarr.push(encodeURIComponent(k).concat("=").concat(encodeURIComponent(query[k])));
+			qstr += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(query[k]);
 		}
 	}
-	if(qarr.length > 0){
-		return "?".concat(qarr.join("&"));
+	if(qstr){
+		return "?".concat(qstr.substring(1));
 	}else{
-		return "";
+		return qstr;
 	}
 }
 
@@ -411,23 +411,32 @@ function formatNumber(n){
 	var i = str.indexOf(".");
 	/** @type {Array<string>} */
 	var arr = str.split("");
-	/** @type {Array<string>} */
-	var ret = new Array();
+	/** @type {string} */
+	var ret = "";
+	/** @type {string} */
+	var frac = "";
 	if(i >= 0){
-		ret.push(str.slice(i));
+		frac = str.slice(i);
 	}else{
 		i = arr.length;
 	}
 	/** @type {number} */
-	var j = 0;
-	while(i > 0){
-		if(j++ == 3){
-			ret.unshift(",");
-			j = 1;
-		}
-		ret.unshift(arr[--i]);
+	var fg = i % 3;
+	if(fg > 0){
+		fg = 3 - fg;
 	}
-	return ret.join("");
+	/** @type {number} */
+	var j = 0;
+	while(j < i){
+		if(fg == 3){
+			ret += ",";
+			fg = 0;
+		}
+		ret += arr[j];
+		j++;
+		fg++;
+	}
+	return ret + frac;
 }
 /**
  * Get a fomatted string of size to display.
@@ -472,14 +481,16 @@ function getTimeDisp(t){
 	var m = t % 60;
 	/** @type {number} */
 	var h = (t - m) / 60;
-	/** @type {Array<string>} */
-	var hms = new Array();
+	/** @type {string} */
+	var hms = "";
 	if(h > 0){
-		hms.push(h.toString(10));
+		hms += h.toString(10) + ":";
+		hms += "0".concat(m).slice(-2) + ":";
+	}else{
+		hms += m.toString(10) + ":";
 	}
-	hms.push("0".concat(m).slice(-2));
-	hms.push("0".concat(s).slice(-2));
-	return hms.join(":");
+	hms += "0".concat(s).slice(-2);
+	return hms;
 }
 /**
  * Get the elapsed time from base time.
@@ -502,42 +513,18 @@ function getTimestampDisp(tms){
 	if(tms){
 		/** @type {Date} */
 		var dt = new Date(tms);
-		/** @type {Array<number>} */
-		var ymd = new Array();
-		/** @type {Array<string>} */
-		var hms = new Array();
-		ymd.push(dt.getFullYear());
-		ymd.push(dt.getMonth()+1);
-		ymd.push(dt.getDate());
-		hms.push("0".concat(dt.getHours()).slice(-2));
-		hms.push("0".concat(dt.getMinutes()).slice(-2));
-		hms.push("0".concat(dt.getSeconds()).slice(-2));
-		return ymd.join("-") + " " + hms.join(":");
+		/** @type {string} */
+		var ret = "";
+		ret += dt.getFullYear() + "-";
+		ret += (dt.getMonth()+1) + "-";
+		ret += dt.getDate() + " ";
+		ret += ("0" + dt.getHours()).slice(-2) + ":";
+		ret += ("0" + dt.getMinutes()).slice(-2) + ":";
+		ret += ("0" + dt.getSeconds()).slice(-2);
+		return ret;
 	}else{
 		return "";
 	}
-}
-/**
- * Repalce one character to another character in the string.
- *
- * @param {string} fChars From character.
- * @param {string} tChars To character.
- * @param {string} str Target string.
- * @return {string} The string after replacing
- */
-function charsReplace(fChars, tChars, str){
-	/** @type {Array<string>} */
-	var ret = new Array();
-	str.split("").forEach(function(/** string */a_c){
-		/** @type {number} */
-		var a_i = fChars.indexOf(a_c);
-		if(a_i < 0){
-			ret.push(a_c);
-		}else{
-			ret.push(tChars[a_i]);
-		}
-	});
-	return ret.join("");
 }
 
 /**

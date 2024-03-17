@@ -11,7 +11,7 @@ set cors=true
 
 rem main
 set src=src
-set jss=--js %csdef%\zb-define.js --js %src%\js\const.js --js %src%\js\zbcommon.js --js %src%\js\zbcrypto.js --js %src%\js\zbidxdb.js --js %src%\js\zbdrive.js --js %src%\js\zbonedrive.js --js %src%\js\zbgoogledrive.js --js %src%\js\zbidxbdrive.js --js %src%\js\worker-const.js --js %src%\js\downup.js --js %src%\js\settings.js --js %src%\js\main.js --js %src%\js\main-assign.js --js %src%\js\withsw.js --js %src%\js\event.js
+set jss=--js %csdef%\zb-define.js --js %src%\js\const.js --js %src%\js\charutil.js --js %src%\js\zbcommon.js --js %src%\js\zbcrypto.js --js %src%\js\zbidxdb.js --js %src%\js\zbdrive.js --js %src%\js\zbonedrive.js --js %src%\js\zbgoogledrive.js --js %src%\js\zbidxbdrive.js --js %src%\js\worker-const.js --js %src%\js\downup.js --js %src%\js\settings.js --js %src%\js\main.js --js %src%\js\main-assign.js --js %src%\js\withsw.js --js %src%\js\event.js
 echo $
 set chkj=%%externs%% --checks_only %%jss%%
 echo chkj=csr %chkj%

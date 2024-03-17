@@ -194,6 +194,7 @@ var DriveAjaxOption;
  * {{
  *   _id: string,
  *   _name: string,
+ *   _sname: (string|undefined),
  *   _size: (number|undefined),
  *   _lastModifiedDateTime: (string|undefined),
  *   _parent: (string|undefined),

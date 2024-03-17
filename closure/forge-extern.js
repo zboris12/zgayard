@@ -9,34 +9,31 @@ forge.random = {};
 forge.random.getBytesSync = function(count){};
 
 forge.util = {};
-/** @constructor */
-forge.util.ByteStringBuffer = function(){};
+/**
+ * @constructor
+ * @param {string|ArrayBuffer=} b
+ */
+forge.util.ByteBuffer = function(b){};
 /**
  * @param {number=} count
  * @return {string}
  */
-forge.util.ByteStringBuffer.prototype.getBytes = function(count){};
+forge.util.ByteBuffer.prototype.getBytes = function(count){};
 /**
  * @return {number}
  */
-forge.util.ByteStringBuffer.prototype.length = function(){};
+forge.util.ByteBuffer.prototype.length = function(){};
 /**
  * @param {string} value
- * @return {forge.util.ByteStringBuffer}
+ * @return {forge.util.ByteBuffer}
  */
-forge.util.ByteStringBuffer.prototype.putBytes = function(value){};
+forge.util.ByteBuffer.prototype.putBytes = function(value){};
 /**
  * @param {number} count
- * @return {forge.util.ByteStringBuffer}
+ * @return {forge.util.ByteBuffer}
  */
-forge.util.ByteStringBuffer.prototype.truncate = function(count){};
+forge.util.ByteBuffer.prototype.truncate = function(count){};
 
-/**
- * @param {string} input
- * @param {string=} encoding
- * @return {forge.util.ByteStringBuffer}
- */
-forge.util.createBuffer = function(input, encoding){};
 /**
  * @param {string} input
  * @return {string}
@@ -79,7 +76,7 @@ forge.md = {};
 /** @constructor */
 forge.md.digest = function(){};
 /**
- * @return {forge.util.ByteStringBuffer}
+ * @return {forge.util.ByteBuffer}
  */
 forge.md.digest.prototype.digest = function(){};
 /**
@@ -117,7 +114,7 @@ forge.cipher.BlockCipher = function(){};
  *    additionalData: (string|undefined),
  *    tagLength: (number|undefined),
  *    tag: (string|undefined),
- *    output: (forge.util.ByteStringBuffer|undefined),
+ *    output: (forge.util.ByteBuffer|undefined),
  * }}
  */
 var CipherOptions;
@@ -126,24 +123,24 @@ var CipherOptions;
  */
 forge.cipher.BlockCipher.prototype.start = function(options){};
 /**
- * @param {forge.util.ByteStringBuffer} input
+ * @param {forge.util.ByteBuffer} input
  */
 forge.cipher.BlockCipher.prototype.update = function(input){};
 /**
  * @return {boolean}
  */
 forge.cipher.BlockCipher.prototype.finish = function(){};
-/** @type {forge.util.ByteStringBuffer} */
+/** @type {forge.util.ByteBuffer} */
 forge.cipher.BlockCipher.prototype.output;
 /**
  * @param {string} algorithm
- * @param {forge.util.ByteStringBuffer} key
+ * @param {forge.util.ByteBuffer} key
  * @return {forge.cipher.BlockCipher}
  */
 forge.cipher.createCipher = function(algorithm, key) {};
 /**
  * @param {string} algorithm
- * @param {forge.util.ByteStringBuffer} key
+ * @param {forge.util.ByteBuffer} key
  * @return {forge.cipher.BlockCipher}
  */
 forge.cipher.createDecipher = function(algorithm, key) {};

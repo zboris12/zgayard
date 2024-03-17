@@ -1,5 +1,6 @@
 (function(){
 	const jss = [
+		"js/charutil.js",
 		"js/zbcommon.js",
 		"js/zbcrypto.js",
 		"js/zbidxdb.js",

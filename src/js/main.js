@@ -370,28 +370,6 @@ async function loadRecent(){
  * @param {Element=} ul
  */
 function setRecent(idx, nm, ul){
-	/** @type {function((number|string)):string} */
-	var formaTime = function(a_seconds){
-		/** @type {number} */
-		var a_s = Math.floor(a_seconds);
-		/** @type {number} */
-		var a_h = Math.floor(a_s / 3600);
-		a_s -= a_h * 3600;
-		/** @type {number} */
-		var a_m = Math.floor(a_s / 60);
-		a_s -= a_m * 60;
-		/** @type {Array<string>} */
-		var a_arr = new Array();
-		if(a_h > 0){
-			a_arr.push(a_h.toString());
-			a_arr.push("0".concat(a_m).slice(-2));
-		}else{
-			a_arr.push(a_m.toString());
-		}
-		a_arr.push("0".concat(a_s).slice(-2));
-		return a_arr.join(":");
-	};
-
 	if(!ul){
 		ul = getElement("ul", "#divHistory");
 	}
@@ -435,7 +413,7 @@ function setRecent(idx, nm, ul){
 
 	spnm.innerText = nm;
 	if(pif._time){
-		spnm.innerText = spnm.innerText.concat(" [").concat(formaTime(pif._time)).concat("]");
+		spnm.innerText = spnm.innerText.concat(" [").concat(getTimeDisp(Math.floor(pif._time))).concat("]");
 	}
 }
 /**
@@ -530,13 +508,16 @@ async function listFolder(reload, onlyfolder, fld){
 			/** @type {number} */
 			var b_j = a_sort.length;
 			b_ele._name = decryptFname(b_ele._name);
+			b_ele._sname = zbCharUtil.kiyoneStr(b_ele._name);
 			if(isFolder(b_ele)){
 				b_j = a_fdcnt++;
 			}else{
 				b_i = a_fdcnt;
 			}
 			while(b_i<b_j){
-				if(b_ele._name < a_sort[b_i]._name){
+				if(b_ele._sname < a_sort[b_i]._sname){
+					break;
+				}else if(b_ele._sname == a_sort[b_i]._sname && b_ele._name < a_sort[b_i]._name){
 					break;
 				}else{
 					b_i++;
