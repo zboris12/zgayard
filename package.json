@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "tailwindcss -i ./tw/input.css -o ./src/index.css --watch",
     "build": "tailwindcss -i ./tw/input.css -o ./src/index.css --minify",
-    "build2": "google-closure-compiler --charset UTF-8 --compilation_level ADVANCED_OPTIMIZATIONS --warning_level VERBOSE --language_out ECMASCRIPT_2015 --externs closure/forge-extern.js --externs closure/zb-externs.js --js src/js/worker-const.js --js src/js/worker.js --define FOROUTPUT --js_output_file public/worker.js",
     "test": "node server/server.sjs"
   },
   "devDependencies": {
