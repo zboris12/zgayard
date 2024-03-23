@@ -2,7 +2,6 @@
 # set -x
 
 OUTFLDR=public
-CORS=false
 GCCOPT="--charset UTF-8 --compilation_level ADVANCED_OPTIMIZATIONS --warning_level VERBOSE --language_out ECMASCRIPT_2015"
 GCCEXT="--externs closure/forge-extern.js --externs closure/zb-externs.js"
 function gccJSS(){
@@ -56,7 +55,7 @@ main-assign.js
 withsw.js
 event.js
 "
-gccJSS "${SRCJSS}" "--define WORKER_PATH='' --define CORS=${CORS}" index.js
+gccJSS "${SRCJSS}" "--define WORKER_PATH=''" index.js
 RET=$?
 if [ ${RET} -ne 0 ]
 then
@@ -81,7 +80,7 @@ worker-const.js
 downup.js
 worker-sub.js
 "
-gccJSS "${SRCJSS}" "--define WORKER_PATH='' --define CORS=${CORS} --define FOROUTPUT" worker-sub.js
+gccJSS "${SRCJSS}" "--define WORKER_PATH='' --define FOROUTPUT" worker-sub.js
 RET=$?
 if [ ${RET} -ne 0 ]
 then
@@ -120,7 +119,7 @@ zbidxbdrive.js
 worker-const.js
 sw.js
 "
-gccJSS "${SRCJSS}" "--define CORS=${CORS} --define FOROUTPUT" sw.js
+gccJSS "${SRCJSS}" "--define FOROUTPUT" sw.js
 RET=$?
 if [ ${RET} -ne 0 ]
 then

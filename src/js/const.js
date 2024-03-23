@@ -1,7 +1,5 @@
-/** @define {boolean} */
-var CORS = false;
 /** @const {string} */
-const g_AUTHURL = CORS ? "https://zgayard.f5.si/grantauth.php" : "/grantauth.php";
+const g_AUTHURL = "/grantauth";
 /** @const {Object<string, string>} */
 const g_LANGUAGES = {
 	"en": "English",

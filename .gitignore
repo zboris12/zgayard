@@ -1,5 +1,9 @@
 .server/
 public/
+.wrangler/
+.dev.vars
+src/*.js
+src/*.css
 
 # Logs
 logs

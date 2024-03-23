@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title> zgayard - Test Cloudflare pages functions </title>
+<script language="javascript">
+const g_AUTHURL = "/grantauth";
+async function test(){
+	var drvtyp = document.getElementById("drvType").value;
+	/** @type {FormData} */
+	var formData = new FormData();
+	formData.append("drive_type", drvtyp);
+	/** @type {Response} */
+	var resp = await fetch(g_AUTHURL, {
+		"method": "POST",
+		"body": formData,
+		"credentials": "include",
+		"redirect": "follow",
+	});
+	var obj = await resp.json();
+	console.log(obj);
+	document.getElementById("txtResult").innerHTML = JSON.stringify(obj, null, 2);
+}
+async function logout(){
+	var drvtyp = document.getElementById("drvType").value;
+	/** @type {FormData} */
+	var formData = new FormData();
+	formData.append("drive_type", drvtyp);
+	formData.append("action", "logout");
+
+	/** @type {Response} */
+	var resp = await fetch(g_AUTHURL, {
+		"method": "POST",
+		"credentials": "include",
+		"body": formData,
+		"redirect": "follow",
+	});
+	if(resp.ok){
+		var respObj = await resp.json();
+		console.log(respObj);
+		document.getElementById("txtResult").innerHTML = JSON.stringify(respObj, null, 2);
+	}
+}
+async function login(){
+	var drvtyp = document.getElementById("drvType").value;
+	/** @type {FormData} */
+	var formData = new FormData();
+	formData.append("drive_type", drvtyp);
+	// if(opt.clientId){
+		// formData.append("client_id", opt.clientId);
+	// }
+	// if(opt.redirectUri){
+		// formData.append("redirect_uri", opt.redirectUri);
+	// }
+	// if(opt.clientSecret){
+		// formData.append("client_secret", opt.clientSecret);
+	// }
+	var code = document.getElementById("txtCode").value;
+	var rtkn = document.getElementById("txtRtkn").value;
+	if(code){
+		formData.append("code", code);
+	}else if(rtkn){
+		formData.append("refresh_token", rtkn);
+	}else{
+		formData.append("need_code", true);
+	}
+
+	/** @type {Response} */
+	var resp = await fetch(g_AUTHURL, {
+		"method": "POST",
+		"body": formData,
+		"credentials": "include",
+		"redirect": "follow",
+	});
+	if(resp.status == 200){
+		var respObj = await resp.json();
+		console.log(respObj);
+		document.getElementById("txtResult").innerHTML = JSON.stringify(respObj, null, 2);
+	}else{
+		/** @type {string} */
+		var resptext = await resp.text();
+		console.error(resp.status, resptext);
+		document.getElementById("txtResult").innerHTML = resptext+" ("+resp.status+")";
+	}
+}
+function typeChanged(evt){
+	if(evt.target.value == "localstorage"){
+		document.getElementById("btnTest").disabled = false;
+		document.getElementById("btnLin").disabled = true;
+		document.getElementById("btnLout").disabled = true;
+	}else{
+		document.getElementById("btnTest").disabled = true;
+		document.getElementById("btnLin").disabled = false;
+		document.getElementById("btnLout").disabled = false;
+	}
+}
+</script>
+</head>
+<body>
+<p>A test of cloudflare pages functions </p>
+<label for="drvType">drive type</label>
+<select id="drvType" name="drive_type" onchange="typeChanged(event)">
+	<option value="localstorage">localstorage</option>
+	<option value="onedrive">onedrive</option>
+	<option value="googledrive">googledrive</option>
+</select>
+<br />
+<table>
+<tr>
+<td><label for="txtCode">Code</label></td><td><input type="text" id="txtCode" /></td>
+</tr><tr>
+<td><label for="txtRtkn">Refresh token</label></td><td><input type="text" id="txtRtkn" /></td>
+</tr><tr>
+<td><label for="txtResult">Result</label></td><td><textarea id="txtResult" readonly></textarea></td>
+</tr>
+</table>
+<input type="button" id="btnTest" value="test" onclick="test()" />
+<input type="button" id="btnLin" value="login" onclick="login()" disabled />
+<input type="button" id="btnLout" value="logout" onclick="logout()" disabled />
+</body>
+</html>

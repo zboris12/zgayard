@@ -1,7 +1,7 @@
 <div align="center"><img src="https://zboris12.github.io/zgayard/src/img/logo.png" title="zgayard"></div>
 
 # zgayard
-Create a safety yard in your online storage. [Let's go!](https://zboris12.github.io/zgayard/src/)  
+Create a safety yard in your online storage. [Let's go!](https://zgayard.pages.dev/)  
 
 This is a web tool aimed to make your online storage more safety.  
 It is a single page application and almost all processing is performed in the web browser.  
