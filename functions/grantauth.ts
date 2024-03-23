@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { webcrypto } from "node:crypto";
 
 interface Env {
-  REDIRECT_URIS: string;
+  REDIRECT_URI: string;
   ONEDRIVE_CLIENT_ID: string;
   ONEDRIVE_CLIENT_SECRET: string;
   GOOGDRIVE_CLIENT_ID: string;
@@ -43,23 +43,10 @@ class GrantAuth {
   public async process(env: Env, req: Request): Promise<Response> {
     this.HMAC_KEY = Buffer.from(env.HMAC_KEY);
     this.env = env;
-    let rurls: Array<string> = env.REDIRECT_URIS.split(",");
-    let ourl: string = req.headers.get("origin");
-    let l: number = ourl.length;
-    for (let i: number = 0; i < rurls.length; i++) {
-      if (rurls[i].substring(0, l) == ourl) {
-        this.redirectUri = rurls[i];
-        if (i == 0) {
-          this.localhost = true;
-        }
-        break;
-      }
-    }
-    if (!this.redirectUri) {
-      ourl = this.getBaseUrl(rurls[0]);
-    }
+    this.redirectUri = env.REDIRECT_URI;
+    this.localhost = (this.redirectUri.substring(0, 17) == "http://localhost:");
     this.reshdrs = new Headers();
-    this.reshdrs.append("Access-Control-Allow-Origin", ourl);
+    this.reshdrs.append("Access-Control-Allow-Origin", this.getBaseUrl(this.redirectUri));
     this.reshdrs.append("Access-Control-Allow-Credentials", "true");
     this.reshdrs.append("Content-Type", "application/json;charset=UTF-8");
 
@@ -285,6 +272,7 @@ class GrantAuth {
     }
     switch (aes["name"]) {
       case "AES-CBC":
+      case "AES-GCM":
         aes["iv"] = Uint8Array.from(Buffer.from(iv));
         break;
       case "AES-CTR":
@@ -331,6 +319,8 @@ class GrantAuth {
       i = url.indexOf("/", i + 3);
       if (i > 0) {
         return url.substring(0, i);
+      } else {
+        return url;
       }
     }
     return "";
