@@ -19,9 +19,21 @@ function gccJSS(){
 				jss="${jss} --js src/js/${js}"
 			fi
 		fi
-	done <<< "$1"
-	npx google-closure-compiler ${GCCOPT} ${GCCEXT} ${jss} $2 --js_output_file ${OUTFLDR}/$3
-	return $?
+	done <<EOF1
+$1
+EOF1
+	msg="$(npx google-closure-compiler ${GCCOPT} ${GCCEXT} ${jss} $2 --js_output_file ${OUTFLDR}/$3 2>&1)"
+	RET=$?
+	if [ ${RET} -ne 0 ]
+	then
+		return ${RET}
+	elif [ -n "${msg}" ]
+	then
+		echo "${msg}"
+		return 100
+	else
+		return 0
+	fi
 }
 
 IDX=1
@@ -129,7 +141,6 @@ else
 	echo "Build step ${IDX} js succeeded."
 fi
 
-IDX=$(expr ${IDX} + 1)
 # Copy other static files
 while read fil
 do
@@ -138,24 +149,25 @@ do
 		c=$(echo "${fil}" | cut -b1)
 		if [ "$c" != "#" ]
 		then
+			IDX=$(expr ${IDX} + 1)
 			cp -rf "src/${fil}" ${OUTFLDR}/
 			RET=$?
 			if [ ${RET} -ne 0 ]
 			then
-				echo "Build step 6 copy file failed. ${fil} ${RET}"
-				exit 6
+				echo "Build step ${IDX} copy file failed. ${fil} ${RET}"
+				exit ${IDX}
 			else
-				echo "Build step 6 copy file succeeded. ${fil}"
+				echo "Build step ${IDX} copy file succeeded. ${fil}"
 			fi
 		fi
 	fi
-done <<< "
+done <<EOF2
 img
 msg
 vendor
 favicon.ico
 index.html
 manifest.json
-"
+EOF2
 
 exit 0

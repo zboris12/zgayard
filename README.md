@@ -1,6 +1,10 @@
 <div align="center"><img src="https://zboris12.github.io/zgayard/src/img/logo.png" title="zgayard"></div>
 
 # zgayard
+![version](https://img.shields.io/github/package-json/v/zboris12/zgayard)
+![license](https://img.shields.io/github/license/zboris12/zgayard)
+![build status](https://img.shields.io/badge/build-passing-brightgreen?logo=cloudflare)
+
 Create a safety yard in your online storage. [Let's go!](https://zgayard.pages.dev/)  
 
 This is a web tool aimed to make your online storage more safety.  
